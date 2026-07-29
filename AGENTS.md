@@ -16,7 +16,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 7. หลังทำการแก้ไข ช่วยอธิบายโค้ดที่เพิ่มหรือแก้ไขมาทั้งหมด แต่ละไฟล์ทำหน้าที่อะไร flow การทำงาน และมีจุดไหนควรระวังด้าน security
 8. เขียนโค้ดให้อ่านง่ายเหมาะสำหรับ Junior Software Engineer
 9. คำนึงถึง Security
-10. responsive Mobile
+10. Mobile Responsive
 
 Requirements:
 
