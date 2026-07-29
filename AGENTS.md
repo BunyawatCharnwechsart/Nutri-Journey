@@ -16,12 +16,13 @@ This version has breaking changes — APIs, conventions, and file structure may 
 7. หลังทำการแก้ไข ช่วยอธิบายโค้ดที่เพิ่มหรือแก้ไขมาทั้งหมด แต่ละไฟล์ทำหน้าที่อะไร flow การทำงาน และมีจุดไหนควรระวังด้าน security
 8. เขียนโค้ดให้อ่านง่ายเหมาะสำหรับ Junior Software Engineer
 9. คำนึงถึง Security
+10. responsive Mobile
 
 Requirements:
 
 
 ### เป้าหมาย
-นี่เป็นเว็บแอปพลิเคชั่นสำหรับมือถือการทำ IF(Intermittent Fasting) มี การจับเวลาการทำ IF 
+นี่เป็นเว็บแอปพลิเคชั่นการทำ IF(Intermittent Fasting) มี การจับเวลาการทำ IF 
 มีหน้า Dashboard ดูประวัติการทำ IF แบบ Calendar
 และเชื่อมต่อกับ line-liff เพื่อเข้าสู้เว็บแอป มีการเชื่อมต่อกับ Google health API 
 
