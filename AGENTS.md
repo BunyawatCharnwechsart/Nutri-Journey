@@ -34,5 +34,32 @@ API : Google Health API
 DevOps: Docker
 Deployment: vercel
 
-### security
-แนะนำ
+### security (แนะนําโดย Senior)
+
+#### LINE LIFF
+- ใช้ `liff.getDecodedIDToken()` ตรวจ userId ฝั่ง Frontend เพื่อระบุตัวตน
+- ส่ง `idToken` ไป Backend + ใช้ `jose` หรือ `jsonwebtoken` verify ก่อนเชื่อถือ (ป้องกัน token)
+
+#### Supabase
+- เปิด **RLS (Row Level Security)** ทุก table — user แต่ละคนเห็นเฉพาะ data ของตัวเอง
+- ใช้ `supabase-js` session management ฝั่ง Client แต่อย่าเก็บ `access_token` ใน localStorage
+- ใช้ **Server Client (`createServerClient`)** สำหรับอ่าน/เขียนข้อมูลใน Server Components / Server Actions
+
+#### Google Health API
+- OAuth 2.0 flow — `refresh_token` ต้องเก็บใน Backend (ไม่ expose ให้ Client)
+- ใช้ `server-only` import สำหรับ client secret / refresh token
+
+#### Input Validation
+-  Validate ทุก input จาก Client ด้วย **Zod** ก่อนส่งไป Database
+-  อย่าเชื่อ `liff.getDecodedIDToken().userId` โดยตรง — verify ที่ Backend ทุกครั้ง
+
+#### Environment
+- ห้าม commit `.env*` (ตามกติกาข้อ 1)
+-  ตั้ง Environment Variables ใน Vercel Dashboard หรือ Docker Compose
+-  ใช้ `server-only` import สำหรับ secrets ที่ห้ามรั่วไป Client
+
+#### General
+- Next.js Server Actions มี **CSRF protection** ในตัว ใช้ให้เป็นประโยชน์
+- ใช้ **HTTPS** (Vercel ให้ฟรี)
+- ใช้ **Rate Limiting** (`@upstash/ratelimit` หรือ custom middleware) ป้องกัน abuse
+- Docker: ใช้ non-root user, อย่า expose port ที่ไม่จำเป็น
