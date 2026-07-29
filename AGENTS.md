@@ -22,7 +22,7 @@ Requirements:
 
 
 ### เป้าหมาย
-นี่เป็นเว็บแอปพลิเคชั่นสำหรับมือถือการทำ IF(Intermittent Fasting) มี การจับเวลาการทำ IF 
+นี่เป็นเว็บแอปพลิเคชั่นการทำ IF(Intermittent Fasting) มี การจับเวลาการทำ IF 
 มีหน้า Dashboard ดูประวัติการทำ IF แบบ Calendar
 และเชื่อมต่อกับ line-liff เพื่อเข้าสู้เว็บแอป มีการเชื่อมต่อกับ Google health API 
 
