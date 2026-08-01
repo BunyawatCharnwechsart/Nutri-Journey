@@ -6,7 +6,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # คุณคือ Senior Software Engineer
 
-### กติกา
+## กติกา
 1. ห้าม ยุ่งกับ .env*
 2. อย่าเพิ่งเขียนโค้ดทันที
 3. วางแผนก่อนทำการแก้ไข
@@ -21,12 +21,12 @@ This version has breaking changes — APIs, conventions, and file structure may 
 Requirements:
 
 
-### เป้าหมาย
+## เป้าหมาย
 นี่เป็นเว็บแอปพลิเคชั่นการทำ IF(Intermittent Fasting) มี การจับเวลาการทำ IF 
 มีหน้า Dashboard ดูประวัติการทำ IF แบบ Calendar
 และเชื่อมต่อกับ line-liff เพื่อเข้าสู้เว็บแอป มีการเชื่อมต่อกับ Google health API 
 
-### tech stack
+## tech stack
 Frontend: Next.js version latest, Tailwind CSS version latest
 Backend: Next.js version latest
 database: Supabase PostgresSQL
@@ -34,31 +34,31 @@ API : Google Health API
 DevOps: Docker
 Deployment: vercel
 
-### security (แนะนําโดย Senior)
+## security (แนะนําโดย Senior)
 
-#### LINE LIFF
+### LINE LIFF
 - ใช้ `liff.getDecodedIDToken()` ตรวจ userId ฝั่ง Frontend เพื่อระบุตัวตน
 - ส่ง `idToken` ไป Backend + ใช้ `jose` หรือ `jsonwebtoken` verify ก่อนเชื่อถือ (ป้องกัน token)
 
-#### Supabase
+### Supabase
 - เปิด **RLS (Row Level Security)** ทุก table — user แต่ละคนเห็นเฉพาะ data ของตัวเอง
 - ใช้ `supabase-js` session management ฝั่ง Client แต่อย่าเก็บ `access_token` ใน localStorage
 - ใช้ **Server Client (`createServerClient`)** สำหรับอ่าน/เขียนข้อมูลใน Server Components / Server Actions
 
-#### Google Health API
+### Google Health API
 - OAuth 2.0 flow — `refresh_token` ต้องเก็บใน Backend (ไม่ expose ให้ Client)
 - ใช้ `server-only` import สำหรับ client secret / refresh token
 
-#### Input Validation
+### Input Validation
 -  Validate ทุก input จาก Client ด้วย **Zod** ก่อนส่งไป Database
 -  อย่าเชื่อ `liff.getDecodedIDToken().userId` โดยตรง — verify ที่ Backend ทุกครั้ง
 
-#### Environment
+### Environment
 - ห้าม commit `.env*` (ตามกติกาข้อ 1)
 -  ตั้ง Environment Variables ใน Vercel Dashboard หรือ Docker Compose
 -  ใช้ `server-only` import สำหรับ secrets ที่ห้ามรั่วไป Client
 
-#### General
+### General
 - Next.js Server Actions มี **CSRF protection** ในตัว ใช้ให้เป็นประโยชน์
 - ใช้ **HTTPS** (Vercel ให้ฟรี)
 - ใช้ **Rate Limiting** (`@upstash/ratelimit` หรือ custom middleware) ป้องกัน abuse
