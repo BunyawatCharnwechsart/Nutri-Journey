@@ -547,3 +547,156 @@ LINE Mini App จะพัฒนาโดยใช้ Next.js และ LIFF SDK
 12.4 ระบบช่วยส่งเสริมการสร้างพฤติกรรมการดูแลสุขภาพที่ดีผ่านฟีเจอร์ Healthy Journey และการติดตามความก้าวหน้า
 
 12.5 ผู้ใช้สามารถตั้งเป้าหมายน้ำหนักและติดตามความคืบหน้าได้อย่างเป็นระบบ พร้อมดูประวัติการทำ IF ย้อนหลังผ่านปฏิทิน
+
+---
+
+## 13. การออกแบบ REST API
+
+### 13.1 ข้อตกลงพื้นฐาน (Conventions)
+
+| ข้อ | รายละเอียด |
+|---|---|
+| Base URL | `/api/v1` |
+| Auth | Custom JWT (sign ด้วย `jose`, HS256) เก็บใน httpOnly cookie ชื่อ `nj_session` อายุ 7 วัน, `SameSite=Lax`, `Secure` |
+| Body | JSON ทั้งหมด ผ่าน Zod validation ทุก endpoint |
+| Response | Envelope `{ success, data, error }` |
+| Timezone | Client ส่ง ISO 8601 (มี offset) → Server เก็บ UTC (`timestamptz`); calendar ส่ง `?month=YYYY-MM&tz=Asia/Bangkok` |
+| Pagination | `?page=1&limit=20` (limit ≤ 100) → meta ใน `data` |
+| Rate Limit | `proxy.ts` บน `/api/:path*` (60 req/min/IP; `/auth/login` 10 req/min) |
+| Webhook | `POST /webhooks/line` ตรวจ `X-Line-Signature` |
+
+**Error envelope** — `{ success: false, error: { code, message, details? } }`
+
+| HTTP Status | Code | ความหมาย |
+|---|---|---|
+| 400 | `VALIDATION_ERROR` | Input ไม่ผ่าน Zod |
+| 401 | `UNAUTHORIZED` / `TOKEN_EXPIRED` | ไม่มี session / token หมดอายุ |
+| 403 | `FORBIDDEN` | ไม่มีสิทธิ์เข้าถึงข้อมูล |
+| 404 | `NOT_FOUND` | ไม่พบ resource |
+| 409 | `CONFLICT` | ขัดกับสถานะปัจจุบัน (เช่น มี IF session active อยู่แล้ว) |
+| 429 | `RATE_LIMITED` | เกินอัตราการเรียก |
+| 500 | `INTERNAL_ERROR` | ข้อผิดพลาดภายในระบบ |
+
+**Public (ไม่ต้อง auth):** `/auth/login`, `/google-health/callback`, `/webhooks/line` — นอกนั้นทั้งหมดผ่าน `requireAuth()` (verify cookie JWT แล้ว inject `userId` เข้า handler)
+
+### 13.2 ตาราง Endpoints
+
+#### 13.2.1 Auth
+
+| Method | Path | Request | Response |
+|---|---|---|---|
+| POST | `/auth/login` | `{ idToken }` | verify LINE idToken (jose + LINE JWKS) → upsert `users` + `profiles` → set cookie → `data.user` |
+| POST | `/auth/logout` | — | clear cookie |
+| GET | `/auth/me` | — | `data.user + profile` |
+
+#### 13.2.2 Users / Profiles
+
+| Method | Path | Request | Response |
+|---|---|---|---|
+| GET | `/users/me` | — | profile + คำนวณ `bmi`, `bmr` (Mifflin-St Jeor) |
+| PATCH | `/users/me` | `{ weight?, height?, gender?, birth_date?, if_pattern?, goal? }` | updated profile + BMI/BMR |
+
+#### 13.2.3 Weight Logs
+
+| Method | Path | Request | Response |
+|---|---|---|---|
+| GET | `/weight-logs?from&to&page&limit` | — | list |
+| POST | `/weight-logs` | `{ weight, logged_at }` | created |
+| GET | `/weight-logs/:id` | — | item |
+| PATCH | `/weight-logs/:id` | `{ weight?, logged_at? }` | updated |
+| DELETE | `/weight-logs/:id` | — | 204 |
+
+#### 13.2.4 Weight Goals
+
+| Method | Path | Request | Response |
+|---|---|---|---|
+| GET | `/weight-goals` | — | goals (active + history) |
+| POST | `/weight-goals` | `{ target_weight, target_date, goal_type? }` | created (auto-ปิด active อันเดิม) |
+| GET | `/weight-goals/:id/progress` | — | % progress + status (ถึงเป้า/ใกล้/ห่าง) เทียบ weight ล่าสุด |
+| PATCH | `/weight-goals/:id` | `{ target_weight?, target_date? }` | updated |
+| DELETE | `/weight-goals/:id` | — | 204 |
+
+#### 13.2.5 IF Sessions
+
+| Method | Path | Request | Response |
+|---|---|---|---|
+| POST | `/if-sessions/start` | `{ if_pattern?, started_at? }` | session (`409` ถ้ามี active) |
+| POST | `/if-sessions/end` | `{ session_id }` | คำนวณ `duration_minutes`, status completed, auto award points |
+| GET | `/if-sessions/active` | — | session active ตัวปัจจุบัน |
+| GET | `/if-sessions?from&to&status&page&limit` | — | list |
+| GET | `/if-sessions/:id` | — | item |
+| DELETE | `/if-sessions/:id` | — | ยกเลิก (เฉพาะยังไม่ completed) |
+| GET | `/if-sessions/calendar?month=YYYY-MM&tz` | — | per-day `{ date, status, duration_minutes }` |
+
+#### 13.2.6 Google Health
+
+| Method | Path | Request | Response |
+|---|---|---|---|
+| GET | `/google-health/auth-url` | — | OAuth URL (state เก็บใน signed cookie) |
+| GET | `/google-health/callback?code&state` | — | แลก `refresh_token` → เก็บ server-only (ตาราง `user_google_tokens`) |
+| GET | `/google-health/status` | — | เชื่อม/ไม่เชื่อม |
+| POST | `/google-health/disconnect` | — | ลบ token |
+| POST | `/google-health/sync` | `{ from, to }` | ดึง steps/distance/kcal → บันทึก `health_daily` |
+| GET | `/google-health/daily?from&to` | — | ข้อมูลรายวัน (steps, distance, kcal) |
+
+#### 13.2.7 Dashboard
+
+| Method | Path | Request | Response |
+|---|---|---|---|
+| GET | `/dashboard?date&tz` | — | สรุปรวม: IF stats, weight progress, health summary, journey |
+
+#### 13.2.8 Journey (Gamification) — อ่านเป็นหลัก, points ถูก auto-award
+
+| Method | Path | Request | Response |
+|---|---|---|---|
+| GET | `/journey` | — | points, level, current/longest streak |
+| GET | `/missions` | — | mission list + สถานะสำเร็จของผู้ใช้ |
+| GET | `/missions/:id` | — | รายละเอียด + สถานะ |
+
+#### 13.2.9 Notifications
+
+| Method | Path | Request | Response |
+|---|---|---|---|
+| GET | `/notifications?page&limit` | — | ประวัติแจ้งเตือน |
+| PATCH | `/notifications/:id/read` | — | mark as read |
+| GET | `/notification-settings` | — | settings |
+| PATCH | `/notification-settings` | `{ start_hour, end_hour, enabled }` | updated |
+| POST | `/webhooks/line` | LINE payload | verify signature → ตอบ 200 |
+
+### 13.3 โครงสร้างไฟล์ (Folder Structure)
+
+```
+app/api/v1/
+  auth/  login|logout|me/route.ts
+  users/ me/route.ts
+  weight-logs/  route.ts, [id]/route.ts
+  weight-goals/ route.ts, [id]/route.ts, [id]/progress/route.ts
+  if-sessions/  route.ts, active/route.ts, start/route.ts, end/route.ts, [id]/route.ts, calendar/route.ts
+  google-health/ auth-url|callback|status|disconnect|sync|daily/route.ts
+  dashboard/     route.ts
+  journey/       route.ts, missions/route.ts, missions/[id]/route.ts
+  notifications/ route.ts, [id]/read/route.ts, settings/route.ts
+  webhooks/      line/route.ts
+lib/
+  auth.ts          verify LINE idToken (jose) + issue/verify JWT session + requireAuth()
+  supabase.ts      createServerClient (server-only)
+  line.ts          LINE Messaging API
+  google-health.ts OAuth + refresh_token (server-only import)
+  response.ts      apiSuccess / apiError envelope
+  validation.ts    Zod schemas
+proxy.ts           rate limiting
+```
+
+### 13.4 การเพิ่มเติมฐานข้อมูล (Database Additions)
+
+- `weight_goals` — id, user_id, target_weight, target_date, goal_type, status, timestamps
+- `user_google_tokens` — user_id, google_user_id, refresh_token, expires_at (อ่านจาก server-only เท่านั้น)
+- `health_daily` — id, user_id, date, steps, distance_m, kcal
+- เปิด RLS ทุกตาราง + policy ให้ผู้ใช้เข้าถึงเฉพาะข้อมูลของตนเอง (ตามแบบ Custom JWT / app-level check)
+
+### 13.5 Security ที่ฝังในทุก Endpoint
+
+- `requireAuth()` verify JWT cookie ก่อนเข้า handler; `userId` มาจาก cookie ที่ sign โดยระบบ ไม่เชื่อ `liff.getDecodedIDToken()` ตรง ๆ
+- Zod validate input ทุกตัว; ใช้ Supabase SDK แทน SQL string concat (ป้องกัน SQL Injection)
+- `google-health.ts` ใช้ `import "server-only"` — `refresh_token` / client secret ไม่รั่วสู่ client
+- Rate limit ผ่าน `proxy.ts` + webhook ตรวจ `X-Line-Signature`
