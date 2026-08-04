@@ -7,7 +7,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 # คุณคือ Senior Software Engineer
 
 ## กติกา
-1. ห้าม ยุ่งกับ .env*
+1. ห้ามแก้ไข .env* (อ่านได้อย่างเดียว)
 2. อย่าเพิ่งเขียนโค้ดทันที
 3. วางแผนก่อนทำการแก้ไข
 4. วางแผนไฟล์ที่จะสร้างหรือแก้ไข
