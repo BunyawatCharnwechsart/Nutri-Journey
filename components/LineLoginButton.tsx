@@ -6,7 +6,12 @@ import liff from "@line/liff";
 
 type Status = "initializing" | "ready" | "logging-in" | "error";
 
-export default function LineLoginButton() {
+export default function LineLoginButton({
+  autoLogin = true,
+}: {
+  /** Auto-login when already logged in to LINE (true on the home page). */
+  autoLogin?: boolean;
+}) {
   const router = useRouter();
   const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
   const [status, setStatus] = useState<Status>(
@@ -64,7 +69,7 @@ export default function LineLoginButton() {
       .init({ liffId })
       .then(() => {
         if (cancelled) return;
-        if (liff.isLoggedIn()) {
+        if (liff.isLoggedIn() && autoLogin) {
           login();
         } else {
           setStatus("ready");
@@ -79,7 +84,7 @@ export default function LineLoginButton() {
     return () => {
       cancelled = true;
     };
-  }, [login, liffId]);
+  }, [login, liffId, autoLogin]);
 
   return (
     <div className="flex w-full flex-col items-center gap-3">

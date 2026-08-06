@@ -12,7 +12,7 @@ export default function LogoutButton() {
     try {
       await fetch("/api/v1/auth/logout", { method: "POST" });
     } finally {
-      router.push("/");
+      router.push("/logged-out");
       router.refresh();
     }
   }
