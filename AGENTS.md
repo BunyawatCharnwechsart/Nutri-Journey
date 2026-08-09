@@ -56,7 +56,7 @@ DB Access:
 ## ฐานข้อมูล (Supabase)
 - ตารางทั้งหมด 10 ตารางมีอยู่แล้ว: `users`, `profiles`, `if_sessions`, `weight_logs`, `missions`, `user_missions`, `healthy_journey`, `daily_metrics`, `google_health_connections`, `notifications` — **ห้ามสร้างซ้ำ**
 - ตารางที่ยังไม่มีถ้าต้องทำ feature: `weight_goals`, `notification_settings`
-- Migration เก็บที่ `supabase/migrations/` ไล่เลข `0001_`, `0002_` — ใช้ `create table if not exists` / รันซ้ำได้ (idempotent)
+- Migration เก็บที่ `supabase/migrations/` ไล่เลข `0001_`, `0002_`, `0003_` — ใช้ `create table if not exists` / รันซ้ำได้ (idempotent)
 - วิธีรัน migration: เครื่อง dev ไม่มี `psql` → ใช้ node script + แพ็กเกจ `pg` (เชื่อมผ่าน pooler) หรือรันใน Supabase SQL Editor
 - ข้อความ security: ตรวจ/revoke grant ของตารางใหม่ทุกครั้ง (`revoke all on <table> from anon, authenticated`)
 

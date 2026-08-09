@@ -8,6 +8,7 @@ import {
   createSessionToken,
 } from "@/lib/auth";
 import { apiError, apiSuccess } from "@/lib/response";
+import { isProfileComplete } from "@/lib/profile";
 import { loginSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -71,9 +72,21 @@ export async function POST(request: Request) {
     }
   }
 
+  // Whether this user completed the health profile setup. The client uses
+  // this to send first-time users to /health-profile instead of /dashboard.
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select(
+      "gender, birth_date, height, weight, activity_level"
+    )
+    .eq("user_id", user.user_id)
+    .maybeSingle();
+
+  const profileComplete = isProfileComplete(profile);
+
   const sessionToken = await createSessionToken(user.user_id);
   const cookieStore = await cookies();
   cookieStore.set(SESSION_COOKIE_NAME, sessionToken, SESSION_COOKIE_OPTIONS);
 
-  return apiSuccess({ user }, { status: 200 });
+  return apiSuccess({ user, profileComplete }, { status: 200 });
 }
