@@ -45,14 +45,18 @@ export default function LineLoginButton({
         body: JSON.stringify({ idToken }),
       });
 
+      const json = (await res.json().catch(() => null)) as {
+        error?: { message?: string };
+        data?: { profileComplete?: boolean };
+      } | null;
+
       if (!res.ok) {
-        const json = (await res.json().catch(() => null)) as {
-          error?: { message?: string };
-        } | null;
         throw new Error(json?.error?.message ?? "Login failed");
       }
 
-      router.push("/dashboard");
+      // First-time users are sent to the health profile setup page.
+      const profileComplete = json?.data?.profileComplete ?? false;
+      router.push(profileComplete ? "/dashboard" : "/health-profile");
       router.refresh();
     } catch (e) {
       setStatus("ready");
