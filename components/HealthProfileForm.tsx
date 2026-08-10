@@ -4,6 +4,7 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 
 import { ACTIVITY_LEVELS, GENDER_OPTIONS } from "@/lib/profile";
+import BirthDatePicker from "@/components/BirthDatePicker";
 
 export interface HealthProfileValues {
   gender: string;
@@ -73,8 +74,6 @@ export default function HealthProfileForm({
     }
   }
 
-  const today = new Date().toISOString().split("T")[0];
-
   return (
     <form
       onSubmit={handleSubmit}
@@ -110,14 +109,9 @@ export default function HealthProfileForm({
         <label htmlFor="birth-date" className={labelClass}>
           วันเดือนปีเกิด
         </label>
-        <input
-          id="birth-date"
-          type="date"
-          max={today}
+        <BirthDatePicker
           value={birthDate}
-          onChange={(e) => setBirthDate(e.target.value)}
-          className={inputClass}
-          required
+          onChange={(date) => setBirthDate(date)}
         />
       </div>
 
