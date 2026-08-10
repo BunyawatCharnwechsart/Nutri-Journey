@@ -36,6 +36,18 @@ body {
   font-size: 0.875rem;
 }
 
+.rdp-month_caption {
+  font-size: 0.9rem;
+}
+
+.rdp-caption_label {
+  padding: 0 0.25rem;
+}
+
+.rdp-dropdowns {
+  gap: 0.5rem;
+}
+
 @media (prefers-color-scheme: dark) {
   .rdp-root {
     --rdp-accent-background-color: #06c75533;

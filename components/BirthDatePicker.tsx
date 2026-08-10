@@ -12,8 +12,13 @@ interface BirthDatePickerProps {
 
 const today = new Date();
 
+const startMonth = new Date(1950, 0, 1);
+const endMonth = new Date(today.getFullYear(), 11, 31);
+
 function formatThai(date: Date | undefined): string {
-  return date ? format(date, "d MMMM yyyy", { locale: th }) : "";
+  if (!date) return "";
+  const dayMonth = format(date, "d MMMM", { locale: th });
+  return `${dayMonth} ${date.getFullYear() + 543}`;
 }
 
 export default function BirthDatePicker({ value, onChange }: BirthDatePickerProps) {
@@ -94,6 +99,13 @@ export default function BirthDatePicker({ value, onChange }: BirthDatePickerProp
             disabled={{ after: today }}
             defaultMonth={selectedDate ?? today}
             weekStartsOn={1}
+            captionLayout="dropdown"
+            startMonth={startMonth}
+            endMonth={endMonth}
+            navLayout="after"
+            formatters={{
+              formatYearDropdown: (year) => String(year.getFullYear() + 543),
+            }}
           />
         </div>
       )}
