@@ -26,12 +26,13 @@ Requirements:
 และเชื่อมต่อกับ line-liff เพื่อเข้าสู้เว็บแอป มีการเชื่อมต่อกับ Google health API
 
 ## tech stack
-Frontend: Next.js version latest, Tailwind CSS version latest
-Backend: Next.js version latest
-database: Supabase PostgresSQL
-API : Google Health API
-DevOps: Docker
-Deployment: vercel
+
+- Frontend: Next.js version latest, Tailwind CSS version latest
+- Backend: Next.js version latest
+- database: Supabase PostgresSQL
+- API : Google Health API
+- DevOps: Docker
+- Deployment: vercel
 
 ## สถาปัตยกรรม Auth ที่ใช้จริง (LINE Login + Custom JWT)
 

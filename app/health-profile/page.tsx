@@ -59,10 +59,6 @@ export default async function HealthProfilePage() {
           <h1 className="text-3xl font-bold tracking-tight text-zinc-900">
             ข้อมูลสุขภาพ
           </h1>
-          <p className="text-sm leading-6 text-zinc-600">
-            กรอกข้อมูลสุขภาพของคุณ เพื่อให้ Nutri Journey คำนวณและแนะนำได้
-            เหมาะสมกับตัวคุณ
-          </p>
           {avatarUrl ? (
             <Image
               src={avatarUrl}
