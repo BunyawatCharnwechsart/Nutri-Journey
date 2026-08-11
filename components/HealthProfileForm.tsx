@@ -75,17 +75,22 @@ export default function HealthProfileForm({
   }
 
   return (
-    <form
-      onSubmit={handleSubmit}
-      className="flex flex-col gap-6 rounded-2xl border border-zinc-200 p-5 sm:p-6"
-    >
-      <fieldset>
-        <legend className={labelClass}>เพศ</legend>
+    <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+      <section className="flex flex-col gap-4">
+        <h2 className="flex items-center gap-2 text-base font-semibold text-zinc-900">
+          <span
+            aria-hidden="true"
+            className="flex h-6 w-6 items-center justify-center rounded-full bg-[#18A659]/10"
+          >
+            <span className="h-2.5 w-2.5 rounded-full bg-[#18A659]" />
+          </span>
+          เพศ
+        </h2>
         <div className="grid grid-cols-3 gap-2">
           {GENDER_OPTIONS.map((option) => (
             <label
               key={option.value}
-              className={`flex cursor-pointer items-center justify-center rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors ${
+              className={`flex cursor-pointer items-center justify-center rounded-xl border px-3 py-3 text-sm font-medium transition-colors ${
                 gender === option.value
                   ? "border-[#18A659] bg-[#18A659]/10 text-[#148D4C]"
                   : "border-zinc-200 text-zinc-700 hover:bg-zinc-50"
@@ -103,96 +108,98 @@ export default function HealthProfileForm({
             </label>
           ))}
         </div>
-      </fieldset>
+      </section>
 
-      <div>
-        <label htmlFor="birth-date" className={labelClass}>
-          วันเดือนปีเกิด
-        </label>
-        <BirthDatePicker
-          value={birthDate}
-          onChange={(date) => setBirthDate(date)}
-        />
-      </div>
-
-      <div className="grid gap-6 sm:grid-cols-2">
+      <div className="flex flex-col gap-6 rounded-2xl border border-zinc-200 p-5 sm:p-6">
         <div>
-          <label htmlFor="height-cm" className={labelClass}>
-            ส่วนสูง (เซนติเมตร)
+          <label htmlFor="birth-date" className={labelClass}>
+            วันเดือนปีเกิด
           </label>
-          <input
-            id="height-cm"
-            type="number"
-            inputMode="decimal"
-            min={50}
-            max={250}
-            step={0.1}
-            placeholder="เช่น 165"
-            value={heightCm}
-            onChange={(e) => setHeightCm(e.target.value)}
-            className={inputClass}
-            required
+          <BirthDatePicker
+            value={birthDate}
+            onChange={(date) => setBirthDate(date)}
           />
         </div>
 
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div>
+            <label htmlFor="height-cm" className={labelClass}>
+              ส่วนสูง (เซนติเมตร)
+            </label>
+            <input
+              id="height-cm"
+              type="number"
+              inputMode="decimal"
+              min={50}
+              max={250}
+              step={0.1}
+              placeholder="เช่น 165"
+              value={heightCm}
+              onChange={(e) => setHeightCm(e.target.value)}
+              className={inputClass}
+              required
+            />
+          </div>
+
+          <div>
+            <label htmlFor="weight-kg" className={labelClass}>
+              น้ำหนัก (กิโลกรัม)
+            </label>
+            <input
+              id="weight-kg"
+              type="number"
+              inputMode="decimal"
+              min={20}
+              max={300}
+              step={0.1}
+              placeholder="เช่น 58.5"
+              value={weightKg}
+              onChange={(e) => setWeightKg(e.target.value)}
+              className={inputClass}
+              required
+            />
+          </div>
+        </div>
+
         <div>
-          <label htmlFor="weight-kg" className={labelClass}>
-            น้ำหนัก (กิโลกรัม)
+          <label htmlFor="activity-level" className={labelClass}>
+            ระดับกิจกรรม
           </label>
-          <input
-            id="weight-kg"
-            type="number"
-            inputMode="decimal"
-            min={20}
-            max={300}
-            step={0.1}
-            placeholder="เช่น 58.5"
-            value={weightKg}
-            onChange={(e) => setWeightKg(e.target.value)}
+          <select
+            id="activity-level"
+            value={activityLevel}
+            onChange={(e) => setActivityLevel(e.target.value)}
             className={inputClass}
             required
-          />
-        </div>
-      </div>
-
-      <div>
-        <label htmlFor="activity-level" className={labelClass}>
-          ระดับกิจกรรม
-        </label>
-        <select
-          id="activity-level"
-          value={activityLevel}
-          onChange={(e) => setActivityLevel(e.target.value)}
-          className={inputClass}
-          required
-        >
-          <option value="" disabled>
-            เลือกระดับกิจกรรมของคุณ
-          </option>
-          {ACTIVITY_LEVELS.map((option) => (
-            <option key={option.value} value={option.value}>
-              {option.label}
+          >
+            <option value="" disabled>
+              เลือกระดับกิจกรรมของคุณ
             </option>
-          ))}
-        </select>
-      </div>
+            {ACTIVITY_LEVELS.map((option) => (
+              <option key={option.value} value={option.value}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+        </div>
 
-      {error && (
-        <p
-          className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-600"
-          role="alert"
+        {error && (
+          <p
+            className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-600"
+            role="alert"
+          >
+            {error}
+          </p>
+        )}
+
+        <button
+          type="submit"
+          disabled={saving}
+          className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#18A659] px-5 text-base font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:cursor-not-allowed disabled:opacity-60"
         >
-          {error}
-        </p>
-      )}
-
-      <button
-        type="submit"
-        disabled={saving}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#18A659] px-5 text-base font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:cursor-not-allowed disabled:opacity-60"
-      >
-        {saving ? "กำลังบันทึก..." : "บันทึกข้อมูลสุขภาพ"}
-      </button>
+          {saving ? "กำลังบันทึก..." : "บันทึกข้อมูลสุขภาพ"}
+        </button>
+      </div>
     </form>
   );
 }
