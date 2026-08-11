@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 
 import { ACTIVITY_LEVELS, GENDER_OPTIONS } from "@/lib/profile";
 import BirthDatePicker from "@/components/BirthDatePicker";
@@ -78,12 +79,14 @@ export default function HealthProfileForm({
     <form onSubmit={handleSubmit} className="flex flex-col gap-8">
       <section className="flex flex-col gap-4">
         <h2 className="flex items-center gap-2 text-base font-semibold text-zinc-900">
-          <span
+          <Image
+            src="/icon/genderIcon.svg"
+            alt=""
             aria-hidden="true"
-            className="flex h-6 w-6 items-center justify-center rounded-full bg-[#18A659]/10"
-          >
-            <span className="h-2.5 w-2.5 rounded-full bg-[#18A659]" />
-          </span>
+            width={22}
+            height={22}
+            className="shrink-0"
+          />
           เพศ
         </h2>
         <div className="grid grid-cols-3 gap-2">
