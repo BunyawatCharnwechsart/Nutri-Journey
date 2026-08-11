@@ -700,3 +700,7 @@ proxy.ts           rate limiting
 - Zod validate input ทุกตัว; ใช้ Supabase SDK แทน SQL string concat (ป้องกัน SQL Injection)
 - `google-health.ts` ใช้ `import "server-only"` — `refresh_token` / client secret ไม่รั่วสู่ client
 - Rate limit ผ่าน `proxy.ts` + webhook ตรวจ `X-Line-Signature`
+
+### 14 Theme
+
+- parent color palette (#FAF8F7, #000000, #18A659, )
