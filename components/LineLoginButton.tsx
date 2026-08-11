@@ -96,7 +96,7 @@ export default function LineLoginButton({
         type="button"
         onClick={login}
         disabled={status === "initializing" || status === "logging-in"}
-        className="flex h-12 w-full max-w-xs items-center justify-center gap-2 rounded-full bg-[#06C755] px-5 text-base font-semibold text-white transition-colors hover:bg-[#05a849] disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex h-12 w-full max-w-xs items-center justify-center gap-2 rounded-full bg-[#18A659] px-5 text-base font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {status === "initializing" || status === "logging-in"
           ? "กำลังเชื่อมต่อ LINE..."

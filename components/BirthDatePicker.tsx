@@ -58,9 +58,9 @@ export default function BirthDatePicker({ value, onChange }: BirthDatePickerProp
         onClick={() => setOpen((prev) => !prev)}
         aria-haspopup="dialog"
         aria-expanded={open}
-        className="flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3 text-left text-sm text-zinc-900 outline-none transition-colors focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/30 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50"
+        className="flex w-full items-center justify-between rounded-xl border border-zinc-200 bg-white px-4 py-3 text-left text-sm text-zinc-900 outline-none transition-colors focus:border-[#18A659] focus:ring-2 focus:ring-[#18A659]/30"
       >
-        <span className={selectedDate ? "" : "text-zinc-400 dark:text-zinc-500"}>
+        <span className={selectedDate ? "" : "text-zinc-400"}>
           {selectedDate ? formatThai(selectedDate) : "เลือกวันเกิดของคุณ"}
         </span>
         <svg
@@ -83,7 +83,7 @@ export default function BirthDatePicker({ value, onChange }: BirthDatePickerProp
         <div
           role="dialog"
           aria-label="เลือกวันเกิด"
-          className="absolute left-0 top-full z-50 mt-2 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl dark:border-zinc-800 dark:bg-zinc-950"
+          className="absolute left-0 top-full z-50 mt-2 rounded-2xl border border-zinc-200 bg-white p-3 shadow-xl"
         >
           <DayPicker
             mode="single"

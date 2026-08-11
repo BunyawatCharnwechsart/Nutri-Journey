@@ -1,8 +1,8 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
+  --background: #faf8f7;
+  --foreground: #000000;
 }
 
 @theme inline {
@@ -10,13 +10,6 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
 }
 
 body {
@@ -27,8 +20,8 @@ body {
 
 /* React DayPicker - brand theme */
 .rdp-root {
-  --rdp-accent-color: #06c755;
-  --rdp-accent-background-color: #e6f9ee;
+  --rdp-accent-color: #18a659;
+  --rdp-accent-background-color: #e0f4e8;
   --rdp-day-width: 2.6rem;
   --rdp-day-height: 2.6rem;
   --rdp-day_button-width: 2.5rem;
@@ -46,10 +39,4 @@ body {
 
 .rdp-dropdowns {
   gap: 0.5rem;
-}
-
-@media (prefers-color-scheme: dark) {
-  .rdp-root {
-    --rdp-accent-background-color: #06c75533;
-  }
 }

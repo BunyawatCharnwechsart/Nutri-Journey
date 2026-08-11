@@ -47,10 +47,10 @@ export default async function HealthProfilePage() {
     <main className="flex flex-1 flex-col px-6 py-10">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
         <header className="flex flex-col gap-1">
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
             Health Profile
           </h1>
-          <p className="text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+          <p className="text-sm leading-6 text-zinc-600">
             กรอกข้อมูลสุขภาพของคุณ เพื่อให้ Nutri Journey คำนวณและแนะนำได้
             เหมาะสมกับตัวคุณ
           </p>

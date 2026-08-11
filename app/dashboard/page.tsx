@@ -37,15 +37,15 @@ export default async function DashboardPage() {
                 priority
               />
             ) : (
-              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#06C755] text-lg font-bold text-white">
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-[#18A659] text-lg font-bold text-white">
                 NJ
               </div>
             )}
             <div>
-              <p className="text-sm text-zinc-500 dark:text-zinc-400">
+              <p className="text-sm text-zinc-500">
                 สวัสดี
               </p>
-              <h1 className="text-xl font-bold text-zinc-900 dark:text-zinc-50">
+              <h1 className="text-xl font-bold text-zinc-900">
                 {displayName}
               </h1>
             </div>
@@ -54,11 +54,11 @@ export default async function DashboardPage() {
         </header>
 
         <section className="grid gap-4">
-          <div className="flex flex-col gap-2 rounded-2xl border border-zinc-200 p-5 dark:border-zinc-800">
-            <h2 className="text-base font-semibold text-zinc-900 dark:text-zinc-50">
+          <div className="flex flex-col gap-2 rounded-2xl border border-zinc-200 p-5 border-zinc-200">
+            <h2 className="text-base font-semibold text-zinc-900">
               สถานะ IF วันนี้
             </h2>
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">
+            <p className="text-sm text-zinc-500">
               ยังไม่มีเซสชัน เริ่มติดตามการอดอาหารของคุณได้เลย
             </p>
           </div>
@@ -71,12 +71,12 @@ export default async function DashboardPage() {
             ].map((stat) => (
               <div
                 key={stat.label}
-                className="flex flex-col gap-1 rounded-2xl border border-zinc-200 p-4 dark:border-zinc-800"
+                className="flex flex-col gap-1 rounded-2xl border border-zinc-200 p-4 border-zinc-200"
               >
-                <span className="text-sm text-zinc-500 dark:text-zinc-400">
+                <span className="text-sm text-zinc-500">
                   {stat.label}
                 </span>
-                <span className="text-2xl font-bold text-zinc-900 dark:text-zinc-50">
+                <span className="text-2xl font-bold text-zinc-900">
                   {stat.value}
                 </span>
               </div>

@@ -19,9 +19,9 @@ interface HealthProfileFormProps {
 }
 
 const inputClass =
-  "w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition-colors focus:border-[#06C755] focus:ring-2 focus:ring-[#06C755]/30 dark:border-zinc-800 dark:bg-zinc-950 dark:text-zinc-50";
+  "w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition-colors focus:border-[#18A659] focus:ring-2 focus:ring-[#18A659]/30";
 
-const labelClass = "mb-2 block text-sm font-medium text-zinc-700 dark:text-zinc-300";
+const labelClass = "mb-2 block text-sm font-medium text-zinc-700";
 
 export default function HealthProfileForm({
   initialValues,
@@ -77,7 +77,7 @@ export default function HealthProfileForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="flex flex-col gap-6 rounded-2xl border border-zinc-200 p-5 sm:p-6 dark:border-zinc-800"
+      className="flex flex-col gap-6 rounded-2xl border border-zinc-200 p-5 sm:p-6"
     >
       <fieldset>
         <legend className={labelClass}>เพศ</legend>
@@ -87,8 +87,8 @@ export default function HealthProfileForm({
               key={option.value}
               className={`flex cursor-pointer items-center justify-center rounded-xl border px-3 py-2.5 text-sm font-medium transition-colors ${
                 gender === option.value
-                  ? "border-[#06C755] bg-[#06C755]/10 text-[#05a849]"
-                  : "border-zinc-200 text-zinc-700 hover:bg-zinc-50 dark:border-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-900"
+                  ? "border-[#18A659] bg-[#18A659]/10 text-[#148D4C]"
+                  : "border-zinc-200 text-zinc-700 hover:bg-zinc-50"
               }`}
             >
               <input
@@ -179,7 +179,7 @@ export default function HealthProfileForm({
 
       {error && (
         <p
-          className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-600 dark:text-red-400"
+          className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-600"
           role="alert"
         >
           {error}
@@ -189,7 +189,7 @@ export default function HealthProfileForm({
       <button
         type="submit"
         disabled={saving}
-        className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#06C755] px-5 text-base font-semibold text-white transition-colors hover:bg-[#05a849] disabled:cursor-not-allowed disabled:opacity-60"
+        className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#18A659] px-5 text-base font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:cursor-not-allowed disabled:opacity-60"
       >
         {saving ? "กำลังบันทึก..." : "บันทึกข้อมูลสุขภาพ"}
       </button>
