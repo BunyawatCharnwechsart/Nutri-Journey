@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Inter, Noto_Sans_Thai } from "next/font/google";
 import "react-day-picker/style.css";
 import "./globals.css";
+import BottomNav from "@/components/BottomNav";
 
 const inter = Inter({
   variable: "--font-inter",
@@ -28,7 +29,10 @@ export default function RootLayout({
       lang="en"
       className={`${inter.variable} ${notoSansThai.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <div className="flex-1 pb-24">{children}</div>
+        <BottomNav />
+      </body>
     </html>
   );
 }

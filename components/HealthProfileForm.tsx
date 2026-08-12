@@ -493,10 +493,7 @@ export default function HealthProfileForm({
           </p>
           <button
             type="button"
-            onClick={() => {
-              router.push("/dashboard");
-              router.refresh();
-            }}
+            onClick={() => router.push("/profile")}
             className="mt-1 w-64 max-w-full rounded-full bg-[#18A659] px-5 py-3 text-base font-semibold text-white transition-colors hover:bg-[#148D4C]"
           >
             ไปยังหน้าหลัก
