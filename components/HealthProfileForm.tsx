@@ -26,6 +26,7 @@ export interface HealthProfileValues {
 
 interface HealthProfileFormProps {
   initialValues: HealthProfileValues;
+  avatarUrl: string | null;
 }
 
 const inputClass =
@@ -42,6 +43,7 @@ const primaryButtonClass =
 
 export default function HealthProfileForm({
   initialValues,
+  avatarUrl,
 }: HealthProfileFormProps) {
   const router = useRouter();
 
@@ -68,6 +70,12 @@ export default function HealthProfileForm({
   const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const stepTitles = {
+    1: "ข้อมูลสุขภาพ",
+    2: "สัดส่วน",
+    3: "เป้าหมาย",
+  } as const;
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
@@ -123,6 +131,26 @@ export default function HealthProfileForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-8">
+      <header className="flex flex-col items-center gap-6 text-center">
+        <h1 className="text-4xl font-bold tracking-tight text-zinc-900">
+          {stepTitles[step]}
+        </h1>
+        {avatarUrl ? (
+          <Image
+            src={avatarUrl}
+            alt="รูปโปรไฟล์ LINE"
+            width={112}
+            height={112}
+            className="rounded-full"
+            priority
+          />
+        ) : (
+          <div className="flex h-28 w-28 items-center justify-center rounded-full bg-[#18A659] text-3xl font-bold text-white">
+            NJ
+          </div>
+        )}
+      </header>
+
       {step === 1 && (
         <section className="flex flex-col gap-6">
           <div className="flex flex-col gap-4">
@@ -272,14 +300,10 @@ export default function HealthProfileForm({
 
       {step === 2 && (
         <section className="flex flex-col gap-6">
-          <h2 className="text-base font-semibold text-zinc-900">
-            สัดส่วนร่างกาย
-          </h2>
-          <div className="flex flex-col gap-6">
-            <div>
-              <label htmlFor="waist-cm" className={labelClass}>
-                รอบเอว (เซนติเมตร)
-              </label>
+          <div>
+            <label htmlFor="waist-cm" className={labelClass}>
+              รอบเอว (เซนติเมตร)
+            </label>
               <input
                 id="waist-cm"
                 type="number"
@@ -329,13 +353,11 @@ export default function HealthProfileForm({
                 className={inputClass}
               />
             </div>
-          </div>
         </section>
       )}
 
       {step === 3 && (
         <section className="flex flex-col gap-6">
-          <h2 className="text-base font-semibold text-zinc-900">เป้าหมาย</h2>
           <div>
             <label htmlFor="goal" className={labelClass}>
               เป้าหมายของคุณ
