@@ -31,7 +31,8 @@ interface HealthProfileFormProps {
 const inputClass =
   "w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition-colors focus:border-[#18A659] focus:ring-2 focus:ring-[#18A659]/30";
 
-const labelClass = "mb-2 block text-sm font-medium text-zinc-700";
+const labelClass =
+  "mb-2 flex items-center gap-2 text-sm font-medium text-zinc-700";
 
 const secondaryButtonClass =
   "flex h-12 items-center justify-center rounded-full border border-zinc-200 px-5 text-base font-semibold text-zinc-700 transition-colors hover:bg-zinc-50";
@@ -161,7 +162,18 @@ export default function HealthProfileForm({
           </div>
 
           <div>
-            <label htmlFor="birth-date" className={labelClass}>
+            <label
+              htmlFor="birth-date"
+              className={`${labelClass} cursor-pointer`}
+            >
+              <Image
+                src="/icon/birthdayIcon.svg"
+                alt=""
+                aria-hidden="true"
+                width={22}
+                height={22}
+                className="shrink-0"
+              />
               วันเดือนปีเกิด
             </label>
             <BirthDatePicker
@@ -173,6 +185,14 @@ export default function HealthProfileForm({
           <div className="grid gap-6 sm:grid-cols-2">
             <div>
               <label htmlFor="height-cm" className={labelClass}>
+                <Image
+                  src="/icon/heightIcon.svg"
+                  alt=""
+                  aria-hidden="true"
+                  width={22}
+                  height={22}
+                  className="shrink-0"
+                />
                 ส่วนสูง (เซนติเมตร)
               </label>
               <input
@@ -192,6 +212,14 @@ export default function HealthProfileForm({
 
             <div>
               <label htmlFor="weight-kg" className={labelClass}>
+                <Image
+                  src="/icon/weightIcon.svg"
+                  alt=""
+                  aria-hidden="true"
+                  width={22}
+                  height={22}
+                  className="shrink-0"
+                />
                 น้ำหนัก (กิโลกรัม)
               </label>
               <input
@@ -212,6 +240,14 @@ export default function HealthProfileForm({
 
           <div>
             <label htmlFor="activity-level" className={labelClass}>
+              <Image
+                src="/icon/activityLevelIcon.svg"
+                alt=""
+                aria-hidden="true"
+                width={22}
+                height={22}
+                className="shrink-0"
+              />
               ระดับกิจกรรม
             </label>
             <select
