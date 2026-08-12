@@ -135,19 +135,39 @@ export default function HealthProfileForm({
         <h1 className="text-4xl font-bold tracking-tight text-zinc-900">
           {stepTitles[step]}
         </h1>
-        {avatarUrl ? (
+        {step === 1 ? (
+          avatarUrl ? (
+            <Image
+              src={avatarUrl}
+              alt="รูปโปรไฟล์ LINE"
+              width={112}
+              height={112}
+              className="rounded-full"
+              priority
+            />
+          ) : (
+            <div className="flex h-28 w-28 items-center justify-center rounded-full bg-[#18A659] text-3xl font-bold text-white">
+              NJ
+            </div>
+          )
+        ) : step === 2 ? (
           <Image
-            src={avatarUrl}
-            alt="รูปโปรไฟล์ LINE"
-            width={112}
-            height={112}
-            className="rounded-full"
-            priority
+            src="/icon/proportionIcon.svg"
+            alt=""
+            aria-hidden="true"
+            width={126}
+            height={126}
+            className="shrink-0"
           />
         ) : (
-          <div className="flex h-28 w-28 items-center justify-center rounded-full bg-[#18A659] text-3xl font-bold text-white">
-            NJ
-          </div>
+          <Image
+            src="/icon/targetIcon.svg"
+            alt=""
+            aria-hidden="true"
+            width={126}
+            height={126}
+            className="shrink-0"
+          />
         )}
       </header>
 
