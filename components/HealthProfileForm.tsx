@@ -39,8 +39,6 @@ const secondaryButtonClass =
 const primaryButtonClass =
   "flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#18A659] px-5 text-base font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:cursor-not-allowed disabled:opacity-60";
 
-const STEP_LABELS = ["ข้อมูลพื้นฐาน", "สัดส่วนร่างกาย", "เป้าหมาย"];
-
 export default function HealthProfileForm({
   initialValues,
 }: HealthProfileFormProps) {
@@ -73,8 +71,14 @@ export default function HealthProfileForm({
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
 
+    if (step === 1 && birthDate === "") {
+      setError("กรุณาเลือกวันเกิดของคุณ");
+      return;
+    }
+
     if (step < 3) {
       setStep((current) => current + 1);
+      setError(null);
       return;
     }
 
@@ -118,43 +122,6 @@ export default function HealthProfileForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-8">
-      <div className="flex items-center justify-center gap-3">
-        {STEP_LABELS.map((label, index) => {
-          const stepNumber = index + 1;
-          const isActive = stepNumber === step;
-          const isDone = stepNumber < step;
-          return (
-            <div key={label} className="flex items-center gap-2">
-              <span
-                className={`flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold ${
-                  isActive
-                    ? "bg-[#18A659] text-white"
-                    : isDone
-                      ? "bg-[#18A659]/15 text-[#148D4C]"
-                      : "bg-zinc-100 text-zinc-400"
-                }`}
-              >
-                {stepNumber}
-              </span>
-              <span
-                className={`text-sm ${
-                  isActive
-                    ? "font-medium text-zinc-900"
-                    : isDone
-                      ? "text-zinc-600"
-                      : "text-zinc-400"
-                }`}
-              >
-                {label}
-              </span>
-              {stepNumber < STEP_LABELS.length && (
-                <span className="mx-1 h-px w-6 bg-zinc-200" />
-              )}
-            </div>
-          );
-        })}
-      </div>
-
       {step === 1 && (
         <section className="flex flex-col gap-6">
           <div className="flex flex-col gap-4">
@@ -272,7 +239,7 @@ export default function HealthProfileForm({
           <h2 className="text-base font-semibold text-zinc-900">
             สัดส่วนร่างกาย
           </h2>
-          <div className="grid gap-6 sm:grid-cols-3">
+          <div className="flex flex-col gap-6">
             <div>
               <label htmlFor="waist-cm" className={labelClass}>
                 รอบเอว (เซนติเมตร)
