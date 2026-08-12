@@ -71,11 +71,11 @@ export default function HealthProfileForm({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const stepTitles = {
+  const stepTitles: Record<number, string> = {
     1: "ข้อมูลสุขภาพ",
     2: "สัดส่วน",
     3: "เป้าหมาย",
-  } as const;
+  };
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
