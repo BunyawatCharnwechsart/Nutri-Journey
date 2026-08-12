@@ -132,44 +132,64 @@ export default function HealthProfileForm({
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-8">
       <header className="flex flex-col items-center gap-6 text-center">
-        <h1 className="text-4xl font-bold tracking-tight text-zinc-900">
-          {stepTitles[step]}
-        </h1>
         {step === 1 ? (
-          avatarUrl ? (
-            <Image
-              src={avatarUrl}
-              alt="รูปโปรไฟล์ LINE"
-              width={112}
-              height={112}
-              className="rounded-full"
-              priority
-            />
-          ) : (
-            <div className="flex h-28 w-28 items-center justify-center rounded-full bg-[#18A659] text-3xl font-bold text-white">
-              NJ
-            </div>
-          )
-        ) : step === 2 ? (
-          <Image
-            src="/icon/proportionIcon.svg"
-            alt=""
-            aria-hidden="true"
-            width={126}
-            height={126}
-            className="shrink-0"
-          />
+          <>
+            <h1 className="text-4xl font-bold tracking-tight text-zinc-900">
+              {stepTitles[step]}
+            </h1>
+            {avatarUrl ? (
+              <Image
+                src={avatarUrl}
+                alt="รูปโปรไฟล์ LINE"
+                width={112}
+                height={112}
+                className="rounded-full"
+                priority
+              />
+            ) : (
+              <div className="flex h-28 w-28 items-center justify-center rounded-full bg-[#18A659] text-3xl font-bold text-white">
+                NJ
+              </div>
+            )}
+          </>
         ) : (
-          <Image
-            src="/icon/targetIcon.svg"
-            alt=""
-            aria-hidden="true"
-            width={126}
-            height={126}
-            className="shrink-0"
-          />
+          <>
+            {step === 2 ? (
+              <Image
+                src="/icon/proportionIcon.svg"
+                alt=""
+                aria-hidden="true"
+                width={126}
+                height={126}
+                className="shrink-0"
+              />
+            ) : (
+              <Image
+                src="/icon/targetIcon.svg"
+                alt=""
+                aria-hidden="true"
+                width={126}
+                height={126}
+                className="shrink-0"
+              />
+            )}
+            <h1 className="text-4xl font-bold tracking-tight text-zinc-900">
+              {stepTitles[step]}
+            </h1>
+          </>
         )}
       </header>
+
+      {step === 2 && (
+        <p className="-mt-6 text-center text-sm text-zinc-500">
+          ใส่ข้อมูลสัดส่วนเพื่อที่ตอนทำ IF จะได้เห็นผลลัพธ์เพิ่มเติม
+        </p>
+      )}
+      {step === 3 && (
+        <p className="-mt-6 text-center text-sm text-zinc-500">
+          เป้าหมายหลักของคุณ
+        </p>
+      )}
 
       {step === 1 && (
         <section className="flex flex-col gap-6">
