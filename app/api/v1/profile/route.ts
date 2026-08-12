@@ -31,7 +31,18 @@ export async function POST(request: Request) {
     return apiError(message, 400, "VALIDATION_ERROR", parsed.error.issues);
   }
 
-  const { gender, birthDate, heightCm, weightKg, activityLevel } = parsed.data;
+  const {
+    gender,
+    birthDate,
+    heightCm,
+    weightKg,
+    activityLevel,
+    waistCm,
+    hipCm,
+    chestCm,
+    goal,
+    targetWeightKg,
+  } = parsed.data;
 
   const supabase = createServiceClient();
   const { data: profile, error } = await supabase
@@ -42,6 +53,11 @@ export async function POST(request: Request) {
       height: heightCm,
       weight: weightKg,
       activity_level: activityLevel,
+      waist_cm: waistCm ?? null,
+      hip_cm: hipCm ?? null,
+      chest_cm: chestCm ?? null,
+      goal: goal ?? null,
+      target_weight: targetWeightKg ?? null,
     })
     .eq("user_id", auth.userId)
     .select("*")

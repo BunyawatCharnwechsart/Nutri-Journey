@@ -24,6 +24,15 @@ export const ACTIVITY_LEVELS = [
 
 export type ActivityLevel = (typeof ACTIVITY_LEVELS)[number]["value"];
 
+export const GOAL_OPTIONS = [
+  { value: "weight_loss", label: "ลดน้ำหนัก" },
+  { value: "eating_behavior", label: "ปรับพฤติกรรมการกิน" },
+  { value: "maintain_muscle", label: "รักษาขนาดกล้ามเนื้อ" },
+  { value: "endurance_mindset", label: "ฝึกความอดทนเอาชนะใจตัวเอง" },
+] as const;
+
+export type Goal = (typeof GOAL_OPTIONS)[number]["value"];
+
 /**
  * Returns true when a profile row has every health field filled out.
  * Column names follow the `profiles` table schema.

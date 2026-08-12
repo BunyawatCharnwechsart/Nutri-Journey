@@ -4,7 +4,11 @@ import { useState, type FormEvent } from "react";
 import { useRouter } from "next/navigation";
 import Image from "next/image";
 
-import { ACTIVITY_LEVELS, GENDER_OPTIONS } from "@/lib/profile";
+import {
+  ACTIVITY_LEVELS,
+  GENDER_OPTIONS,
+  GOAL_OPTIONS,
+} from "@/lib/profile";
 import BirthDatePicker from "@/components/BirthDatePicker";
 
 export interface HealthProfileValues {
@@ -13,6 +17,11 @@ export interface HealthProfileValues {
   heightCm: number | null;
   weightKg: number | null;
   activityLevel: string;
+  waistCm: number | null;
+  hipCm: number | null;
+  chestCm: number | null;
+  goal: string;
+  targetWeightKg: number | null;
 }
 
 interface HealthProfileFormProps {
@@ -23,6 +32,14 @@ const inputClass =
   "w-full rounded-xl border border-zinc-200 bg-white px-4 py-3 text-sm text-zinc-900 outline-none transition-colors focus:border-[#18A659] focus:ring-2 focus:ring-[#18A659]/30";
 
 const labelClass = "mb-2 block text-sm font-medium text-zinc-700";
+
+const secondaryButtonClass =
+  "flex h-12 items-center justify-center rounded-full border border-zinc-200 px-5 text-base font-semibold text-zinc-700 transition-colors hover:bg-zinc-50";
+
+const primaryButtonClass =
+  "flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#18A659] px-5 text-base font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:cursor-not-allowed disabled:opacity-60";
+
+const STEP_LABELS = ["ข้อมูลพื้นฐาน", "สัดส่วนร่างกาย", "เป้าหมาย"];
 
 export default function HealthProfileForm({
   initialValues,
@@ -38,11 +55,29 @@ export default function HealthProfileForm({
     initialValues.weightKg?.toString() ?? ""
   );
   const [activityLevel, setActivityLevel] = useState(initialValues.activityLevel);
+  const [waistCm, setWaistCm] = useState(
+    initialValues.waistCm?.toString() ?? ""
+  );
+  const [hipCm, setHipCm] = useState(initialValues.hipCm?.toString() ?? "");
+  const [chestCm, setChestCm] = useState(
+    initialValues.chestCm?.toString() ?? ""
+  );
+  const [goal, setGoal] = useState(initialValues.goal);
+  const [targetWeightKg, setTargetWeightKg] = useState(
+    initialValues.targetWeightKg?.toString() ?? ""
+  );
+  const [step, setStep] = useState(1);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
+
+    if (step < 3) {
+      setStep((current) => current + 1);
+      return;
+    }
+
     setSaving(true);
     setError(null);
 
@@ -56,6 +91,12 @@ export default function HealthProfileForm({
           heightCm: Number(heightCm),
           weightKg: Number(weightKg),
           activityLevel,
+          waistCm: waistCm === "" ? null : Number(waistCm),
+          hipCm: hipCm === "" ? null : Number(hipCm),
+          chestCm: chestCm === "" ? null : Number(chestCm),
+          goal: goal === "" ? undefined : goal,
+          targetWeightKg:
+            targetWeightKg === "" ? undefined : Number(targetWeightKg),
         }),
       });
 
@@ -77,130 +118,292 @@ export default function HealthProfileForm({
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-8">
-      <section className="flex flex-col gap-4">
-        <h2 className="flex items-center gap-2 text-base font-semibold text-zinc-900">
-          <Image
-            src="/icon/genderIcon.svg"
-            alt=""
-            aria-hidden="true"
-            width={22}
-            height={22}
-            className="shrink-0"
-          />
-          เพศ
-        </h2>
-        <div className="grid grid-cols-3 gap-2">
-          {GENDER_OPTIONS.map((option) => (
-            <label
-              key={option.value}
-              className={`flex cursor-pointer items-center justify-center rounded-xl border px-3 py-3 text-sm font-medium transition-colors ${
-                gender === option.value
-                  ? "border-[#18A659] bg-[#18A659]/10 text-[#148D4C]"
-                  : "border-zinc-200 text-zinc-700 hover:bg-zinc-50"
-              }`}
-            >
-              <input
-                type="radio"
-                name="gender"
-                value={option.value}
-                checked={gender === option.value}
-                onChange={() => setGender(option.value)}
-                className="sr-only"
+      <div className="flex items-center justify-center gap-3">
+        {STEP_LABELS.map((label, index) => {
+          const stepNumber = index + 1;
+          const isActive = stepNumber === step;
+          const isDone = stepNumber < step;
+          return (
+            <div key={label} className="flex items-center gap-2">
+              <span
+                className={`flex h-7 w-7 items-center justify-center rounded-full text-sm font-semibold ${
+                  isActive
+                    ? "bg-[#18A659] text-white"
+                    : isDone
+                      ? "bg-[#18A659]/15 text-[#148D4C]"
+                      : "bg-zinc-100 text-zinc-400"
+                }`}
+              >
+                {stepNumber}
+              </span>
+              <span
+                className={`text-sm ${
+                  isActive
+                    ? "font-medium text-zinc-900"
+                    : isDone
+                      ? "text-zinc-600"
+                      : "text-zinc-400"
+                }`}
+              >
+                {label}
+              </span>
+              {stepNumber < STEP_LABELS.length && (
+                <span className="mx-1 h-px w-6 bg-zinc-200" />
+              )}
+            </div>
+          );
+        })}
+      </div>
+
+      {step === 1 && (
+        <section className="flex flex-col gap-6">
+          <div className="flex flex-col gap-4">
+            <h2 className="flex items-center gap-2 text-base font-semibold text-zinc-900">
+              <Image
+                src="/icon/genderIcon.svg"
+                alt=""
+                aria-hidden="true"
+                width={22}
+                height={22}
+                className="shrink-0"
               />
-              {option.label}
-            </label>
-          ))}
-        </div>
-      </section>
-
-      <div className="flex flex-col gap-6 rounded-2xl border border-zinc-200 p-5 sm:p-6">
-        <div>
-          <label htmlFor="birth-date" className={labelClass}>
-            วันเดือนปีเกิด
-          </label>
-          <BirthDatePicker
-            value={birthDate}
-            onChange={(date) => setBirthDate(date)}
-          />
-        </div>
-
-        <div className="grid gap-6 sm:grid-cols-2">
-          <div>
-            <label htmlFor="height-cm" className={labelClass}>
-              ส่วนสูง (เซนติเมตร)
-            </label>
-            <input
-              id="height-cm"
-              type="number"
-              inputMode="decimal"
-              min={50}
-              max={250}
-              step={0.1}
-              placeholder="เช่น 165"
-              value={heightCm}
-              onChange={(e) => setHeightCm(e.target.value)}
-              className={inputClass}
-              required
-            />
+              เพศ
+            </h2>
+            <div className="grid grid-cols-3 gap-2">
+              {GENDER_OPTIONS.map((option) => (
+                <label
+                  key={option.value}
+                  className={`flex cursor-pointer items-center justify-center rounded-xl border px-3 py-3 text-sm font-medium transition-colors ${
+                    gender === option.value
+                      ? "border-[#18A659] bg-[#18A659]/10 text-[#148D4C]"
+                      : "border-zinc-200 text-zinc-700 hover:bg-zinc-50"
+                  }`}
+                >
+                  <input
+                    type="radio"
+                    name="gender"
+                    value={option.value}
+                    checked={gender === option.value}
+                    onChange={() => setGender(option.value)}
+                    className="sr-only"
+                  />
+                  {option.label}
+                </label>
+              ))}
+            </div>
           </div>
 
           <div>
-            <label htmlFor="weight-kg" className={labelClass}>
-              น้ำหนัก (กิโลกรัม)
+            <label htmlFor="birth-date" className={labelClass}>
+              วันเดือนปีเกิด
+            </label>
+            <BirthDatePicker
+              value={birthDate}
+              onChange={(date) => setBirthDate(date)}
+            />
+          </div>
+
+          <div className="grid gap-6 sm:grid-cols-2">
+            <div>
+              <label htmlFor="height-cm" className={labelClass}>
+                ส่วนสูง (เซนติเมตร)
+              </label>
+              <input
+                id="height-cm"
+                type="number"
+                inputMode="decimal"
+                min={50}
+                max={250}
+                step={0.1}
+                placeholder="เช่น 165"
+                value={heightCm}
+                onChange={(e) => setHeightCm(e.target.value)}
+                className={inputClass}
+                required
+              />
+            </div>
+
+            <div>
+              <label htmlFor="weight-kg" className={labelClass}>
+                น้ำหนัก (กิโลกรัม)
+              </label>
+              <input
+                id="weight-kg"
+                type="number"
+                inputMode="decimal"
+                min={20}
+                max={300}
+                step={0.1}
+                placeholder="เช่น 58.5"
+                value={weightKg}
+                onChange={(e) => setWeightKg(e.target.value)}
+                className={inputClass}
+                required
+              />
+            </div>
+          </div>
+
+          <div>
+            <label htmlFor="activity-level" className={labelClass}>
+              ระดับกิจกรรม
+            </label>
+            <select
+              id="activity-level"
+              value={activityLevel}
+              onChange={(e) => setActivityLevel(e.target.value)}
+              className={inputClass}
+              required
+            >
+              <option value="" disabled>
+                เลือกระดับกิจกรรมของคุณ
+              </option>
+              {ACTIVITY_LEVELS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </section>
+      )}
+
+      {step === 2 && (
+        <section className="flex flex-col gap-6">
+          <h2 className="text-base font-semibold text-zinc-900">
+            สัดส่วนร่างกาย
+          </h2>
+          <div className="grid gap-6 sm:grid-cols-3">
+            <div>
+              <label htmlFor="waist-cm" className={labelClass}>
+                รอบเอว (เซนติเมตร)
+              </label>
+              <input
+                id="waist-cm"
+                type="number"
+                inputMode="decimal"
+                min={30}
+                max={250}
+                step={0.1}
+                placeholder="เช่น 75"
+                value={waistCm}
+                onChange={(e) => setWaistCm(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="hip-cm" className={labelClass}>
+                รอบสะโพก (เซนติเมตร)
+              </label>
+              <input
+                id="hip-cm"
+                type="number"
+                inputMode="decimal"
+                min={30}
+                max={250}
+                step={0.1}
+                placeholder="เช่น 95"
+                value={hipCm}
+                onChange={(e) => setHipCm(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+
+            <div>
+              <label htmlFor="chest-cm" className={labelClass}>
+                รอบอก (เซนติเมตร)
+              </label>
+              <input
+                id="chest-cm"
+                type="number"
+                inputMode="decimal"
+                min={30}
+                max={250}
+                step={0.1}
+                placeholder="เช่น 88"
+                value={chestCm}
+                onChange={(e) => setChestCm(e.target.value)}
+                className={inputClass}
+              />
+            </div>
+          </div>
+        </section>
+      )}
+
+      {step === 3 && (
+        <section className="flex flex-col gap-6">
+          <h2 className="text-base font-semibold text-zinc-900">เป้าหมาย</h2>
+          <div>
+            <label htmlFor="goal" className={labelClass}>
+              เป้าหมายของคุณ
+            </label>
+            <select
+              id="goal"
+              value={goal}
+              onChange={(e) => setGoal(e.target.value)}
+              className={inputClass}
+            >
+              <option value="" disabled>
+                เลือกเป้าหมายของคุณ
+              </option>
+              {GOAL_OPTIONS.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label htmlFor="target-weight" className={labelClass}>
+              น้ำหนักเป้าหมาย (กิโลกรัม)
             </label>
             <input
-              id="weight-kg"
+              id="target-weight"
               type="number"
               inputMode="decimal"
               min={20}
               max={300}
               step={0.1}
-              placeholder="เช่น 58.5"
-              value={weightKg}
-              onChange={(e) => setWeightKg(e.target.value)}
+              placeholder="เช่น 55"
+              value={targetWeightKg}
+              onChange={(e) => setTargetWeightKg(e.target.value)}
               className={inputClass}
-              required
             />
           </div>
-        </div>
+        </section>
+      )}
 
-        <div>
-          <label htmlFor="activity-level" className={labelClass}>
-            ระดับกิจกรรม
-          </label>
-          <select
-            id="activity-level"
-            value={activityLevel}
-            onChange={(e) => setActivityLevel(e.target.value)}
-            className={inputClass}
-            required
-          >
-            <option value="" disabled>
-              เลือกระดับกิจกรรมของคุณ
-            </option>
-            {ACTIVITY_LEVELS.map((option) => (
-              <option key={option.value} value={option.value}>
-                {option.label}
-              </option>
-            ))}
-          </select>
-        </div>
+      {error && (
+        <p
+          className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-600"
+          role="alert"
+        >
+          {error}
+        </p>
+      )}
 
-        {error && (
-          <p
-            className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-600"
-            role="alert"
+      <div className="flex flex-col gap-3 sm:flex-row">
+        {step > 1 && (
+          <button
+            type="button"
+            onClick={() => setStep((current) => current - 1)}
+            className={secondaryButtonClass}
+            disabled={saving}
           >
-            {error}
-          </p>
+            กลับ
+          </button>
         )}
-
         <button
           type="submit"
           disabled={saving}
-          className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-[#18A659] px-5 text-base font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:cursor-not-allowed disabled:opacity-60"
+          className={primaryButtonClass}
         >
-          {saving ? "กำลังบันทึก..." : "บันทึกข้อมูลสุขภาพ"}
+          {saving
+            ? "กำลังบันทึก..."
+            : step < 3
+              ? "ถัดไป"
+              : "เสร็จสิ้น"}
         </button>
       </div>
     </form>
