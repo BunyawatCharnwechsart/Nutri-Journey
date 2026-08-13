@@ -20,7 +20,14 @@ const EMPTY_FORM = {
   targetWeightKg: null,
 };
 
-export default async function HealthProfilePage() {
+export default async function HealthProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}) {
+  const { edit } = await searchParams;
+  const editMode = edit === "1";
+
   const userId = await getSessionUserId();
   if (!userId) {
     redirect("/");
@@ -35,8 +42,8 @@ export default async function HealthProfilePage() {
     .eq("user_id", userId)
     .maybeSingle();
 
-  // Already filled in → don't show the setup page again.
-  if (isProfileComplete(profile)) {
+  // Already filled in → only re-open the form when explicitly editing.
+  if (!editMode && isProfileComplete(profile)) {
     redirect("/dashboard");
   }
 
