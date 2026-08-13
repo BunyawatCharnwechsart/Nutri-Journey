@@ -6,7 +6,8 @@ import { createServiceClient } from "@/lib/supabase/service";
 import {
   ACTIVITY_LEVELS,
   GENDER_OPTIONS,
-  GOAL_OPTIONS,
+  calculateBmi,
+  getBmiCategory,
   isProfileComplete,
 } from "@/lib/profile";
 import LogoutButton from "@/components/LogoutButton";
@@ -18,9 +19,6 @@ const GENDER_LABELS: Record<string, string> = Object.fromEntries(
 );
 const ACTIVITY_LABELS: Record<string, string> = Object.fromEntries(
   ACTIVITY_LEVELS.map((option) => [option.value, option.label])
-);
-const GOAL_LABELS: Record<string, string> = Object.fromEntries(
-  GOAL_OPTIONS.map((option) => [option.value, option.label])
 );
 
 function InfoRow({
@@ -48,6 +46,21 @@ function InfoRow({
   );
 }
 
+function Card({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <section className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5">
+      <h2 className="text-base font-semibold text-zinc-900">{title}</h2>
+      {children}
+    </section>
+  );
+}
+
 export default async function ProfilePage() {
   const userId = await getSessionUserId();
   if (!userId) {
@@ -55,12 +68,6 @@ export default async function ProfilePage() {
   }
 
   const supabase = createServiceClient();
-
-  const { data: user } = await supabase
-    .from("users")
-    .select("display_name, avatar_url")
-    .eq("user_id", userId)
-    .maybeSingle();
 
   const { data: profile } = await supabase
     .from("profiles")
@@ -75,47 +82,56 @@ export default async function ProfilePage() {
     redirect("/health-profile");
   }
 
-  const displayName = user?.display_name ?? "นักเดินทางสุขภาพ";
-  const avatarUrl = user?.avatar_url ?? null;
-
   const gender = GENDER_LABELS[profile.gender] ?? profile.gender;
   const activityLevel =
     ACTIVITY_LABELS[profile.activity_level] ?? profile.activity_level;
-  const goal = profile.goal ? GOAL_LABELS[profile.goal] ?? profile.goal : "—";
+
+  const weightKg = profile.weight != null ? Number(profile.weight) : null;
+  const heightCm = profile.height != null ? Number(profile.height) : null;
+  const targetWeightKg =
+    profile.target_weight != null ? Number(profile.target_weight) : null;
+
+  const bmi = calculateBmi(weightKg, heightCm);
+  const bmiCategory = getBmiCategory(bmi);
+
+  const remainingKg =
+    weightKg != null && targetWeightKg != null
+      ? Math.round(Math.abs(weightKg - targetWeightKg) * 10) / 10
+      : null;
+
+  const goalMessage =
+    remainingKg === null
+      ? null
+      : weightKg === targetWeightKg
+        ? "น้ำหนักถึงเป้าหมายแล้ว"
+        : `อีก ${remainingKg} กก. จะถึงเป้าหมาย`;
 
   return (
     <main className="flex flex-1 flex-col px-6 pt-6 pb-10">
-      <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
-        <header className="flex flex-col items-center gap-4 text-center">
-          {avatarUrl ? (
-            <Image
-              src={avatarUrl}
-              alt="รูปโปรไฟล์ LINE"
-              width={112}
-              height={112}
-              className="rounded-full"
-              priority
-            />
-          ) : (
-            <div className="flex h-28 w-28 items-center justify-center rounded-full bg-[#18A659] text-3xl font-bold text-white">
-              NJ
-            </div>
-          )}
-          <div className="flex flex-col items-center gap-3">
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
-              {displayName}
-            </h1>
-            <LogoutButton />
-          </div>
+      <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
+        <header>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+            โปรไฟล์สุขภาพ
+          </h1>
+          <p className="mt-1 text-sm leading-6 text-zinc-500">
+            อัปเดตข้อมูลของคุณเพื่อให้การเดินทางสู่สุขภาพที่ดีเป็นไปตามเป้าหมาย
+          </p>
         </header>
 
-        <section className="flex flex-col gap-4">
-          <h2 className="text-base font-semibold text-zinc-900">ข้อมูลสุขภาพ</h2>
-          <InfoRow
-            icon="/icon/genderIcon.svg"
-            label="เพศ"
-            value={gender}
-          />
+        <section className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white p-5">
+          <div>
+            <p className="text-sm text-zinc-500">BMI ปัจจุบัน</p>
+            <p className="text-3xl font-bold text-[#18A659]">
+              {bmi ?? "—"}
+            </p>
+          </div>
+          <span className="rounded-full bg-[#18A659]/10 px-3 py-1 text-sm font-medium text-[#148D4C]">
+            {bmiCategory}
+          </span>
+        </section>
+
+        <Card title="ข้อมูลส่วนตัว">
+          <InfoRow icon="/icon/genderIcon.svg" label="เพศ" value={gender} />
           <InfoRow
             icon="/icon/birthdayIcon.svg"
             label="วันเดือนปีเกิด"
@@ -124,22 +140,39 @@ export default async function ProfilePage() {
           <InfoRow
             icon="/icon/heightIcon.svg"
             label="ส่วนสูง"
-            value={`${profile.height} ซม.`}
+            value={heightCm != null ? `${heightCm} ซม.` : "—"}
           />
           <InfoRow
             icon="/icon/weightIcon.svg"
             label="น้ำหนัก"
-            value={`${profile.weight} กก.`}
+            value={weightKg != null ? `${weightKg} กก.` : "—"}
           />
           <InfoRow
             icon="/icon/activityLevelIcon.svg"
             label="ระดับกิจกรรม"
             value={activityLevel}
           />
-        </section>
+        </Card>
 
-        <section className="flex flex-col gap-4">
-          <h2 className="text-base font-semibold text-zinc-900">สัดส่วน</h2>
+        <Card title="การจัดการน้ำหนัก">
+          <InfoRow
+            icon="/icon/weightIcon.svg"
+            label="น้ำหนักปัจจุบัน"
+            value={weightKg != null ? `${weightKg} กก.` : "—"}
+          />
+          <InfoRow
+            icon="/icon/targetIcon.svg"
+            label="น้ำหนักเป้าหมาย"
+            value={targetWeightKg != null ? `${targetWeightKg} กก.` : "—"}
+          />
+          {goalMessage && (
+            <div className="rounded-xl bg-[#18A659]/10 px-4 py-3 text-center text-sm font-medium text-[#148D4C]">
+              {goalMessage}
+            </div>
+          )}
+        </Card>
+
+        <Card title="สัดส่วน">
           <InfoRow
             icon="/icon/heightIcon.svg"
             label="รอบเอว"
@@ -155,25 +188,9 @@ export default async function ProfilePage() {
             label="รอบอก"
             value={profile.chest_cm != null ? `${profile.chest_cm} ซม.` : "—"}
           />
-        </section>
+        </Card>
 
-        <section className="flex flex-col gap-4">
-          <h2 className="text-base font-semibold text-zinc-900">เป้าหมาย</h2>
-          <InfoRow
-            icon="/icon/targetIcon.svg"
-            label="เป้าหมายของคุณ"
-            value={goal}
-          />
-          <InfoRow
-            icon="/icon/weightIcon.svg"
-            label="น้ำหนักเป้าหมาย"
-            value={
-              profile.target_weight != null
-                ? `${profile.target_weight} กก.`
-                : "—"
-            }
-          />
-        </section>
+        <LogoutButton />
       </div>
     </main>
   );

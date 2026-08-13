@@ -56,3 +56,36 @@ export function isProfileComplete(
     (key) => profile[key] !== null && profile[key] !== undefined && profile[key] !== ""
   );
 }
+
+/**
+ * Body Mass Index - น้ำหนัก (กก.) / ส่วนสูง (ม.)^2 ปัดเป็น 1 ตำแหน่ง.
+ * Returns null เมื่อข้อมูลไม่ครบ/ไม่ถูกต้อง.
+ */
+export function calculateBmi(
+  weightKg: number | null | undefined,
+  heightCm: number | null | undefined
+): number | null {
+  if (!weightKg || !heightCm) {
+    return null;
+  }
+
+  const heightM = heightCm / 100;
+  return Math.round((weightKg / (heightM * heightM)) * 10) / 10;
+}
+
+/** หมวดหมู่ BMI ตามมาตรฐานไทย (อช.) */
+export function getBmiCategory(bmi: number | null): string {
+  if (bmi === null) {
+    return "—";
+  }
+  if (bmi < 18.5) {
+    return "น้ำหนักน้อย";
+  }
+  if (bmi < 23) {
+    return "ปกติ";
+  }
+  if (bmi < 25) {
+    return "น้ำหนักเกิน";
+  }
+  return "อ้วน";
+}
