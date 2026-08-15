@@ -1,7 +1,19 @@
 import { z } from "zod";
 
+import { IF_PATTERN_VALUES } from "@/lib/if";
+
 export const loginSchema = z.object({
   idToken: z.string().min(1, "idToken is required"),
+});
+
+export const ifStartSchema = z.object({
+  ifPattern: z.enum(IF_PATTERN_VALUES, {
+    message: "รูปแบบ IF ไม่ถูกต้อง",
+  }),
+});
+
+export const sessionIdSchema = z.object({
+  sessionId: z.string().uuid("sessionId ต้องเป็น UUID"),
 });
 
 /**
