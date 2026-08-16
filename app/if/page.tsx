@@ -18,7 +18,7 @@ export default async function IfPage() {
         <header className="flex items-start justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
-              ตัวจับเวลา IF
+              IF Tracker
             </h1>
             <p className="mt-1 text-sm leading-6 text-zinc-500">
               เลือกรูปแบบการอดอาหารและเริ่มจับเวลา

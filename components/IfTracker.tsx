@@ -164,6 +164,13 @@ export default function IfTracker() {
       ? Math.min(100, Math.round((elapsedMs / (plannedMinutes * 60000)) * 100))
       : 0;
 
+  const RING_SIZE = 200;
+  const RING_STROKE = 12;
+  const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
+  const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+  const dashOffset =
+    RING_CIRCUMFERENCE * (1 - Math.max(0, Math.min(100, progress)) / 100);
+
   return (
     <div className="flex flex-col gap-6">
       {error && (
@@ -174,13 +181,6 @@ export default function IfTracker() {
 
       {view === "select" && (
         <section className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5">
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
-            การทำ IF
-          </h1>
-          <p className="text-sm leading-6 text-zinc-500">
-            เลือกรูปแบบการอดอาหารที่ใช่สำหรับคุณ แล้วเริ่มจับเวลาได้เลย
-          </p>
-
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
             {IF_PATTERNS.map((pattern) => {
               const isSelected = selectedPattern === pattern.value;
@@ -224,35 +224,51 @@ export default function IfTracker() {
 
       {view === "timer" && session && (
         <section className="flex flex-col items-center gap-6 rounded-2xl border border-zinc-200 bg-white p-6 text-center">
-          <div className="flex flex-col items-center gap-1">
-            <span className="text-sm text-zinc-500">กำลังอดอาหาร</span>
-            {activePattern && (
-              <span className="rounded-full bg-[#18A659]/10 px-3 py-1 text-sm font-medium text-[#148D4C]">
-                {activePattern.label}
+          <p className="text-sm text-zinc-500">
+            กำลังทำ IF รูปแบบ{" "}
+            <span className="font-semibold text-zinc-900">
+              {activePattern?.label ?? "IF"}
+            </span>
+          </p>
+
+          <div
+            className="relative"
+            style={{ width: RING_SIZE, height: RING_SIZE }}
+            aria-hidden="true"
+          >
+            <svg width={RING_SIZE} height={RING_SIZE} className="-rotate-90">
+              <circle
+                cx={RING_SIZE / 2}
+                cy={RING_SIZE / 2}
+                r={RING_RADIUS}
+                fill="none"
+                stroke="#f4f4f5"
+                strokeWidth={RING_STROKE}
+              />
+              <circle
+                cx={RING_SIZE / 2}
+                cy={RING_SIZE / 2}
+                r={RING_RADIUS}
+                fill="none"
+                stroke="#18A659"
+                strokeWidth={RING_STROKE}
+                strokeLinecap="round"
+                strokeDasharray={RING_CIRCUMFERENCE}
+                strokeDashoffset={dashOffset}
+              />
+            </svg>
+            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+              <span
+                className={`text-4xl font-bold tabular-nums tracking-tight ${
+                  reachedGoal ? "text-[#18A659]" : "text-zinc-900"
+                }`}
+              >
+                {reachedGoal ? "ครบเป้า!" : formatClock(remainingMs)}
               </span>
-            )}
-          </div>
-
-          <div>
-            <p
-              className={`text-5xl font-bold tabular-nums tracking-tight ${
-                reachedGoal ? "text-[#18A659]" : "text-zinc-900"
-              }`}
-            >
-              {reachedGoal ? "ครบเป้า!" : formatClock(remainingMs)}
-            </p>
-            <p className="mt-2 text-sm text-zinc-500">
-              {reachedGoal
-                ? "คุณทำตามเป้าหมายสำเร็จแล้ว"
-                : `อีก ${formatClock(remainingMs)} ถึงครบเป้า`}
-            </p>
-          </div>
-
-          <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-100">
-            <div
-              className="h-full rounded-full bg-[#18A659] transition-[width] duration-1000"
-              style={{ width: `${progress}%` }}
-            />
+              <span className="text-xs text-zinc-500">
+                {reachedGoal ? "ทำตามเป้าหมายสำเร็จ" : "เวลาที่เหลือ"}
+              </span>
+            </div>
           </div>
 
           <div className="flex w-full flex-col gap-3">
