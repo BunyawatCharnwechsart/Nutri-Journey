@@ -16,6 +16,7 @@ import { th } from "date-fns/locale/th";
 import { getSessionUserId } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { formatMinutes, getFastingMinutes } from "@/lib/if";
+import EggIconLink from "@/components/EggIconLink";
 
 export const dynamic = "force-dynamic";
 
@@ -123,6 +124,7 @@ export default async function CalendarPage({
               ประวัติการทำ IF ของคุณ
             </p>
           </div>
+          <EggIconLink />
         </header>
 
         <section className="rounded-2xl border border-zinc-200 bg-white p-5">

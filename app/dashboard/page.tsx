@@ -7,6 +7,7 @@ import { getSessionUserId } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { formatMinutes, getIfPattern } from "@/lib/if";
 import LogoutButton from "@/components/LogoutButton";
+import EggIconLink from "@/components/EggIconLink";
 
 export const dynamic = "force-dynamic";
 
@@ -90,7 +91,10 @@ export default async function DashboardPage() {
               </h1>
             </div>
           </div>
-          <LogoutButton />
+          <div className="flex shrink-0 items-center gap-2">
+            <LogoutButton />
+            <EggIconLink />
+          </div>
         </header>
 
         <section className="grid gap-4">
