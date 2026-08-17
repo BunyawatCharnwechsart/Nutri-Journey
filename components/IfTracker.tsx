@@ -26,6 +26,69 @@ function formatClock(milliseconds: number): string {
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 
+const RING_SIZE = 200;
+const RING_STROKE = 12;
+const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
+const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
+
+interface FastingClockProps {
+  timeText: string;
+  caption: string;
+  progress: number;
+  reachedGoal?: boolean;
+}
+
+function FastingClock({
+  timeText,
+  caption,
+  progress,
+  reachedGoal = false,
+}: FastingClockProps) {
+  const dashOffset =
+    RING_CIRCUMFERENCE *
+    (1 - Math.max(0, Math.min(100, progress)) / 100);
+
+  return (
+    <div
+      className="relative"
+      style={{ width: RING_SIZE, height: RING_SIZE }}
+      aria-hidden="true"
+    >
+      <svg width={RING_SIZE} height={RING_SIZE} className="-rotate-90">
+        <circle
+          cx={RING_SIZE / 2}
+          cy={RING_SIZE / 2}
+          r={RING_RADIUS}
+          fill="none"
+          stroke="#f4f4f5"
+          strokeWidth={RING_STROKE}
+        />
+        <circle
+          cx={RING_SIZE / 2}
+          cy={RING_SIZE / 2}
+          r={RING_RADIUS}
+          fill="none"
+          stroke="#18A659"
+          strokeWidth={RING_STROKE}
+          strokeLinecap="round"
+          strokeDasharray={RING_CIRCUMFERENCE}
+          strokeDashoffset={dashOffset}
+        />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
+        <span
+          className={`text-4xl font-bold tabular-nums tracking-tight ${
+            reachedGoal ? "text-[#18A659]" : "text-zinc-900"
+          }`}
+        >
+          {timeText}
+        </span>
+        <span className="text-xs text-zinc-500">{caption}</span>
+      </div>
+    </div>
+  );
+}
+
 export default function IfTracker() {
   const [view, setView] = useState<View>("select");
   const [selectedPattern, setSelectedPattern] = useState<string | null>(null);
@@ -154,6 +217,9 @@ export default function IfTracker() {
 
   const activePattern = session ? getIfPattern(session.if_pattern) : null;
   const plannedMinutes = activePattern ? getFastingMinutes(activePattern.value) : 0;
+  const selectedMinutes = selectedPattern
+    ? getFastingMinutes(selectedPattern)
+    : 0;
 
   const elapsedMs = session ? now - new Date(session.start_time).getTime() : 0;
   const remainingMs = plannedMinutes * 60000 - elapsedMs;
@@ -164,13 +230,6 @@ export default function IfTracker() {
       ? Math.min(100, Math.round((elapsedMs / (plannedMinutes * 60000)) * 100))
       : 0;
 
-  const RING_SIZE = 200;
-  const RING_STROKE = 12;
-  const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
-  const RING_CIRCUMFERENCE = 2 * Math.PI * RING_RADIUS;
-  const dashOffset =
-    RING_CIRCUMFERENCE * (1 - Math.max(0, Math.min(100, progress)) / 100);
-
   return (
     <div className="flex flex-col gap-6">
       {error && (
@@ -180,8 +239,18 @@ export default function IfTracker() {
       )}
 
       {view === "select" && (
-        <section className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+        <section className="flex flex-col items-center gap-8 rounded-2xl border border-zinc-200 bg-white p-5">
+          <FastingClock
+            timeText={
+              selectedMinutes > 0 ? formatClock(selectedMinutes * 60000) : "0:00:00"
+            }
+            caption={
+              selectedMinutes > 0 ? "เป้าหมายการทำ IF" : "ยังไม่ได้เลือกการทำ IF"
+            }
+            progress={0}
+          />
+
+          <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
             {IF_PATTERNS.map((pattern) => {
               const isSelected = selectedPattern === pattern.value;
               return (
@@ -190,20 +259,18 @@ export default function IfTracker() {
                   type="button"
                   onClick={() => setSelectedPattern(pattern.value)}
                   aria-pressed={isSelected}
-                  className={`flex flex-col gap-1 rounded-xl border px-4 py-3 text-left transition-colors ${
+                  style={{
+                    background:
+                      "linear-gradient(135deg, #18A659 0%, #26BA6A 100%)",
+                  }}
+                  className={`flex flex-col gap-1 rounded-xl px-4 py-3 text-left text-white transition-[filter] ${
                     isSelected
-                      ? "border-[#18A659] bg-[#18A659]/5"
-                      : "border-zinc-200 bg-white hover:border-zinc-300"
+                      ? "ring-2 ring-[#18A659] ring-offset-2"
+                      : "hover:brightness-105"
                   }`}
                 >
-                  <span
-                    className={`text-lg font-bold ${
-                      isSelected ? "text-[#18A659]" : "text-zinc-900"
-                    }`}
-                  >
-                    {pattern.label}
-                  </span>
-                  <span className="text-sm text-zinc-500">
+                  <span className="text-lg font-bold">{pattern.label}</span>
+                  <span className="text-sm text-white/80">
                     {pattern.description}
                   </span>
                 </button>
@@ -231,45 +298,12 @@ export default function IfTracker() {
             </span>
           </p>
 
-          <div
-            className="relative"
-            style={{ width: RING_SIZE, height: RING_SIZE }}
-            aria-hidden="true"
-          >
-            <svg width={RING_SIZE} height={RING_SIZE} className="-rotate-90">
-              <circle
-                cx={RING_SIZE / 2}
-                cy={RING_SIZE / 2}
-                r={RING_RADIUS}
-                fill="none"
-                stroke="#f4f4f5"
-                strokeWidth={RING_STROKE}
-              />
-              <circle
-                cx={RING_SIZE / 2}
-                cy={RING_SIZE / 2}
-                r={RING_RADIUS}
-                fill="none"
-                stroke="#18A659"
-                strokeWidth={RING_STROKE}
-                strokeLinecap="round"
-                strokeDasharray={RING_CIRCUMFERENCE}
-                strokeDashoffset={dashOffset}
-              />
-            </svg>
-            <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
-              <span
-                className={`text-4xl font-bold tabular-nums tracking-tight ${
-                  reachedGoal ? "text-[#18A659]" : "text-zinc-900"
-                }`}
-              >
-                {reachedGoal ? "ครบเป้า!" : formatClock(remainingMs)}
-              </span>
-              <span className="text-xs text-zinc-500">
-                {reachedGoal ? "ทำตามเป้าหมายสำเร็จ" : "เวลาที่เหลือ"}
-              </span>
-            </div>
-          </div>
+          <FastingClock
+            timeText={reachedGoal ? "ครบเป้า!" : formatClock(remainingMs)}
+            caption={reachedGoal ? "ทำตามเป้าหมายสำเร็จ" : "เวลาที่เหลือ"}
+            progress={progress}
+            reachedGoal={reachedGoal}
+          />
 
           <div className="flex w-full flex-col gap-3">
             <button
