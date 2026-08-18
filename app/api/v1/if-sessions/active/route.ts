@@ -22,7 +22,7 @@ export async function GET() {
     .select("*")
     .eq("user_id", auth.userId)
     .eq("status", "active")
-    .order("start_time", { ascending: false })
+    .order("fasting_start_time", { ascending: false })
     .limit(1)
     .maybeSingle();
 

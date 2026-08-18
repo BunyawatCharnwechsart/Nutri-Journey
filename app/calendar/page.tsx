@@ -60,20 +60,22 @@ export default async function CalendarPage({
 
   const { data: sessions } = await supabase
     .from("if_sessions")
-    .select("start_time, end_time, status, duration_minutes, if_pattern")
+    .select(
+      "fasting_start_time, fasting_end_time, status, fasting_duration_minutes, if_pattern"
+    )
     .eq("user_id", userId)
-    .gte("start_time", monthStart.toISOString())
-    .lte("start_time", monthEnd.toISOString())
-    .order("start_time", { ascending: true });
+    .gte("fasting_start_time", monthStart.toISOString())
+    .lte("fasting_start_time", monthEnd.toISOString())
+    .order("fasting_start_time", { ascending: true });
 
   // Group completed sessions by their local calendar day.
   const byDay = new Map<string, DayStatus>();
   for (const session of sessions ?? []) {
-    const date = new Date(session.start_time);
+    const date = new Date(session.fasting_start_time);
     const key = format(date, "yyyy-MM-dd");
 
     const planned = getFastingMinutes(session.if_pattern);
-    const duration = session.duration_minutes ?? 0;
+    const duration = session.fasting_duration_minutes ?? 0;
 
     const existing = byDay.get(key);
     const candidate: DayStatus = {

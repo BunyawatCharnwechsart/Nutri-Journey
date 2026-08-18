@@ -10,7 +10,7 @@ export const runtime = "nodejs";
  *
  * Marks the eating phase of a session as finished and starts the fasting
  * phase: records eating_end_time + eating_duration_minutes (computed from
- * server time) and moves start_time to now so the fasting duration is
+ * server time) and moves fasting_start_time to now so the fasting duration is
  * measured from this point. Only the session owner can call this; the
  * userId comes from the verified session cookie.
  */
@@ -38,7 +38,9 @@ export async function POST(request: Request) {
 
   const { data: session } = await supabase
     .from("if_sessions")
-    .select("id, start_time, eating_start_time, eating_end_time, status")
+    .select(
+      "id, fasting_start_time, eating_start_time, eating_end_time, status"
+    )
     .eq("id", sessionId)
     .eq("user_id", auth.userId)
     .maybeSingle();
@@ -58,7 +60,7 @@ export async function POST(request: Request) {
   const now = new Date();
   const eatingStart = session.eating_start_time
     ? new Date(session.eating_start_time).getTime()
-    : new Date(session.start_time).getTime();
+    : new Date(session.fasting_start_time).getTime();
   const eatingDurationMinutes = Math.max(
     0,
     Math.round((now.getTime() - eatingStart) / 60000)
@@ -69,7 +71,7 @@ export async function POST(request: Request) {
     .update({
       eating_end_time: now.toISOString(),
       eating_duration_minutes: eatingDurationMinutes,
-      start_time: now.toISOString(),
+      fasting_start_time: now.toISOString(),
     })
     .eq("id", sessionId)
     .eq("user_id", auth.userId)

@@ -13,10 +13,10 @@ import {
 
 interface IfSession {
   id: string;
-  start_time: string;
-  end_time: string | null;
+  fasting_start_time: string;
+  fasting_end_time: string | null;
   status: "active" | "completed";
-  duration_minutes: number | null;
+  fasting_duration_minutes: number | null;
   if_pattern: string | null;
   eating_start_time: string | null;
   eating_end_time: string | null;
@@ -302,7 +302,9 @@ export default function IfTracker() {
     ? getFastingMinutes(selectedPattern)
     : 0;
 
-  const sessionStartMs = session ? new Date(session.start_time).getTime() : 0;
+  const sessionStartMs = session
+    ? new Date(session.fasting_start_time).getTime()
+    : 0;
   const eatingStartMs = session?.eating_start_time
     ? new Date(session.eating_start_time).getTime()
     : sessionStartMs;
@@ -419,7 +421,7 @@ export default function IfTracker() {
             <PhaseCard
               label="เริ่มการกิน"
               startTime={formatThaiTime(
-                session.eating_start_time ?? session.start_time
+                session.eating_start_time ?? session.fasting_start_time
               )}
               remainingMs={eatingRemainingMs}
               accent="#18A659"
@@ -427,7 +429,7 @@ export default function IfTracker() {
           ) : (
             <PhaseCard
               label="เริ่มการอด"
-              startTime={formatThaiTime(session.start_time)}
+              startTime={formatThaiTime(session.fasting_start_time)}
               remainingMs={fastingRemainingMs}
               accent="#DC8426"
             />
@@ -495,10 +497,10 @@ export default function IfTracker() {
             </h2>
             <p className="mt-1 text-sm text-zinc-500">
               รูปแบบ {activePattern?.label ?? "IF"} · อด{" "}
-              {formatMinutes(session.duration_minutes)} · กิน{" "}
+              {formatMinutes(session.fasting_duration_minutes)} · กิน{" "}
               {formatMinutes(session.eating_duration_minutes)} · รวม{" "}
               {formatMinutes(
-                (session.duration_minutes ?? 0) +
+                (session.fasting_duration_minutes ?? 0) +
                   (session.eating_duration_minutes ?? 0)
               )}
             </p>

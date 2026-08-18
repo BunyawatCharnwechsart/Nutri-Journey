@@ -308,8 +308,8 @@
 - ฟิลด์: id (UUID, PK), user_id (UUID, FK → users.user_id), weight (number), logged_at (timestamp)
 
 **if_sessions**
-- เก็บข้อมูลการทำ IF ของผู้ใช้
-- ฟิลด์: id (UUID, PK), user_id (UUID, FK → users.user_id), start_time (timestamp), end_time (timestamp or null), status (text: active/completed), duration_minutes (number), created_at (timestamp)
+- เก็บข้อมูลการทำ IF ของผู้ใช้ ครอบคลุมทั้งช่วงกินและช่วงอดในรอบเดียว
+- ฟิลด์: id (UUID, PK), user_id (UUID, FK → users.user_id), fasting_start_time (timestamp, จุดเริ่มอด), fasting_end_time (timestamp or null, จุดสิ้นสุดอด), fasting_duration_minutes (number, นาทีที่อดจริง), eating_start_time (timestamp or null, จุดเริ่มกิน), eating_end_time (timestamp or null, จุดสิ้นสุดกิน), eating_duration_minutes (number or null, นาทีที่กินจริง), status (text: active/completed), if_pattern (text เช่น 16:8), created_at (timestamp)
 
 **healthy_journey**
 - เก็บคะแนนและระดับของผู้ใช้

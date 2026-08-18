@@ -9,11 +9,11 @@ export const runtime = "nodejs";
  * POST /api/v1/if-sessions/start
  *
  * Starts a new IF session. Every session begins with the eating phase, so
- * both start_time and eating_start_time are set to now (start_time is later
- * moved to the fasting start by the end-eating endpoint). If the user already
- * has an active session (e.g. they forgot to end it), it is automatically
- * closed as completed before the new one is created. The userId comes from
- * the verified session cookie, never from the request body.
+ * both fasting_start_time and eating_start_time are set to now (the end-eating
+ * endpoint later moves fasting_start_time to the actual fasting start). If the
+ * user already has an active session (e.g. they forgot to end it), it is
+ * automatically closed as completed before the new one is created. The userId
+ * comes from the verified session cookie, never from the request body.
  */
 export async function POST(request: Request) {
   const auth = await requireAuth();
@@ -40,10 +40,10 @@ export async function POST(request: Request) {
   // Auto-close any stale active session for this user before starting a new one.
   const { data: active } = await supabase
     .from("if_sessions")
-    .select("id, start_time")
+    .select("id, fasting_start_time")
     .eq("user_id", auth.userId)
     .eq("status", "active")
-    .order("start_time", { ascending: false })
+    .order("fasting_start_time", { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -51,15 +51,17 @@ export async function POST(request: Request) {
     const now = new Date();
     const durationMinutes = Math.max(
       0,
-      Math.round((now.getTime() - new Date(active.start_time).getTime()) / 60000)
+      Math.round(
+        (now.getTime() - new Date(active.fasting_start_time).getTime()) / 60000
+      )
     );
 
     const { error: closeError } = await supabase
       .from("if_sessions")
       .update({
         status: "completed",
-        end_time: now.toISOString(),
-        duration_minutes: durationMinutes,
+        fasting_end_time: now.toISOString(),
+        fasting_duration_minutes: durationMinutes,
       })
       .eq("id", active.id)
       .eq("user_id", auth.userId);
@@ -73,7 +75,7 @@ export async function POST(request: Request) {
     .from("if_sessions")
     .insert({
       user_id: auth.userId,
-      start_time: new Date().toISOString(),
+      fasting_start_time: new Date().toISOString(),
       eating_start_time: new Date().toISOString(),
       status: "active",
       if_pattern: ifPattern,
