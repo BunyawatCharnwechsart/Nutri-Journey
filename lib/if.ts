@@ -43,6 +43,12 @@ export function getFastingMinutes(value: string | null | undefined): number {
   return pattern ? pattern.fastingHours * 60 : 0;
 }
 
+/** Planned eating-window duration in minutes for a given pattern. */
+export function getEatingMinutes(value: string | null | undefined): number {
+  const pattern = getIfPattern(value);
+  return pattern ? (24 - pattern.fastingHours) * 60 : 0;
+}
+
 /**
  * Formats a duration in minutes into a short, human-readable Thai string:
  * "16 ชม." / "30 นาที" / "16 ชม. 30 นาที" / "—" when null/0.

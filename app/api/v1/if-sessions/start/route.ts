@@ -8,10 +8,12 @@ export const runtime = "nodejs";
 /**
  * POST /api/v1/if-sessions/start
  *
- * Starts a new fasting session. If the user already has an active session
- * (e.g. they forgot to end it), it is automatically closed as completed
- * before the new one is created. The userId comes from the verified session
- * cookie, never from the request body.
+ * Starts a new IF session. Every session begins with the eating phase, so
+ * both start_time and eating_start_time are set to now (start_time is later
+ * moved to the fasting start by the end-eating endpoint). If the user already
+ * has an active session (e.g. they forgot to end it), it is automatically
+ * closed as completed before the new one is created. The userId comes from
+ * the verified session cookie, never from the request body.
  */
 export async function POST(request: Request) {
   const auth = await requireAuth();
@@ -72,6 +74,7 @@ export async function POST(request: Request) {
     .insert({
       user_id: auth.userId,
       start_time: new Date().toISOString(),
+      eating_start_time: new Date().toISOString(),
       status: "active",
       if_pattern: ifPattern,
     })
