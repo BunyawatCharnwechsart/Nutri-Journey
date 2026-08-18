@@ -96,6 +96,7 @@ export default function IfTracker() {
   const [now, setNow] = useState(() => Date.now());
   const [loading, setLoading] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [patternModalOpen, setPatternModalOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const startedRef = useRef(false);
 
@@ -239,7 +240,7 @@ export default function IfTracker() {
       )}
 
       {view === "select" && (
-        <section className="flex flex-col items-center gap-8 rounded-2xl border border-zinc-200 bg-white p-5">
+        <section className="flex flex-col items-center gap-8">
           <FastingClock
             timeText={
               selectedMinutes > 0 ? formatClock(selectedMinutes * 60000) : "0:00:00"
@@ -250,39 +251,36 @@ export default function IfTracker() {
             progress={0}
           />
 
-          <div className="grid w-full grid-cols-1 gap-3 sm:grid-cols-2">
-            {IF_PATTERNS.map((pattern) => {
-              const isSelected = selectedPattern === pattern.value;
-              return (
-                <button
-                  key={pattern.value}
-                  type="button"
-                  onClick={() => setSelectedPattern(pattern.value)}
-                  aria-pressed={isSelected}
-                  style={{
-                    background:
-                      "linear-gradient(135deg, #18A659 0%, #26BA6A 100%)",
-                  }}
-                  className={`flex flex-col gap-1 rounded-xl px-4 py-3 text-left text-white transition-[filter] ${
-                    isSelected
-                      ? "ring-2 ring-[#18A659] ring-offset-2"
-                      : "hover:brightness-105"
-                  }`}
-                >
-                  <span className="text-lg font-bold">{pattern.label}</span>
-                  <span className="text-sm text-white/80">
-                    {pattern.description}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
+          <button
+            type="button"
+            onClick={() => setPatternModalOpen(true)}
+            style={{
+              background: "linear-gradient(135deg, #18A659 0%, #26BA6A 100%)",
+            }}
+            className="flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3 text-lg font-bold text-white transition-[filter] hover:brightness-105"
+          >
+            {selectedPattern
+              ? getIfPattern(selectedPattern)?.label ?? "เลือกรูปแบบ IF"
+              : "เลือกรูปแบบ IF"}
+            <svg
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2.5"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              aria-hidden="true"
+              className="h-5 w-5"
+            >
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </button>
 
           <button
             type="button"
             onClick={startSession}
             disabled={!selectedPattern || loading}
-            className="rounded-full bg-[#18A659] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full rounded-full bg-[#18A659] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? "กำลังเริ่ม..." : "เริ่ม Fasting"}
           </button>
@@ -290,7 +288,7 @@ export default function IfTracker() {
       )}
 
       {view === "timer" && session && (
-        <section className="flex flex-col items-center gap-6 rounded-2xl border border-zinc-200 bg-white p-6 text-center">
+        <section className="flex flex-col items-center gap-6 text-center">
           <p className="text-sm text-zinc-500">
             กำลังทำ IF รูปแบบ{" "}
             <span className="font-semibold text-zinc-900">
@@ -327,7 +325,7 @@ export default function IfTracker() {
       )}
 
       {view === "success" && session && (
-        <section className="flex flex-col items-center gap-6 rounded-2xl border border-zinc-200 bg-white p-6 text-center">
+        <section className="flex flex-col items-center gap-6 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#18A659]/10">
             <svg
               viewBox="0 0 24 24"
@@ -371,6 +369,62 @@ export default function IfTracker() {
             </button>
           </div>
         </section>
+      )}
+
+      {patternModalOpen && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
+          role="dialog"
+          aria-modal="true"
+          aria-label="เลือกรูปแบบ IF"
+        >
+          <div className="flex w-full max-w-sm flex-col gap-5 rounded-2xl bg-white p-6">
+            <div>
+              <h2 className="text-lg font-bold text-zinc-900">
+                เลือกรูปแบบ IF
+              </h2>
+              <p className="mt-1 text-sm text-zinc-500">
+                เลือกรูปแบบการทำ IF ที่เหมาะกับคุณ
+              </p>
+            </div>
+            <div className="flex flex-col gap-3">
+              {IF_PATTERNS.map((pattern) => {
+                const isSelected = selectedPattern === pattern.value;
+                return (
+                  <button
+                    key={pattern.value}
+                    type="button"
+                    onClick={() => {
+                      setSelectedPattern(pattern.value);
+                      setPatternModalOpen(false);
+                    }}
+                    style={{
+                      background:
+                        "linear-gradient(135deg, #18A659 0%, #26BA6A 100%)",
+                    }}
+                    className={`flex flex-col gap-1 rounded-xl px-4 py-3 text-left text-white transition-[filter] ${
+                      isSelected
+                        ? "ring-2 ring-[#18A659] ring-offset-2"
+                        : "hover:brightness-105"
+                    }`}
+                  >
+                    <span className="text-lg font-bold">{pattern.label}</span>
+                    <span className="text-sm text-white/80">
+                      {pattern.description}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+            <button
+              type="button"
+              onClick={() => setPatternModalOpen(false)}
+              className="rounded-full border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100"
+            >
+              ปิด
+            </button>
+          </div>
+        </div>
       )}
 
       {confirmEnd && session && (
