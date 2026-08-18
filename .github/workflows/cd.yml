@@ -53,6 +53,17 @@ jobs:
       - name: Pull Vercel environment
         run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
+      - name: Override sensitive NEXT_PUBLIC_ env vars
+        run: |
+          if [ -f .vercel/.env.production.local ]; then
+            grep -v '^NEXT_PUBLIC_LIFF_ID=' .vercel/.env.production.local > .vercel/.env.production.local.tmp || true
+            echo "NEXT_PUBLIC_LIFF_ID=${{ secrets.NEXT_PUBLIC_LIFF_ID }}" >> .vercel/.env.production.local.tmp
+            mv .vercel/.env.production.local.tmp .vercel/.env.production.local
+            echo "Overrode NEXT_PUBLIC_LIFF_ID with the real value from GitHub secrets."
+          else
+            echo "warning: .vercel/.env.production.local not found; skipping override"
+          fi
+
       - name: Build project artifacts
         run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
 
