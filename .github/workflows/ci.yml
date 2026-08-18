@@ -6,7 +6,7 @@ on:
   pull_request:
 
 jobs:
-  lint-build:
+  checks:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -33,6 +33,9 @@ jobs:
 
       - name: Lint
         run: npm run lint
+
+      - name: Test
+        run: npm test
 
       - name: Build
         run: npm run build
