@@ -24,22 +24,32 @@ const MIGRATIONS_DIR = resolve(SCRIPT_DIR, "../supabase/migrations");
 
 // Load DATABASE_URL_PROVIDED from .env only when not already set (e.g. local dev).
 function getConnectionString() {
-  if (process.env.DATABASE_URL_PROVIDED) {
-    return process.env.DATABASE_URL_PROVIDED;
+  let url = process.env.DATABASE_URL_PROVIDED;
+
+  if (!url) {
+    const envFile = resolve(SCRIPT_DIR, "../.env");
+    if (existsSync(envFile)) {
+      process.loadEnvFile(envFile);
+    }
+    url = process.env.DATABASE_URL_PROVIDED;
   }
 
-  const envFile = resolve(SCRIPT_DIR, "../.env");
-  if (existsSync(envFile)) {
-    process.loadEnvFile(envFile);
-  }
-
-  const url = process.env.DATABASE_URL_PROVIDED;
   if (!url) {
     throw new Error(
       "DATABASE_URL_PROVIDED is not set. Add it to the environment or .env"
     );
   }
-  return url;
+
+  return normalizeUrl(url);
+}
+
+/**
+ * Fixes an accidentally duplicated scheme prefix that breaks pg's parser,
+ * e.g. "postgresql:postgresql://..." -> "postgresql://...".
+ * This protects against a bad value in .env or in CI secrets.
+ */
+function normalizeUrl(url) {
+  return url.replace(/^postgres(?:ql)?:postgres(?:ql)?:\/\//, "postgresql://");
 }
 
 function migrationFiles() {
@@ -66,7 +76,11 @@ async function run() {
     process.exit(1);
   }
 
-  const client = new pg.Client({ connectionString: getConnectionString() });
+  const connectionString = getConnectionString();
+  const masked = connectionString.replace(/:[^:@/]+@/, ":***@");
+  console.log(`Connecting to ${masked}`);
+
+  const client = new pg.Client({ connectionString });
   await client.connect();
 
   try {
