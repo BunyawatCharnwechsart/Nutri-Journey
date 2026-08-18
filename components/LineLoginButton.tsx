@@ -79,10 +79,18 @@ export default function LineLoginButton({
           setStatus("ready");
         }
       })
-      .catch(() => {
+      .catch((error: unknown) => {
         if (cancelled) return;
+        // DEBUG: surface the real LIFF error so we can tell apart an
+        // invalid LIFF ID, a mismatched endpoint, or a cancelled permission.
+        const err = error as { code?: string; message?: string };
+        console.error("[LIFF] liff.init failed", err);
         setStatus("error");
-        setError("LINE เปิดไม่สำเร็จ กรุณาเปิดผ่าน LINE Application");
+        setError(
+          `LIFF init error${err?.code ? ` [${err.code}]` : ""}: ${
+            err?.message ?? "unknown"
+          }`
+        );
       });
 
     return () => {
