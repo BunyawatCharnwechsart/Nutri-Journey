@@ -28,33 +28,36 @@ export default async function DashboardPage() {
   // Aggregate stats across completed sessions (active ones are not counted).
   const { data: completed } = await supabase
     .from("if_sessions")
-    .select("duration_minutes")
+    .select("fasting_duration_minutes")
     .eq("user_id", userId)
     .eq("status", "completed");
 
   const sessionCount = completed?.length ?? 0;
   const totalMinutes =
-    completed?.reduce((sum, s) => sum + (s.duration_minutes ?? 0), 0) ?? 0;
+    completed?.reduce(
+      (sum, s) => sum + (s.fasting_duration_minutes ?? 0),
+      0
+    ) ?? 0;
 
   // Active session (for the "today" card).
   const { data: activeSession } = await supabase
     .from("if_sessions")
-    .select("id, start_time, if_pattern")
+    .select("id, fasting_start_time, if_pattern")
     .eq("user_id", userId)
     .eq("status", "active")
-    .order("start_time", { ascending: false })
+    .order("fasting_start_time", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   // Today's latest completed session.
   const { data: todaySession } = await supabase
     .from("if_sessions")
-    .select("start_time, duration_minutes, if_pattern")
+    .select("fasting_start_time, fasting_duration_minutes, if_pattern")
     .eq("user_id", userId)
     .eq("status", "completed")
-    .gte("start_time", startOfDay(new Date()).toISOString())
-    .lte("start_time", endOfDay(new Date()).toISOString())
-    .order("start_time", { ascending: false })
+    .gte("fasting_start_time", startOfDay(new Date()).toISOString())
+    .lte("fasting_start_time", endOfDay(new Date()).toISOString())
+    .order("fasting_start_time", { ascending: false })
     .limit(1)
     .maybeSingle();
 
@@ -118,7 +121,7 @@ export default async function DashboardPage() {
             ) : todaySession ? (
               <>
                 <p className="text-sm text-zinc-500">
-                  วันนี้ทำ IF ไปแล้ว {formatMinutes(todaySession.duration_minutes)}{" "}
+                  วันนี้ทำ IF ไปแล้ว {formatMinutes(todaySession.fasting_duration_minutes)}{" "}
                   · รูปแบบ {todayPattern?.label ?? "IF"}
                 </p>
                 <Link

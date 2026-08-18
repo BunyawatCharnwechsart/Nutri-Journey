@@ -36,7 +36,7 @@ export async function POST(request: Request) {
 
   const { data: session } = await supabase
     .from("if_sessions")
-    .select("id, start_time, status")
+    .select("id, fasting_start_time, status")
     .eq("id", sessionId)
     .eq("user_id", auth.userId)
     .maybeSingle();
@@ -52,15 +52,17 @@ export async function POST(request: Request) {
   const now = new Date();
   const durationMinutes = Math.max(
     0,
-    Math.round((now.getTime() - new Date(session.start_time).getTime()) / 60000)
+    Math.round(
+      (now.getTime() - new Date(session.fasting_start_time).getTime()) / 60000
+    )
   );
 
   const { data: updated, error } = await supabase
     .from("if_sessions")
     .update({
       status: "completed",
-      end_time: now.toISOString(),
-      duration_minutes: durationMinutes,
+      fasting_end_time: now.toISOString(),
+      fasting_duration_minutes: durationMinutes,
     })
     .eq("id", sessionId)
     .eq("user_id", auth.userId)

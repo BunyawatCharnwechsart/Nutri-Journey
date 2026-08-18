@@ -33,9 +33,9 @@ export async function GET(request: Request) {
     .from("if_sessions")
     .select("*")
     .eq("user_id", auth.userId)
-    .gte("start_time", start.toISOString())
-    .lt("start_time", end.toISOString())
-    .order("start_time", { ascending: true });
+    .gte("fasting_start_time", start.toISOString())
+    .lt("fasting_start_time", end.toISOString())
+    .order("fasting_start_time", { ascending: true });
 
   if (error) {
     return apiError("Failed to load IF sessions", 500, "INTERNAL_ERROR");
