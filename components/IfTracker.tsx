@@ -231,8 +231,21 @@ export default function IfTracker() {
       ? Math.min(100, Math.round((elapsedMs / (plannedMinutes * 60000)) * 100))
       : 0;
 
+  const subheader =
+    view === "timer"
+      ? `กำลังทำ IF รูปแบบ ${activePattern?.label ?? "IF"}`
+      : view === "success"
+        ? "ทำ IF สำเร็จ!"
+        : selectedPattern
+          ? `ทำ IF รูปแบบ ${getIfPattern(selectedPattern)?.label ?? "IF"}`
+          : "เลือกการทำ IF ที่เหมาะสมกับคุณ";
+
   return (
     <div className="flex flex-col gap-6">
+      <p className="text-center text-sm leading-6 text-zinc-500">
+        {subheader}
+      </p>
+
       {error && (
         <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
           {error}
@@ -257,45 +270,28 @@ export default function IfTracker() {
             style={{
               background: "linear-gradient(135deg, #18A659 0%, #26BA6A 100%)",
             }}
-            className="flex w-full items-center justify-center gap-2 rounded-xl px-6 py-3 text-lg font-bold text-white transition-[filter] hover:brightness-105"
+            className="w-full rounded-xl px-6 py-3 text-lg font-bold text-white transition-[filter] hover:brightness-105"
           >
             {selectedPattern
               ? getIfPattern(selectedPattern)?.label ?? "เลือกรูปแบบ IF"
               : "เลือกรูปแบบ IF"}
-            <svg
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2.5"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              aria-hidden="true"
-              className="h-5 w-5"
-            >
-              <path d="M6 9l6 6 6-6" />
-            </svg>
           </button>
 
-          <button
-            type="button"
-            onClick={startSession}
-            disabled={!selectedPattern || loading}
-            className="w-full rounded-full bg-[#18A659] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {loading ? "กำลังเริ่ม..." : "เริ่ม Fasting"}
-          </button>
+          {selectedPattern && (
+            <button
+              type="button"
+              onClick={startSession}
+              disabled={loading}
+              className="w-full rounded-full bg-[#18A659] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              {loading ? "กำลังเริ่ม..." : "เริ่ม Fasting"}
+            </button>
+          )}
         </section>
       )}
 
       {view === "timer" && session && (
         <section className="flex flex-col items-center gap-6 text-center">
-          <p className="text-sm text-zinc-500">
-            กำลังทำ IF รูปแบบ{" "}
-            <span className="font-semibold text-zinc-900">
-              {activePattern?.label ?? "IF"}
-            </span>
-          </p>
-
           <FastingClock
             timeText={reachedGoal ? "ครบเป้า!" : formatClock(remainingMs)}
             caption={reachedGoal ? "ทำตามเป้าหมายสำเร็จ" : "เวลาที่เหลือ"}

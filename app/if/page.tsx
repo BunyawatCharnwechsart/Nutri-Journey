@@ -17,14 +17,9 @@ export default async function IfPage() {
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
         <header className="grid grid-cols-[1fr_auto_1fr] items-center gap-4">
           <div aria-hidden="true" />
-          <div className="text-center">
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
-              IF Tracker
-            </h1>
-            <p className="mt-1 text-sm leading-6 text-zinc-500">
-              เลือกการทำ IF ที่เหมาะกับคุณ
-            </p>
-          </div>
+          <h1 className="text-center text-2xl font-bold tracking-tight text-zinc-900">
+            IF Tracker
+          </h1>
           <div className="flex justify-end">
             <EggIconLink />
           </div>
