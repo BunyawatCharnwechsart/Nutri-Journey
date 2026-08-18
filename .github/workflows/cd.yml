@@ -1,11 +1,11 @@
-name: Deploy
+name: CD
 
 on:
   push:
     branches: [main]
 
 concurrency:
-  group: deploy-main
+  group: cd-main
   cancel-in-progress: false
 
 jobs:
