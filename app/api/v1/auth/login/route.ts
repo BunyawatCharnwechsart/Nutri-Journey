@@ -55,33 +55,30 @@ export async function POST(request: Request) {
     return apiError("Failed to create user", 500, "INTERNAL_ERROR");
   }
 
-  // Create a profile row for brand-new users (default values only).
-  const { data: existingProfile } = await supabase
-    .from("profiles")
-    .select("user_id")
-    .eq("user_id", user.user_id)
-    .maybeSingle();
-
-  if (!existingProfile) {
-    const { error: profileError } = await supabase
+  // Ensure a profile row exists (brand-new users) and read it back for the
+  // completeness check. Both queries only depend on user_id, so they run in
+  // parallel instead of one-after-another. `ignoreDuplicates` turns the old
+  // "select-then-insert" into a single round trip and also prevents a primary
+  // key conflict if the same new user logs in twice at the same time.
+  const [profileUpsert, profileRead] = await Promise.all([
+    supabase
       .from("profiles")
-      .insert({ user_id: user.user_id });
+      .upsert(
+        { user_id: user.user_id },
+        { onConflict: "user_id", ignoreDuplicates: true }
+      ),
+    supabase
+      .from("profiles")
+      .select("gender, birth_date, height, weight, activity_level")
+      .eq("user_id", user.user_id)
+      .maybeSingle(),
+  ]);
 
-    if (profileError) {
-      return apiError("Failed to create profile", 500, "INTERNAL_ERROR");
-    }
+  if (profileUpsert.error) {
+    return apiError("Failed to create profile", 500, "INTERNAL_ERROR");
   }
 
-  // Whether this user completed the health profile setup. The client uses
-  // this to send first-time users to /health-profile instead of /dashboard.
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select(
-      "gender, birth_date, height, weight, activity_level"
-    )
-    .eq("user_id", user.user_id)
-    .maybeSingle();
-
+  const profile = profileRead.data ?? null;
   const profileComplete = isProfileComplete(profile);
 
   const sessionToken = await createSessionToken(user.user_id);

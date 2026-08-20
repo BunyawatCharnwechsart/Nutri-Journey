@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { format, parse } from "date-fns";
 import { DayPicker } from "react-day-picker";
+import "react-day-picker/style.css";
 import { th } from "react-day-picker/locale";
 
 interface BirthDatePickerProps {

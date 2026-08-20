@@ -197,7 +197,7 @@ export default function HealthProfileForm({
           <div className="flex flex-col gap-4">
             <h2 className="flex items-center gap-2 text-base font-semibold text-zinc-900">
               <Image
-                src="/icon/genderIcon.svg"
+                src="/icon/genderIcon.png"
                 alt=""
                 aria-hidden="true"
                 width={22}
@@ -236,7 +236,7 @@ export default function HealthProfileForm({
               className={`${labelClass} cursor-pointer`}
             >
               <Image
-                src="/icon/birthdayIcon.svg"
+                src="/icon/birthdayIcon.png"
                 alt=""
                 aria-hidden="true"
                 width={22}
@@ -255,7 +255,7 @@ export default function HealthProfileForm({
             <div>
               <label htmlFor="height-cm" className={labelClass}>
                 <Image
-                  src="/icon/heightIcon.svg"
+                  src="/icon/heightIcon.png"
                   alt=""
                   aria-hidden="true"
                   width={22}
@@ -282,7 +282,7 @@ export default function HealthProfileForm({
             <div>
               <label htmlFor="weight-kg" className={labelClass}>
                 <Image
-                  src="/icon/weightIcon.svg"
+                  src="/icon/weightIcon.png"
                   alt=""
                   aria-hidden="true"
                   width={22}
@@ -310,7 +310,7 @@ export default function HealthProfileForm({
           <div>
             <label htmlFor="activity-level" className={labelClass}>
               <Image
-                src="/icon/activityLevelIcon.svg"
+                src="/icon/activityLevelIcon.png"
                 alt=""
                 aria-hidden="true"
                 width={22}

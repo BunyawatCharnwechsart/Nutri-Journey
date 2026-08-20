@@ -1,15 +1,21 @@
+import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import Image from "next/image";
-import Link from "next/link";
-import { startOfDay, endOfDay } from "date-fns";
 
 import { getSessionUserId } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
-import { formatMinutes, getIfPattern } from "@/lib/if";
 import LogoutButton from "@/components/LogoutButton";
 import EggIconLink from "@/components/EggIconLink";
+import DashboardStats from "@/components/DashboardStats";
+import DashboardStatsSkeleton from "@/components/DashboardStatsSkeleton";
 
 export const dynamic = "force-dynamic";
+
+const COMING_SOON_FEATURES = [
+  "สถิติการทำ IF แบบละเอียด",
+  "เชื่อมต่อ Google Health API",
+  "ระบบไข่และภารกิจ",
+];
 
 export default async function DashboardPage() {
   const userId = await getSessionUserId();
@@ -21,52 +27,11 @@ export default async function DashboardPage() {
 
   const { data: user } = await supabase
     .from("users")
-    .select("*")
+    .select("display_name, avatar_url")
     .eq("user_id", userId)
-    .maybeSingle();
-
-  // Aggregate stats across completed sessions (active ones are not counted).
-  const { data: completed } = await supabase
-    .from("if_sessions")
-    .select("fasting_duration_minutes")
-    .eq("user_id", userId)
-    .eq("status", "completed");
-
-  const sessionCount = completed?.length ?? 0;
-  const totalMinutes =
-    completed?.reduce(
-      (sum, s) => sum + (s.fasting_duration_minutes ?? 0),
-      0
-    ) ?? 0;
-
-  // Active session (for the "today" card).
-  const { data: activeSession } = await supabase
-    .from("if_sessions")
-    .select("id, fasting_start_time, if_pattern")
-    .eq("user_id", userId)
-    .eq("status", "active")
-    .order("fasting_start_time", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  // Today's latest completed session.
-  const { data: todaySession } = await supabase
-    .from("if_sessions")
-    .select("fasting_start_time, fasting_duration_minutes, if_pattern")
-    .eq("user_id", userId)
-    .eq("status", "completed")
-    .gte("fasting_start_time", startOfDay(new Date()).toISOString())
-    .lte("fasting_start_time", endOfDay(new Date()).toISOString())
-    .order("fasting_start_time", { ascending: false })
-    .limit(1)
     .maybeSingle();
 
   const displayName = user?.display_name ?? "นักเดินทางสุขภาพ";
-
-  const activePattern = activeSession
-    ? getIfPattern(activeSession.if_pattern)
-    : null;
-  const todayPattern = todaySession ? getIfPattern(todaySession.if_pattern) : null;
 
   return (
     <main className="flex flex-1 flex-col px-6 py-10">
@@ -89,9 +54,7 @@ export default async function DashboardPage() {
             )}
             <div>
               <p className="text-sm text-zinc-500">สวัสดี</p>
-              <h1 className="text-xl font-bold text-zinc-900">
-                {displayName}
-              </h1>
+              <h1 className="text-xl font-bold text-zinc-900">{displayName}</h1>
             </div>
           </div>
           <div className="flex shrink-0 items-center gap-2">
@@ -100,58 +63,25 @@ export default async function DashboardPage() {
           </div>
         </header>
 
-        <section className="grid gap-4">
-          <div className="flex flex-col gap-2 rounded-2xl border border-zinc-200 bg-white p-5">
-            <h2 className="text-base font-semibold text-zinc-900">
-              สถานะ IF วันนี้
-            </h2>
-            {activeSession ? (
-              <>
-                <p className="text-sm text-zinc-500">
-                  กำลังอดอาหารอยู่ · รูปแบบ{" "}
-                  {activePattern?.label ?? "IF"}
-                </p>
-                <Link
-                  href="/if"
-                  className="text-sm font-medium text-[#18A659]"
-                >
-                  ไปที่ตัวจับเวลา →
-                </Link>
-              </>
-            ) : todaySession ? (
-              <>
-                <p className="text-sm text-zinc-500">
-                  วันนี้ทำ IF ไปแล้ว {formatMinutes(todaySession.fasting_duration_minutes)}{" "}
-                  · รูปแบบ {todayPattern?.label ?? "IF"}
-                </p>
-                <Link
-                  href="/if"
-                  className="text-sm font-medium text-[#18A659]"
-                >
-                  เริ่ม Fasting ใหม่ →
-                </Link>
-              </>
-            ) : (
-              <p className="text-sm text-zinc-500">
-                ยังไม่มีเซสชันวันนี้ เริ่มติดตามการอดอาหารของคุณได้เลย
-              </p>
-            )}
-          </div>
+        <Suspense fallback={<DashboardStatsSkeleton />}>
+          <DashboardStats userId={userId} />
+        </Suspense>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="flex flex-col gap-1 rounded-2xl border border-zinc-200 bg-white p-4">
-              <span className="text-sm text-zinc-500">IF ครั้งที่ทำ</span>
-              <span className="text-2xl font-bold text-zinc-900">
-                {sessionCount}
-              </span>
-            </div>
-            <div className="flex flex-col gap-1 rounded-2xl border border-zinc-200 bg-white p-4">
-              <span className="text-sm text-zinc-500">ชั่วโมงสะสม</span>
-              <span className="text-2xl font-bold text-zinc-900">
-                {formatMinutes(totalMinutes)}
-              </span>
-            </div>
+        <section className="flex flex-col gap-3 rounded-2xl border border-dashed border-zinc-300 bg-white/60 p-5">
+          <div className="flex items-center justify-between gap-2">
+            <h2 className="text-base font-semibold text-zinc-900">กำลังพัฒนา</h2>
+            <span className="shrink-0 rounded-full bg-[#FFAE00]/15 px-3 py-1 text-xs font-medium text-[#B07C00]">
+              เร็วๆ นี้
+            </span>
           </div>
+          <ul className="flex flex-col gap-2 text-sm text-zinc-500">
+            {COMING_SOON_FEATURES.map((feature) => (
+              <li key={feature} className="flex items-center gap-2">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#18A659]" />
+                {feature}
+              </li>
+            ))}
+          </ul>
         </section>
       </div>
     </main>

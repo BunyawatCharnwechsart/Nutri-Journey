@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { Inter, Noto_Sans_Thai } from "next/font/google";
-import "react-day-picker/style.css";
 import "./globals.css";
 import BottomNav from "@/components/BottomNav";
 

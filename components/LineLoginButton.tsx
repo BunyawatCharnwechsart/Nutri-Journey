@@ -1,8 +1,8 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import liff from "@line/liff";
+import type { Liff } from "@line/liff";
 
 type Status = "initializing" | "ready" | "logging-in" | "error";
 
@@ -21,12 +21,29 @@ export default function LineLoginButton({
     liffId ? null : "NEXT_PUBLIC_LIFF_ID is not configured"
   );
 
+  // The LIFF SDK is only fetched when actually needed (init or login click)
+  // instead of being bundled eagerly, so the landing page parses less JS.
+  // The module instance is cached here to keep the rest of the code unchanged.
+  const liffRef = useRef<Liff | null>(null);
+
+  const getLiff = useCallback(async (): Promise<Liff> => {
+    if (!liffRef.current) {
+      const liffModule = await import("@line/liff");
+      liffRef.current = liffModule.default;
+    }
+    return liffRef.current;
+  }, []);
+
   const login = useCallback(async () => {
+    const liff = await getLiff();
+
     if (!liff.isLoggedIn()) {
       // Only reached when the app runs outside the LINE app (e.g. the
       // LIFF emulator in a regular browser). Redirects the user through
       // LINE's login page, then the app reloads and auto-login continues.
-      liff.login({ redirectUri: window.location.origin + window.location.pathname });
+      liff.login({
+        redirectUri: window.location.origin + window.location.pathname,
+      });
       return;
     }
 
@@ -62,24 +79,25 @@ export default function LineLoginButton({
       setStatus("ready");
       setError(e instanceof Error ? e.message : "Login failed");
     }
-  }, [router]);
+  }, [getLiff, router]);
 
   useEffect(() => {
     if (!liffId) return;
+    const configuredLiffId: string = liffId;
 
     let cancelled = false;
 
-    liff
-      .init({ liffId })
-      .then(() => {
+    async function initLiff() {
+      try {
+        const liff = await getLiff();
+        await liff.init({ liffId: configuredLiffId });
         if (cancelled) return;
         if (liff.isLoggedIn() && autoLogin) {
           login();
         } else {
           setStatus("ready");
         }
-      })
-      .catch((error: unknown) => {
+      } catch (error: unknown) {
         if (cancelled) return;
         // DEBUG: surface the real LIFF error so we can tell apart an
         // invalid LIFF ID, a mismatched endpoint, or a cancelled permission.
@@ -91,12 +109,15 @@ export default function LineLoginButton({
             err?.message ?? "unknown"
           }`
         );
-      });
+      }
+    }
+
+    initLiff();
 
     return () => {
       cancelled = true;
     };
-  }, [login, liffId, autoLogin]);
+  }, [getLiff, liffId, autoLogin, login]);
 
   return (
     <div className="flex w-full flex-col items-center gap-3">

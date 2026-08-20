@@ -156,24 +156,24 @@ export default async function ProfilePage() {
         </section>
 
         <Card title="ข้อมูลส่วนตัว">
-          <InfoRow icon="/icon/genderIcon.svg" label="เพศ" value={gender} />
+          <InfoRow icon="/icon/genderIcon.png" label="เพศ" value={gender} />
           <InfoRow
-            icon="/icon/birthdayIcon.svg"
+            icon="/icon/birthdayIcon.png"
             label="วันเดือนปีเกิด"
             value={profile.birth_date}
           />
           <InfoRow
-            icon="/icon/heightIcon.svg"
+            icon="/icon/heightIcon.png"
             label="ส่วนสูง"
             value={heightCm != null ? `${heightCm} ซม.` : "—"}
           />
           <InfoRow
-            icon="/icon/weightIcon.svg"
+            icon="/icon/weightIcon.png"
             label="น้ำหนัก"
             value={weightKg != null ? `${weightKg} กก.` : "—"}
           />
           <InfoRow
-            icon="/icon/activityLevelIcon.svg"
+            icon="/icon/activityLevelIcon.png"
             label="ระดับกิจกรรม"
             value={activityLevel}
           />
@@ -181,7 +181,7 @@ export default async function ProfilePage() {
 
         <Card title="การจัดการน้ำหนัก">
           <InfoRow
-            icon="/icon/weightIcon.svg"
+            icon="/icon/weightIcon.png"
             label="น้ำหนักปัจจุบัน"
             value={weightKg != null ? `${weightKg} กก.` : "—"}
           />
@@ -199,17 +199,17 @@ export default async function ProfilePage() {
 
         <Card title="สัดส่วน">
           <InfoRow
-            icon="/icon/heightIcon.svg"
+            icon="/icon/heightIcon.png"
             label="รอบเอว"
             value={profile.waist_cm != null ? `${profile.waist_cm} ซม.` : "—"}
           />
           <InfoRow
-            icon="/icon/heightIcon.svg"
+            icon="/icon/heightIcon.png"
             label="รอบสะโพก"
             value={profile.hip_cm != null ? `${profile.hip_cm} ซม.` : "—"}
           />
           <InfoRow
-            icon="/icon/heightIcon.svg"
+            icon="/icon/heightIcon.png"
             label="รอบอก"
             value={profile.chest_cm != null ? `${profile.chest_cm} ซม.` : "—"}
           />
