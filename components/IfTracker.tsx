@@ -380,7 +380,7 @@ export default function IfTracker() {
               : "เลือกรูปแบบ IF"}
           </button>
 
-          {selectedPattern && (
+          {selectedPattern && ( 
             <button
               type="button"
               onClick={startSession}
@@ -557,16 +557,16 @@ export default function IfTracker() {
                     }}
                     style={{
                       background:
-                        "linear-gradient(135deg, #18A659 0%, #26BA6A 100%)",
+                        "white",
                     }}
-                    className={`flex flex-col gap-1 rounded-xl px-4 py-3 text-left text-white transition-[filter] ${
+                    className={`flex flex-col gap-1 rounded-xl px-4 py-3 text-left text-black transition-[filter] ${
                       isSelected
-                        ? "ring-2 ring-[#18A659] ring-offset-2"
+                        ? "ring-2 ring-[#000000] ring-offset-2"
                         : "hover:brightness-105"
                     }`}
                   >
                     <span className="text-lg font-bold">{pattern.label}</span>
-                    <span className="text-sm text-white/80">
+                    <span className="text-sm text-black">
                       {pattern.description}
                     </span>
                   </button>
@@ -576,9 +576,9 @@ export default function IfTracker() {
             <button
               type="button"
               onClick={() => setPatternModalOpen(false)}
-              className="rounded-full border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100"
+              className="rounded-2xl border bg-[#18A659] border-zinc-300 px-6 py-4 text-sm font-medium text-white transition-colors hover:bg-zinc-100"
             >
-              ปิด
+              บันทึกรูปแบบ IF
             </button>
           </div>
         </div>
