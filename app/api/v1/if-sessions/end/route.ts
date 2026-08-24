@@ -11,6 +11,10 @@ export const runtime = "nodejs";
  * Ends a fasting session: computes the real duration from server time and
  * marks it completed. Only the session owner can end it; the userId comes
  * from the verified session cookie.
+ *
+ * The user must finish the eating phase first (POST /end-eating). Until then
+ * fasting_start_time still points at the session start, so ending here would
+ * wrongly count the whole eating window as fasting time — hence the 409.
  */
 export async function POST(request: Request) {
   const auth = await requireAuth();
@@ -36,7 +40,7 @@ export async function POST(request: Request) {
 
   const { data: session } = await supabase
     .from("if_sessions")
-    .select("id, fasting_start_time, status")
+    .select("id, eating_end_time, fasting_start_time, status")
     .eq("id", sessionId)
     .eq("user_id", auth.userId)
     .maybeSingle();
@@ -47,6 +51,17 @@ export async function POST(request: Request) {
 
   if (session.status !== "active") {
     return apiError("เซสชันนี้สิ้นสุดแล้ว", 409, "CONFLICT");
+  }
+
+  // Fasting has not started yet (eating phase is still open). Ending now
+  // would record the eating window as fasting time, so refuse and let the
+  // client call /end-eating first.
+  if (!session.eating_end_time) {
+    return apiError(
+      "กรุณาสิ้นสุดการกินก่อนสิ้นสุดการอดอาหาร",
+      409,
+      "CONFLICT"
+    );
   }
 
   const now = new Date();
