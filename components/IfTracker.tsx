@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
 
 import {
@@ -8,23 +8,17 @@ import {
   getEatingMinutes,
   getFastingMinutes,
   getIfPattern,
+  IfSession,
   IF_PATTERNS,
 } from "@/lib/if";
 
-interface IfSession {
-  id: string;
-  fasting_start_time: string;
-  fasting_end_time: string | null;
-  status: "active" | "completed";
-  fasting_duration_minutes: number | null;
-  if_pattern: string | null;
-  eating_start_time: string | null;
-  eating_end_time: string | null;
-  eating_duration_minutes: number | null;
-}
-
 type View = "select" | "timer" | "success";
 type Phase = "eating" | "fasting";
+
+/** Shared brand gradient so every primary button looks identical. */
+const PRIMARY_GRADIENT = {
+  background: "linear-gradient(135deg, #18A659 0%, #26BA6A 100%)",
+} as const;
 
 function formatClock(milliseconds: number): string {
   const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
@@ -47,6 +41,37 @@ function formatThaiTime(value: string | null | undefined): string {
   return `${hours}:${minutes} น.`;
 }
 
+/**
+ * Small wrapper around fetch for our API envelope ({ success, data|error }).
+ * Returns a flat result so callers only deal with ok/data/message.
+ */
+async function requestApi<T>(
+  url: string,
+  method: "GET" | "POST" | "DELETE",
+  payload?: unknown
+): Promise<{ ok: boolean; data?: T; message?: string }> {
+  try {
+    const res = await fetch(url, {
+      method,
+      headers: payload === undefined ? undefined : { "Content-Type": "application/json" },
+      body: payload === undefined ? undefined : JSON.stringify(payload),
+      cache: "no-store",
+    });
+    const json = (await res.json()) as {
+      success?: boolean;
+      data?: T;
+      error?: { message?: string };
+    };
+
+    if (!res.ok || !json.success || json.data === undefined) {
+      return { ok: false, message: json.error?.message };
+    }
+    return { ok: true, data: json.data };
+  } catch {
+    return { ok: false };
+  }
+}
+
 const RING_SIZE = 200;
 const RING_STROKE = 12;
 const RING_RADIUS = (RING_SIZE - RING_STROKE) / 2;
@@ -58,6 +83,8 @@ interface FastingClockProps {
   progress: number;
   reachedGoal?: boolean;
   ringColor?: string;
+  /** Screen-reader summary, worded so it only changes once per minute. */
+  srSummary?: string;
 }
 
 function FastingClock({
@@ -66,6 +93,7 @@ function FastingClock({
   progress,
   reachedGoal = false,
   ringColor = "#18A659",
+  srSummary,
 }: FastingClockProps) {
   const dashOffset =
     RING_CIRCUMFERENCE *
@@ -75,9 +103,8 @@ function FastingClock({
     <div
       className="relative"
       style={{ width: RING_SIZE, height: RING_SIZE }}
-      aria-hidden="true"
     >
-      <svg width={RING_SIZE} height={RING_SIZE} className="-rotate-90">
+      <svg width={RING_SIZE} height={RING_SIZE} className="-rotate-90" aria-hidden="true">
         <circle
           cx={RING_SIZE / 2}
           cy={RING_SIZE / 2}
@@ -98,8 +125,10 @@ function FastingClock({
           strokeDashoffset={dashOffset}
         />
       </svg>
+      {/* The per-second number is visual only; screen readers get srSummary. */}
       <div className="absolute inset-0 flex flex-col items-center justify-center gap-1">
         <span
+          aria-hidden="true"
           className={`text-4xl font-bold tabular-nums tracking-tight ${
             reachedGoal ? "text-[#18A659]" : "text-zinc-900"
           }`}
@@ -107,6 +136,11 @@ function FastingClock({
           {timeText}
         </span>
         <span className="text-xs text-zinc-500">{caption}</span>
+        {srSummary && (
+          <span role="status" className="sr-only">
+            {srSummary}
+          </span>
+        )}
       </div>
     </div>
   );
@@ -117,20 +151,69 @@ interface PhaseCardProps {
   startTime: string;
   remainingMs: number;
   accent: string;
+  expired?: boolean;
 }
 
-function PhaseCard({ label, startTime, remainingMs, accent }: PhaseCardProps) {
+function PhaseCard({ label, startTime, remainingMs, accent, expired = false }: PhaseCardProps) {
   return (
     <div className="flex w-full flex-col gap-1 rounded-2xl border border-zinc-200 bg-white p-4 text-center">
       <span className="text-sm text-zinc-500">
         {label} · {startTime}
       </span>
-      <span
-        className="text-lg font-bold tabular-nums"
-        style={{ color: accent }}
+      {expired ? (
+        <span className="text-lg font-bold text-red-600">
+          หมดเวลาที่วางไว้แล้ว — กดสิ้นสุดเพื่อเริ่มอด
+        </span>
+      ) : (
+        <span className="text-lg font-bold tabular-nums" style={{ color: accent }}>
+          เหลือ {formatClock(remainingMs)}
+        </span>
+      )}
+    </div>
+  );
+}
+
+interface ModalProps {
+  ariaLabel: string;
+  onClose: () => void;
+  children: ReactNode;
+}
+
+/**
+ * Bottom-sheet-style dialog: closes on Escape or backdrop click, focuses the
+ * panel so keyboard users land inside it.
+ */
+function Modal({ ariaLabel, onClose, children }: ModalProps) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    dialogRef.current?.focus();
+
+    function onKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") {
+        onClose();
+      }
+    }
+    document.addEventListener("keydown", onKeyDown);
+    return () => document.removeEventListener("keydown", onKeyDown);
+  }, [onClose]);
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-6 sm:items-center"
+      onClick={onClose}
+    >
+      <div
+        ref={dialogRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label={ariaLabel}
+        tabIndex={-1}
+        onClick={(event) => event.stopPropagation()}
+        className="flex w-full max-w-sm flex-col gap-5 rounded-2xl bg-white p-6 outline-none"
       >
-        เหลือ {formatClock(remainingMs)}
-      </span>
+        {children}
+      </div>
     </div>
   );
 }
@@ -142,10 +225,18 @@ export default function IfTracker() {
   const [session, setSession] = useState<IfSession | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [loading, setLoading] = useState(false);
+  const [initializing, setInitializing] = useState(true);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const [patternModalOpen, setPatternModalOpen] = useState(false);
+  const [pendingPattern, setPendingPattern] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const startedRef = useRef(false);
+
+  // Stable closers so the Modal listeners are not re-bound on every tick.
+  const closePatternModal = useCallback(() => setPatternModalOpen(false), []);
+  const closeConfirmEnd = useCallback(() => setConfirmEnd(false), []);
+  const closeConfirmCancel = useCallback(() => setConfirmCancel(false), []);
 
   useEffect(() => {
     if (startedRef.current) {
@@ -154,20 +245,20 @@ export default function IfTracker() {
     startedRef.current = true;
 
     async function loadActiveSession() {
-      try {
-        const res = await fetch("/api/v1/if-sessions/active", {
-          cache: "no-store",
-        });
-        const body = await res.json();
-        if (body.success && body.data.session) {
-          setSession(body.data.session);
-          setMode(
-            body.data.session.eating_end_time ? "fasting" : "eating"
-          );
-          setView("timer");
-        }
-      } catch {
+      const result = await requestApi<{ session: IfSession | null }>(
+        "/api/v1/if-sessions/active",
+        "GET"
+      );
+      setInitializing(false);
+
+      if (!result.ok) {
         setError("โหลดสถานะ IF ไม่สำเร็จ ลองอีกครั้ง");
+        return;
+      }
+      if (result.data?.session) {
+        setSession(result.data.session);
+        setMode(result.data.session.eating_end_time ? "fasting" : "eating");
+        setView("timer");
       }
     }
 
@@ -189,26 +280,21 @@ export default function IfTracker() {
     }
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch("/api/v1/if-sessions/start", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ ifPattern: selectedPattern }),
-      });
-      const body = await res.json();
-      if (!res.ok || !body.success) {
-        setError(body.error?.message ?? "เริ่ม Fasting ไม่สำเร็จ");
-        return;
-      }
-      setSession(body.data.session);
-      setNow(Date.now());
-      setMode("eating");
-      setView("timer");
-    } catch {
-      setError("เริ่ม Fasting ไม่สำเร็จ ลองอีกครั้ง");
-    } finally {
-      setLoading(false);
+    const result = await requestApi<{ session: IfSession }>(
+      "/api/v1/if-sessions/start",
+      "POST",
+      { ifPattern: selectedPattern }
+    );
+    setLoading(false);
+
+    if (!result.ok || !result.data) {
+      setError(result.message ?? "เริ่ม Fasting ไม่สำเร็จ ลองอีกครั้ง");
+      return;
     }
+    setSession(result.data.session);
+    setNow(Date.now());
+    setMode("eating");
+    setView("timer");
   }
 
   async function endEating() {
@@ -217,25 +303,20 @@ export default function IfTracker() {
     }
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch("/api/v1/if-sessions/end-eating", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: session.id }),
-      });
-      const body = await res.json();
-      if (!res.ok || !body.success) {
-        setError(body.error?.message ?? "สิ้นสุดการกินไม่สำเร็จ");
-        return;
-      }
-      setSession(body.data.session);
-      setNow(Date.now());
-      setMode("fasting");
-    } catch {
-      setError("สิ้นสุดการกินไม่สำเร็จ ลองอีกครั้ง");
-    } finally {
-      setLoading(false);
+    const result = await requestApi<{ session: IfSession }>(
+      "/api/v1/if-sessions/end-eating",
+      "POST",
+      { sessionId: session.id }
+    );
+    setLoading(false);
+
+    if (!result.ok || !result.data) {
+      setError(result.message ?? "สิ้นสุดการกินไม่สำเร็จ ลองอีกครั้ง");
+      return;
     }
+    setSession(result.data.session);
+    setNow(Date.now());
+    setMode("fasting");
   }
 
   async function endSession() {
@@ -244,27 +325,20 @@ export default function IfTracker() {
     }
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch("/api/v1/if-sessions/end", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: session.id }),
-      });
-      const body = await res.json();
-      if (!res.ok || !body.success) {
-        setError(body.error?.message ?? "สิ้นสุด Fasting ไม่สำเร็จ");
-        setConfirmEnd(false);
-        return;
-      }
-      setSession(body.data.session);
-      setConfirmEnd(false);
-      setView("success");
-    } catch {
-      setError("สิ้นสุด Fasting ไม่สำเร็จ ลองอีกครั้ง");
-      setConfirmEnd(false);
-    } finally {
-      setLoading(false);
+    const result = await requestApi<{ session: IfSession }>(
+      "/api/v1/if-sessions/end",
+      "POST",
+      { sessionId: session.id }
+    );
+    setLoading(false);
+
+    if (!result.ok || !result.data) {
+      setError(result.message ?? "สิ้นสุด Fasting ไม่สำเร็จ ลองอีกครั้ง");
+      return;
     }
+    setSession(result.data.session);
+    setConfirmEnd(false);
+    setView("success");
   }
 
   async function cancelSession() {
@@ -273,26 +347,29 @@ export default function IfTracker() {
     }
     setLoading(true);
     setError(null);
-    try {
-      const res = await fetch("/api/v1/if-sessions", {
-        method: "DELETE",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ sessionId: session.id }),
-      });
-      const body = await res.json();
-      if (!res.ok || !body.success) {
-        setError(body.error?.message ?? "ยกเลิกไม่สำเร็จ");
-        return;
-      }
-      setSession(null);
-      setSelectedPattern(null);
-      setMode("eating");
-      setView("select");
-    } catch {
-      setError("ยกเลิกไม่สำเร็จ ลองอีกครั้ง");
-    } finally {
-      setLoading(false);
+    const result = await requestApi(
+      "/api/v1/if-sessions",
+      "DELETE",
+      { sessionId: session.id }
+    );
+    setLoading(false);
+
+    if (!result.ok) {
+      setError(result.message ?? "ยกเลิกไม่สำเร็จ ลองอีกครั้ง");
+      return;
     }
+    setConfirmCancel(false);
+    setSession(null);
+    setSelectedPattern(null);
+    setMode("eating");
+    setView("select");
+  }
+
+  function resetToSelect() {
+    setSession(null);
+    setSelectedPattern(null);
+    setMode("eating");
+    setView("select");
   }
 
   const activePattern = session ? getIfPattern(session.if_pattern) : null;
@@ -316,6 +393,7 @@ export default function IfTracker() {
   const fastingRemainingMs = plannedMinutes * 60000 - fastingElapsedMs;
   const reachedGoal =
     plannedMinutes > 0 && fastingElapsedMs >= plannedMinutes * 60000;
+  const eatingExpired = mode === "eating" && eatingMinutes > 0 && eatingRemainingMs <= 0;
 
   const progress =
     mode === "eating"
@@ -332,8 +410,22 @@ export default function IfTracker() {
           )
         : 0;
 
-  const subheader =
-    view === "timer"
+  // Quantised to minutes so the screen-reader status does not fire every second.
+  const elapsedMinutes = Math.floor(
+    (mode === "eating" ? eatingElapsedMs : fastingElapsedMs) / 60000
+  );
+  const srSummary =
+    view === "timer" && session
+      ? mode === "eating"
+        ? `กำลังกินอาหาร ผ่านมาแล้ว ${elapsedMinutes} นาที`
+        : reachedGoal
+          ? "อดครบตามเป้าหมายแล้ว"
+          : `กำลังอดอาหาร ผ่านมาแล้ว ${elapsedMinutes} นาที`
+      : undefined;
+
+  const subheader = initializing
+    ? "กำลังโหลดสถานะ IF..."
+    : view === "timer"
       ? mode === "eating"
         ? "กำลังกินอาหาร"
         : `กำลังทำ IF รูปแบบ ${activePattern?.label ?? "IF"}`
@@ -349,13 +441,22 @@ export default function IfTracker() {
         {subheader}
       </p>
 
-      {error && (
+      {initializing && (
+        <section
+          aria-busy="true"
+          className="flex flex-col items-center gap-6 py-10"
+        >
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-zinc-200 border-t-[#18A659]" />
+        </section>
+      )}
+
+      {!initializing && error && (
         <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
           {error}
         </p>
       )}
 
-      {view === "select" && (
+      {!initializing && view === "select" && (
         <section className="flex flex-col items-center gap-8">
           <FastingClock
             timeText={
@@ -369,26 +470,24 @@ export default function IfTracker() {
 
           <button
             type="button"
-            onClick={() => setPatternModalOpen(true)}
-            style={{
-              background: "linear-gradient(135deg, #18A659 0%, #26BA6A 100%)",
+            onClick={() => {
+              setPendingPattern(selectedPattern);
+              setPatternModalOpen(true);
             }}
+            style={PRIMARY_GRADIENT}
             className="w-full rounded-xl px-6 py-3 text-[20px] font-bold text-white transition-[filter] hover:brightness-105"
           >
             {selectedPattern
-              ? getIfPattern(selectedPattern)?.label ?? "เลือกรูปแบบ IF"
+              ? "เปลี่ยนรูปแบบ IF"
               : "เลือกรูปแบบ IF"}
           </button>
 
-          {selectedPattern && ( 
+          {selectedPattern && (
             <button
               type="button"
               onClick={startSession}
               disabled={loading}
-              style={{
-                background:
-                  "linear-gradient(135deg, #18A659 0%, #26BA6A 100%)",
-              }}
+              style={PRIMARY_GRADIENT}
               className="w-full rounded-xl px-6 py-3 text-[20px] font-bold text-white transition-[filter] hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
             >
               {loading ? "กำลังเริ่ม..." : "เริ่ม Fasting"}
@@ -397,7 +496,7 @@ export default function IfTracker() {
         </section>
       )}
 
-      {view === "timer" && session && (
+      {!initializing && view === "timer" && session && (
         <section className="flex flex-col items-center gap-6 text-center">
           <FastingClock
             timeText={
@@ -407,7 +506,9 @@ export default function IfTracker() {
             }
             caption={
               mode === "eating"
-                ? "กำลังกินอาหาร"
+                ? eatingExpired
+                  ? "หมดเวลากินตามแผนแล้ว"
+                  : "กำลังกินอาหาร"
                 : reachedGoal
                   ? "ทำตามเป้าหมายสำเร็จ"
                   : "เวลาที่อดแล้ว"
@@ -415,6 +516,7 @@ export default function IfTracker() {
             progress={progress}
             reachedGoal={mode === "fasting" && reachedGoal}
             ringColor={mode === "eating" ? "#18A659" : "#DC8426"}
+            srSummary={srSummary}
           />
 
           {mode === "eating" ? (
@@ -425,6 +527,7 @@ export default function IfTracker() {
               )}
               remainingMs={eatingRemainingMs}
               accent="#18A659"
+              expired={eatingExpired}
             />
           ) : (
             <PhaseCard
@@ -441,10 +544,7 @@ export default function IfTracker() {
                 type="button"
                 onClick={endEating}
                 disabled={loading}
-                style={{
-                  background:
-                    "linear-gradient(135deg, #18A659 0%, #26BA6A 100%)",
-                }}
+                style={PRIMARY_GRADIENT}
                 className="w-full rounded-xl px-6 py-3 text-[20px] font-bold text-white transition-[filter] hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {loading ? "กำลังบันทึก..." : "สิ้นสุดการกิน"}
@@ -454,10 +554,7 @@ export default function IfTracker() {
                 type="button"
                 onClick={() => setConfirmEnd(true)}
                 disabled={loading}
-                style={{
-                  background:
-                    "linear-gradient(135deg, #18A659 0%, #26BA6A 100%)",
-                }}
+                style={PRIMARY_GRADIENT}
                 className="w-full rounded-xl px-6 py-3 text-[20px] font-bold text-white transition-[filter] hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 สิ้นสุดการอดอาหาร
@@ -465,9 +562,9 @@ export default function IfTracker() {
             )}
             <button
               type="button"
-              onClick={cancelSession}
+              onClick={() => setConfirmCancel(true)}
               disabled={loading}
-              className="w-full rounded-full border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50"
+              className="w-full rounded-2xl border border-zinc-300 px-6 py-4 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50"
             >
               ยกเลิกเซสชันนี้
             </button>
@@ -475,7 +572,7 @@ export default function IfTracker() {
         </section>
       )}
 
-      {view === "success" && session && (
+      {!initializing && view === "success" && session && (
         <section className="flex flex-col items-center gap-6 text-center">
           <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#18A659]/10">
             <svg
@@ -514,12 +611,7 @@ export default function IfTracker() {
             </Link>
             <button
               type="button"
-              onClick={() => {
-                setSession(null);
-                setSelectedPattern(null);
-                setMode("eating");
-                setView("select");
-              }}
+              onClick={resetToSelect}
               className="rounded-full border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100"
             >
               เริ่ม Fasting ใหม่
@@ -529,94 +621,127 @@ export default function IfTracker() {
       )}
 
       {patternModalOpen && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6"
-          role="dialog"
-          aria-modal="true"
-          aria-label="เลือกรูปแบบ IF"
-        >
-          <div className="flex w-full max-w-sm flex-col gap-5 rounded-2xl bg-white p-6">
-            <div>
-              <h2 className="text-lg font-bold text-zinc-900">
-                เลือกรูปแบบ IF
-              </h2>
-              <p className="mt-1 text-sm text-zinc-500">
-                เลือกรูปแบบการทำ IF ที่เหมาะกับคุณ
-              </p>
-            </div>
-            <div className="flex flex-col gap-3">
-              {IF_PATTERNS.map((pattern) => {
-                const isSelected = selectedPattern === pattern.value;
-                return (
-                  <button
-                    key={pattern.value}
-                    type="button"
-                    onClick={() => {
-                      setSelectedPattern(pattern.value);
-                      setPatternModalOpen(false);
-                    }}
-                    style={{
-                      background:
-                        "white",
-                    }}
-                    className={`flex flex-col gap-1 rounded-xl px-4 py-3 text-left text-black transition-[filter] ${
-                      isSelected
-                        ? "ring-2 ring-[#000000] ring-offset-2"
-                        : "hover:brightness-105"
-                    }`}
-                  >
-                    <span className="text-lg font-bold">{pattern.label}</span>
-                    <span className="text-sm text-black">
-                      {pattern.description}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-            <button
-              type="button"
-              onClick={() => setPatternModalOpen(false)}
-              className="rounded-2xl border bg-[#18A659] border-zinc-300 px-6 py-4 text-sm font-medium text-white transition-colors hover:bg-zinc-100"
-            >
-              บันทึกรูปแบบ IF
-            </button>
+        <Modal ariaLabel="เลือกรูปแบบ IF" onClose={closePatternModal}>
+          <div>
+            <h2 className="text-lg font-bold text-zinc-900">
+              เลือกรูปแบบ IF
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              เลือกแล้วกดบันทึกเพื่อยืนยัน
+            </p>
           </div>
-        </div>
+          <div className="flex flex-col gap-3">
+            {IF_PATTERNS.map((pattern) => {
+              const isSelected = pendingPattern === pattern.value;
+              return (
+                <button
+                  key={pattern.value}
+                  type="button"
+                  onClick={() => setPendingPattern(pattern.value)}
+                  aria-pressed={isSelected}
+                  className={`flex flex-col gap-1 rounded-xl bg-white px-4 py-3 text-left text-black ${
+                    isSelected
+                      ? "ring-2 ring-[#000000] ring-offset-2"
+                      : "border border-zinc-200 hover:bg-zinc-50"
+                  }`}
+                >
+                  <span className="text-lg font-bold">{pattern.label}</span>
+                  <span className="text-sm text-black">
+                    {pattern.description}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+          <button
+            type="button"
+            disabled={!pendingPattern || loading}
+            onClick={() => {
+              if (pendingPattern) {
+                setSelectedPattern(pendingPattern);
+              }
+              closePatternModal();
+            }}
+            className="rounded-xl px-6 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
+            style={PRIMARY_GRADIENT}
+          >
+            บันทึกรูปแบบ IF
+          </button>
+        </Modal>
       )}
 
       {confirmEnd && session && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-6">
-          <div className="flex w-full max-w-sm flex-col gap-5 rounded-2xl bg-white p-6">
-            <div>
-              <h2 className="text-lg font-bold text-zinc-900">
-                สิ้นสุดการอดอาหาร?
-              </h2>
-              <p className="mt-1 text-sm text-zinc-500">
-                คุณได้อดอาหารมาแล้ว{" "}
-                {formatClock(fastingElapsedMs)}{" "}
-                ต้องการบันทึกและสิ้นสุดหรือไม่?
-              </p>
-            </div>
-            <div className="flex flex-col gap-3">
-              <button
-                type="button"
-                onClick={endSession}
-                disabled={loading}
-                className="rounded-full bg-[#18A659] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:opacity-50"
-              >
-                {loading ? "กำลังบันทึก..." : "สิ้นสุดการอดอาหาร"}
-              </button>
-              <button
-                type="button"
-                onClick={() => setConfirmEnd(false)}
-                disabled={loading}
-                className="rounded-full border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50"
-              >
-                ยังไม่สิ้นสุด
-              </button>
-            </div>
+        <Modal ariaLabel="ยืนยันสิ้นสุดการอดอาหาร" onClose={closeConfirmEnd}>
+          <div>
+            <h2 className="text-lg font-bold text-zinc-900">
+              สิ้นสุดการอดอาหาร?
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              คุณได้อดอาหารมาแล้ว{" "}
+              {formatClock(fastingElapsedMs)}{" "}
+              ต้องการบันทึกและสิ้นสุดหรือไม่?
+            </p>
           </div>
-        </div>
+          {error && (
+            <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+              {error}
+            </p>
+          )}
+          <div className="flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={endSession}
+              disabled={loading}
+              className="rounded-full bg-[#18A659] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:opacity-50"
+            >
+              {loading ? "กำลังบันทึก..." : "สิ้นสุดการอดอาหาร"}
+            </button>
+            <button
+              type="button"
+              onClick={closeConfirmEnd}
+              disabled={loading}
+              className="rounded-full border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50"
+            >
+              ยังไม่สิ้นสุด
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {confirmCancel && session && (
+        <Modal ariaLabel="ยืนยันยกเลิกเซสชัน" onClose={closeConfirmCancel}>
+          <div>
+            <h2 className="text-lg font-bold text-zinc-900">
+              ยกเลิกเซสชันนี้?
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              เซสชันจะถูกลบและไม่ถูกบันทึกลงประวัติการทำ IF
+            </p>
+          </div>
+          {error && (
+            <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+              {error}
+            </p>
+          )}
+          <div className="flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={cancelSession}
+              disabled={loading}
+              className="rounded-full bg-red-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
+            >
+              {loading ? "กำลังยกเลิก..." : "ยืนยันยกเลิก"}
+            </button>
+            <button
+              type="button"
+              onClick={closeConfirmCancel}
+              disabled={loading}
+              className="rounded-full border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50"
+            >
+              ยังไม่ยกเลิก
+            </button>
+          </div>
+        </Modal>
       )}
     </div>
   );

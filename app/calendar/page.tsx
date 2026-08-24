@@ -80,7 +80,14 @@ export default async function CalendarPage({
     const existing = byDay.get(key);
     const candidate: DayStatus = {
       date,
-      status: session.status === "active" ? "active" : duration >= planned ? "success" : "fail",
+      // "abandoned" = auto-closed because the user started a new session
+      // without ending this one — never counts as a success.
+      status:
+        session.status === "active"
+          ? "active"
+          : session.status === "completed" && duration >= planned
+            ? "success"
+            : "fail",
       durationMinutes: Math.max(duration, existing?.durationMinutes ?? 0),
       isToday: isToday(date),
     };

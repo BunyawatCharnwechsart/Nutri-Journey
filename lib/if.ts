@@ -16,6 +16,35 @@ export const IF_PATTERN_VALUES = [
 
 export type IfPattern = (typeof IF_PATTERN_VALUES)[number];
 
+/**
+ * Lifecycle of an IF session row.
+ * - "active": still running (eating or fasting phase).
+ * - "completed": ended by the user and counted in stats/streaks.
+ * - "abandoned": auto-closed because the user started a new session while an
+ *   old one was still open — excluded from stats on purpose.
+ */
+export const IF_SESSION_STATUSES = [
+  "active",
+  "completed",
+  "abandoned",
+] as const;
+
+export type IfSessionStatus = (typeof IF_SESSION_STATUSES)[number];
+
+/** Shape of a row from the if_sessions table as returned by our API. */
+export interface IfSession {
+  id: string;
+  user_id?: string;
+  fasting_start_time: string;
+  fasting_end_time: string | null;
+  status: IfSessionStatus;
+  fasting_duration_minutes: number | null;
+  if_pattern: string | null;
+  eating_start_time: string | null;
+  eating_end_time: string | null;
+  eating_duration_minutes: number | null;
+}
+
 export const IF_PATTERNS: ReadonlyArray<{
   value: IfPattern;
   label: string;
