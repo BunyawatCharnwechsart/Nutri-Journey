@@ -16,6 +16,7 @@ import { th } from "date-fns/locale/th";
 import { getSessionUserId } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { formatMinutes, getFastingMinutes } from "@/lib/if";
+import { toICT, getICTDay } from "@/lib/timezone";
 import EggIconLink from "@/components/EggIconLink";
 
 export const dynamic = "force-dynamic";
@@ -55,8 +56,12 @@ export default async function CalendarPage({
   }
 
   const supabase = createServiceClient();
-  const monthStart = startOfMonth(currentMonth);
-  const monthEnd = endOfMonth(currentMonth);
+  const monthStartICT = startOfMonth(currentMonth);
+  const monthEndICT = endOfMonth(currentMonth);
+  // แปลงเป็น UTC boundaries สำหรับ query (ICT midnight → UTC = -7h)
+  const ICT_OFFSET = 7 * 60 * 60 * 1000;
+  const monthStart = new Date(monthStartICT.getTime() - ICT_OFFSET);
+  const monthEnd = new Date(monthEndICT.getTime() - ICT_OFFSET);
 
   const { data: sessions } = await supabase
     .from("if_sessions")
@@ -71,15 +76,16 @@ export default async function CalendarPage({
   // Group completed sessions by their local calendar day.
   const byDay = new Map<string, DayStatus>();
   for (const session of sessions ?? []) {
-    const date = new Date(session.fasting_start_time);
-    const key = format(date, "yyyy-MM-dd");
+    const utcDate = new Date(session.fasting_start_time);
+    const ictDate = toICT(utcDate);
+    const key = format(ictDate, "yyyy-MM-dd");
 
     const planned = getFastingMinutes(session.if_pattern);
     const duration = session.fasting_duration_minutes ?? 0;
 
     const existing = byDay.get(key);
     const candidate: DayStatus = {
-      date,
+      date: ictDate,
       // "abandoned" = auto-closed because the user started a new session
       // without ending this one — never counts as a success.
       status:
@@ -89,7 +95,7 @@ export default async function CalendarPage({
             ? "success"
             : "fail",
       durationMinutes: Math.max(duration, existing?.durationMinutes ?? 0),
-      isToday: isToday(date),
+      isToday: isToday(ictDate),
     };
 
     // An active session takes priority over any completed one that day.
@@ -103,8 +109,8 @@ export default async function CalendarPage({
   }
 
   // Build the calendar grid (42 cells, starts on the weekday of day 1).
-  const firstDayOffset = getDay(monthStart);
-  const gridStart = new Date(monthStart);
+  const firstDayOffset = getDay(monthStartICT);
+  const gridStart = new Date(monthStartICT);
   gridStart.setDate(1 - firstDayOffset);
 
   const cells: DayStatus[] = [];
@@ -198,7 +204,7 @@ export default async function CalendarPage({
                         : "text-zinc-900"
                     }`}
                   >
-                    {format(cell.date, "d")}
+                    {getICTDay(cell.date)}
                   </span>
                   {cell.status !== "none" && cell.durationMinutes > 0 && (
                     <span className="mt-0.5 text-[10px] font-medium text-zinc-500">
