@@ -43,7 +43,14 @@ export async function PATCH(request: NextRequest) {
     // Determine current phase
     const isEatingPhase = session.fasting_end_time !== null;
 
-    let updatePayload: any = {};
+    type IfSessionUpdate = {
+      fasting_start_time?: string;
+      fasting_end_time?: string;
+      fasting_duration_minutes?: number;
+      eating_start_time?: string;
+    };
+
+    let updatePayload: IfSessionUpdate = {};
 
     if (!isEatingPhase) {
       // Fasting phase: just update the fasting_start_time
@@ -86,8 +93,8 @@ export async function PATCH(request: NextRequest) {
     }
 
     return apiSuccess({ session: updated });
-  } catch (error: any) {
-    console.error("[edit-time] catch:", error);
+  } catch (error: unknown) {
+    console.error("[edit-time] catch:", error instanceof Error ? error.message : error);
     return apiError("Internal server error", 500, "INTERNAL_ERROR");
   }
 }
