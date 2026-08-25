@@ -87,5 +87,8 @@ export function getBmiCategory(bmi: number | null): string {
   if (bmi < 25) {
     return "น้ำหนักเกิน";
   }
-  return "อ้วน";
+  if (bmi < 30) {
+    return "อ้วน ระดับ 1";
+  }
+  return "อ้วน ระดับ 2 (อันตราย)";
 }

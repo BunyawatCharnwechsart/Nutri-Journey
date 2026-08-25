@@ -23,10 +23,11 @@ const ACTIVITY_LABELS: Record<string, string> = Object.fromEntries(
   ACTIVITY_LEVELS.map((option) => [option.value, option.label])
 );
 const BMI_COLORS: Record<string, string> = {
-  "น้ำหนักน้อย": "#62D4F0",
-  ปกติ: "#18A659",
-  "น้ำหนักเกิน": "#FFAE00",
-  อ้วน: "#FF0000",
+  "น้ำหนักน้อย": "#3ABFF8",
+  "ปกติ": "#18A659",
+  "น้ำหนักเกิน": "#FBBF24",
+  "อ้วน ระดับ 1": "#F97316",
+  "อ้วน ระดับ 2 (อันตราย)": "#EF4444",
 };
 
 function InfoRow({
