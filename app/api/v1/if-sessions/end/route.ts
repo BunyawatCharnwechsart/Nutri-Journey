@@ -40,7 +40,7 @@ export async function POST(request: Request) {
 
   const { data: session } = await supabase
     .from("if_sessions")
-    .select("id, eating_end_time, fasting_start_time, status")
+    .select("id, eating_start_time, fasting_end_time, status")
     .eq("id", sessionId)
     .eq("user_id", auth.userId)
     .maybeSingle();
@@ -53,31 +53,35 @@ export async function POST(request: Request) {
     return apiError("เซสชันนี้สิ้นสุดแล้ว", 409, "CONFLICT");
   }
 
-  // Fasting has not started yet (eating phase is still open). Ending now
-  // would record the eating window as fasting time, so refuse and let the
-  // client call /end-eating first.
-  if (!session.eating_end_time) {
+  if (!session.fasting_end_time) {
     return apiError(
-      "กรุณาสิ้นสุดการกินก่อนสิ้นสุดการอดอาหาร",
+      "กรุณาสิ้นสุดการอดก่อนสิ้นสุดการกิน",
+      409,
+      "CONFLICT"
+    );
+  }
+
+  if (!session.eating_start_time) {
+    return apiError(
+      "ไม่พบเวลาเริ่มกิน",
       409,
       "CONFLICT"
     );
   }
 
   const now = new Date();
-  const durationMinutes = Math.max(
+  const eatingStart = new Date(session.eating_start_time).getTime();
+  const eatingDurationMinutes = Math.max(
     0,
-    Math.round(
-      (now.getTime() - new Date(session.fasting_start_time).getTime()) / 60000
-    )
+    Math.round((now.getTime() - eatingStart) / 60000)
   );
 
   const { data: updated, error } = await supabase
     .from("if_sessions")
     .update({
       status: "completed",
-      fasting_end_time: now.toISOString(),
-      fasting_duration_minutes: durationMinutes,
+      eating_end_time: now.toISOString(),
+      eating_duration_minutes: eatingDurationMinutes,
     })
     .eq("id", sessionId)
     .eq("user_id", auth.userId)

@@ -20,6 +20,11 @@ const PRIMARY_GRADIENT = {
   background: "linear-gradient(135deg, #18A659 0%, #26BA6A 100%)",
 } as const;
 
+/** Fasting gradient used for fasting phase buttons. */
+const FASTING_GRADIENT = {
+  background: "linear-gradient(135deg, #DC8426 0%, #E69B4B 100%)",
+} as const;
+
 function formatClock(milliseconds: number): string {
   const totalSeconds = Math.max(0, Math.floor(milliseconds / 1000));
   const hours = Math.floor(totalSeconds / 3600);
@@ -30,15 +35,18 @@ function formatClock(milliseconds: number): string {
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 
-/** Formats a timestamp as a Thai 24-hour time, e.g. "14:30 น.". */
+/** Formats a timestamp as a Thai date + 24-hour time, e.g. "25/08/2026 14:30 น.". */
 function formatThaiTime(value: string | null | undefined): string {
   if (!value) {
     return "—";
   }
   const date = new Date(value);
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
   const hours = String(date.getHours()).padStart(2, "0");
   const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${hours}:${minutes} น.`;
+  return `${day}/${month}/${year} ${hours}:${minutes} น.`;
 }
 
 /**
@@ -47,7 +55,7 @@ function formatThaiTime(value: string | null | undefined): string {
  */
 async function requestApi<T>(
   url: string,
-  method: "GET" | "POST" | "DELETE",
+  method: "GET" | "POST" | "PATCH" | "DELETE",
   payload?: unknown
 ): Promise<{ ok: boolean; data?: T; message?: string }> {
   try {
@@ -226,12 +234,21 @@ export default function IfTracker() {
   const [now, setNow] = useState(() => Date.now());
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
-  const [confirmEnd, setConfirmEnd] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmEnd, setConfirmEnd] = useState(false);
+  const [editTimeOpen, setEditTimeOpen] = useState(false);
+  const [editTimeValue, setEditTimeValue] = useState("");
   const [patternModalOpen, setPatternModalOpen] = useState(false);
   const [pendingPattern, setPendingPattern] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const startedRef = useRef(false);
+
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   // Stable closers so the Modal listeners are not re-bound on every tick.
   const closePatternModal = useCallback(() => setPatternModalOpen(false), []);
@@ -257,7 +274,7 @@ export default function IfTracker() {
       }
       if (result.data?.session) {
         setSession(result.data.session);
-        setMode(result.data.session.eating_end_time ? "fasting" : "eating");
+        setMode(result.data.session.fasting_end_time ? "eating" : "fasting");
         setView("timer");
       }
     }
@@ -288,16 +305,16 @@ export default function IfTracker() {
     setLoading(false);
 
     if (!result.ok || !result.data) {
-      setError(result.message ?? "เริ่ม Fasting ไม่สำเร็จ ลองอีกครั้ง");
+      setError(result.message ?? "เริ่ม IF ไม่สำเร็จ ลองอีกครั้ง");
       return;
     }
     setSession(result.data.session);
     setNow(Date.now());
-    setMode("eating");
+    setMode("fasting");
     setView("timer");
   }
 
-  async function endEating() {
+  async function endFasting() {
     if (!session) {
       return;
     }
@@ -311,12 +328,12 @@ export default function IfTracker() {
     setLoading(false);
 
     if (!result.ok || !result.data) {
-      setError(result.message ?? "สิ้นสุดการกินไม่สำเร็จ ลองอีกครั้ง");
+      setError(result.message ?? "สิ้นสุดการอดไม่สำเร็จ ลองอีกครั้ง");
       return;
     }
     setSession(result.data.session);
     setNow(Date.now());
-    setMode("fasting");
+    setMode("eating");
   }
 
   async function endSession() {
@@ -339,6 +356,53 @@ export default function IfTracker() {
     setSession(result.data.session);
     setConfirmEnd(false);
     setView("success");
+  }
+
+  function openEditTimeModal() {
+    if (!session) return;
+    const targetDate = new Date(
+      mode === "fasting"
+        ? session.fasting_start_time
+        : session.eating_start_time!
+    );
+    const hh = String(targetDate.getHours()).padStart(2, "0");
+    const mm = String(targetDate.getMinutes()).padStart(2, "0");
+    setEditTimeValue(`${hh}:${mm}`);
+    setEditTimeOpen(true);
+  }
+
+  async function saveEditedTime() {
+    if (!session || !editTimeValue) return;
+
+    const baseDate = new Date(
+      mode === "fasting"
+        ? session.fasting_start_time
+        : session.eating_start_time!
+    );
+    
+    const [hours, minutes] = editTimeValue.split(":").map(Number);
+    baseDate.setHours(hours, minutes, 0, 0);
+
+    if (baseDate.getTime() > Date.now()) {
+      baseDate.setDate(baseDate.getDate() - 1);
+    }
+
+    setLoading(true);
+    setError(null);
+    const result = await requestApi<{ session: IfSession }>(
+      "/api/v1/if-sessions/edit-time",
+      "PATCH",
+      { sessionId: session.id, newStartTime: baseDate.toISOString() }
+    );
+    setLoading(false);
+
+    if (!result.ok || !result.data) {
+      setError(result.message ?? "แก้ไขเวลาไม่สำเร็จ ลองอีกครั้ง");
+      return;
+    }
+
+    setSession(result.data.session);
+    setEditTimeOpen(false);
   }
 
   async function cancelSession() {
@@ -386,8 +450,8 @@ export default function IfTracker() {
     ? new Date(session.eating_start_time).getTime()
     : sessionStartMs;
 
-  const eatingElapsedMs = session ? Math.max(0, now - eatingStartMs) : 0;
   const fastingElapsedMs = session ? Math.max(0, now - sessionStartMs) : 0;
+  const eatingElapsedMs = session ? Math.max(0, now - eatingStartMs) : 0;
 
   const eatingRemainingMs = eatingMinutes * 60000 - eatingElapsedMs;
   const fastingRemainingMs = plannedMinutes * 60000 - fastingElapsedMs;
@@ -396,39 +460,39 @@ export default function IfTracker() {
   const eatingExpired = mode === "eating" && eatingMinutes > 0 && eatingRemainingMs <= 0;
 
   const progress =
-    mode === "eating"
-      ? eatingMinutes > 0
-        ? Math.min(
-            100,
-            Math.round((eatingElapsedMs / (eatingMinutes * 60000)) * 100)
-          )
-        : 0
-      : plannedMinutes > 0
+    mode === "fasting"
+      ? plannedMinutes > 0
         ? Math.min(
             100,
             Math.round((fastingElapsedMs / (plannedMinutes * 60000)) * 100)
+          )
+        : 0
+      : eatingMinutes > 0
+        ? Math.min(
+            100,
+            Math.round((eatingElapsedMs / (eatingMinutes * 60000)) * 100)
           )
         : 0;
 
   // Quantised to minutes so the screen-reader status does not fire every second.
   const elapsedMinutes = Math.floor(
-    (mode === "eating" ? eatingElapsedMs : fastingElapsedMs) / 60000
+    (mode === "fasting" ? fastingElapsedMs : eatingElapsedMs) / 60000
   );
   const srSummary =
     view === "timer" && session
-      ? mode === "eating"
-        ? `กำลังกินอาหาร ผ่านมาแล้ว ${elapsedMinutes} นาที`
-        : reachedGoal
+      ? mode === "fasting"
+        ? reachedGoal
           ? "อดครบตามเป้าหมายแล้ว"
           : `กำลังอดอาหาร ผ่านมาแล้ว ${elapsedMinutes} นาที`
+        : `กำลังกินอาหาร ผ่านมาแล้ว ${elapsedMinutes} นาที`
       : undefined;
 
   const subheader = initializing
     ? "กำลังโหลดสถานะ IF..."
     : view === "timer"
-      ? mode === "eating"
-        ? "กำลังกินอาหาร"
-        : `กำลังทำ IF รูปแบบ ${activePattern?.label ?? "IF"}`
+      ? mode === "fasting"
+        ? `กำลังอดอาหาร — ${activePattern?.label ?? "IF"}`
+        : "กำลังกินอาหาร"
       : view === "success"
         ? "ทำ IF สำเร็จ!"
         : selectedPattern
@@ -487,10 +551,10 @@ export default function IfTracker() {
               type="button"
               onClick={startSession}
               disabled={loading}
-              style={PRIMARY_GRADIENT}
+              style={FASTING_GRADIENT}
               className="w-full rounded-xl px-6 py-3 text-[20px] font-bold text-white transition-[filter] hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
             >
-              {loading ? "กำลังเริ่ม..." : "เริ่ม Fasting"}
+              {loading ? "กำลังเริ่ม..." : "เริ่ม IF"}
             </button>
           )}
         </section>
@@ -500,26 +564,33 @@ export default function IfTracker() {
         <section className="flex flex-col items-center gap-6 text-center">
           <FastingClock
             timeText={
-              mode === "eating"
-                ? formatClock(eatingElapsedMs)
-                : formatClock(fastingElapsedMs)
+              mode === "fasting"
+                ? formatClock(fastingElapsedMs)
+                : formatClock(eatingElapsedMs)
             }
             caption={
-              mode === "eating"
-                ? eatingExpired
+              mode === "fasting"
+                ? reachedGoal
+                  ? "อดครบตามเป้าหมายแล้ว"
+                  : "กำลังอดอาหาร"
+                : eatingExpired
                   ? "หมดเวลากินตามแผนแล้ว"
                   : "กำลังกินอาหาร"
-                : reachedGoal
-                  ? "ทำตามเป้าหมายสำเร็จ"
-                  : "เวลาที่อดแล้ว"
             }
             progress={progress}
             reachedGoal={mode === "fasting" && reachedGoal}
-            ringColor={mode === "eating" ? "#18A659" : "#DC8426"}
+            ringColor={mode === "fasting" ? "#DC8426" : "#18A659"}
             srSummary={srSummary}
           />
 
-          {mode === "eating" ? (
+          {mode === "fasting" ? (
+            <PhaseCard
+              label="เริ่มการอด"
+              startTime={formatThaiTime(session.fasting_start_time)}
+              remainingMs={fastingRemainingMs}
+              accent="#DC8426"
+            />
+          ) : (
             <PhaseCard
               label="เริ่มการกิน"
               startTime={formatThaiTime(
@@ -529,25 +600,18 @@ export default function IfTracker() {
               accent="#18A659"
               expired={eatingExpired}
             />
-          ) : (
-            <PhaseCard
-              label="เริ่มการอด"
-              startTime={formatThaiTime(session.fasting_start_time)}
-              remainingMs={fastingRemainingMs}
-              accent="#DC8426"
-            />
           )}
 
           <div className="flex w-full flex-col gap-3">
-            {mode === "eating" ? (
+            {mode === "fasting" ? (
               <button
                 type="button"
-                onClick={endEating}
+                onClick={endFasting}
                 disabled={loading}
-                style={PRIMARY_GRADIENT}
+                style={FASTING_GRADIENT}
                 className="w-full rounded-xl px-6 py-3 text-[20px] font-bold text-white transition-[filter] hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {loading ? "กำลังบันทึก..." : "สิ้นสุดการกิน"}
+                {loading ? "กำลังบันทึก..." : "สิ้นสุดการอด"}
               </button>
             ) : (
               <button
@@ -557,9 +621,17 @@ export default function IfTracker() {
                 style={PRIMARY_GRADIENT}
                 className="w-full rounded-xl px-6 py-3 text-[20px] font-bold text-white transition-[filter] hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                สิ้นสุดการอดอาหาร
+                สิ้นสุดการกิน
               </button>
             )}
+            <button
+              type="button"
+              onClick={openEditTimeModal}
+              disabled={loading}
+              className="w-full rounded-2xl border border-zinc-300 px-6 py-4 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50"
+            >
+              แก้ไขช่วงเวลา
+            </button>
             <button
               type="button"
               onClick={() => setConfirmCancel(true)}
@@ -671,14 +743,14 @@ export default function IfTracker() {
       )}
 
       {confirmEnd && session && (
-        <Modal ariaLabel="ยืนยันสิ้นสุดการอดอาหาร" onClose={closeConfirmEnd}>
+        <Modal ariaLabel="ยืนยันสิ้นสุดการกิน" onClose={closeConfirmEnd}>
           <div>
             <h2 className="text-lg font-bold text-zinc-900">
-              สิ้นสุดการอดอาหาร?
+              สิ้นสุดการกิน?
             </h2>
             <p className="mt-1 text-sm text-zinc-500">
-              คุณได้อดอาหารมาแล้ว{" "}
-              {formatClock(fastingElapsedMs)}{" "}
+              คุณได้กินอาหารมาแล้ว{" "}
+              {formatClock(eatingElapsedMs)}{" "}
               ต้องการบันทึกและสิ้นสุดหรือไม่?
             </p>
           </div>
@@ -694,7 +766,7 @@ export default function IfTracker() {
               disabled={loading}
               className="rounded-full bg-[#18A659] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:opacity-50"
             >
-              {loading ? "กำลังบันทึก..." : "สิ้นสุดการอดอาหาร"}
+              {loading ? "กำลังบันทึก..." : "สิ้นสุดการกิน"}
             </button>
             <button
               type="button"
@@ -703,6 +775,52 @@ export default function IfTracker() {
               className="rounded-full border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50"
             >
               ยังไม่สิ้นสุด
+            </button>
+          </div>
+        </Modal>
+      )}
+
+      {editTimeOpen && session && (
+        <Modal ariaLabel="แก้ไขเวลา" onClose={() => setEditTimeOpen(false)}>
+          <div>
+            <h2 className="text-lg font-bold text-zinc-900">
+              {mode === "fasting" ? "แก้ไขเวลาอดอาหาร" : "แก้ไขเวลากิน"}
+            </h2>
+            <p className="mt-1 text-sm text-zinc-500">
+              {mode === "fasting"
+                ? "ใช้สำหรับกรณีที่ลืมกดเริ่มอดอาหาร"
+                : "ใช้สำหรับกรณีที่ลืมกดกินอาหาร"}
+            </p>
+          </div>
+          {error && (
+            <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
+              {error}
+            </p>
+          )}
+          <div className="mt-4 flex justify-center">
+            <input
+              type="time"
+              value={editTimeValue}
+              onChange={(e) => setEditTimeValue(e.target.value)}
+              className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-2xl font-bold tracking-wider text-center outline-none focus:border-[#18A659] focus:ring-1 focus:ring-[#18A659]"
+            />
+          </div>
+          <div className="mt-6 flex flex-col gap-3">
+            <button
+              type="button"
+              onClick={saveEditedTime}
+              disabled={loading}
+              className="rounded-full bg-[#18A659] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:opacity-50"
+            >
+              {loading ? "กำลังบันทึก..." : "บันทึกเวลา"}
+            </button>
+            <button
+              type="button"
+              onClick={() => setEditTimeOpen(false)}
+              disabled={loading}
+              className="rounded-full border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50"
+            >
+              ยกเลิก
             </button>
           </div>
         </Modal>

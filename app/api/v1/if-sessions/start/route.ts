@@ -83,7 +83,6 @@ export async function POST(request: Request) {
     .insert({
       user_id: auth.userId,
       fasting_start_time: new Date().toISOString(),
-      eating_start_time: new Date().toISOString(),
       status: "active",
       if_pattern: ifPattern,
     })

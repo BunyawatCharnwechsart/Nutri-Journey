@@ -120,6 +120,8 @@ export default async function CalendarPage({
 
   const prevMonth = subMonths(currentMonth, 1);
   const canGoBack = isAfter(monthStart, addMonths(startOfMonth(today), -12));
+  const nextMonth = addMonths(currentMonth, 1);
+  const isCurrentMonth = isSameMonth(currentMonth, today);
 
   return (
     <main className="flex flex-1 flex-col px-6 pt-6 pb-10">
@@ -152,7 +154,17 @@ export default async function CalendarPage({
             <h2 className="text-base font-semibold text-zinc-900">
               {format(currentMonth, "LLLL yyyy", { locale: th })}
             </h2>
-            <span className="h-9 w-9" />
+            {!isCurrentMonth ? (
+              <Link
+                href={`/calendar?month=${format(nextMonth, "yyyy-MM")}`}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:bg-zinc-100"
+                aria-label="เดือนถัดไป"
+              >
+                ›
+              </Link>
+            ) : (
+              <span className="h-9 w-9" />
+            )}
           </div>
 
           <div className="grid grid-cols-7 gap-1 text-center">

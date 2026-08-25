@@ -39,7 +39,7 @@ export async function POST(request: Request) {
   const { data: session } = await supabase
     .from("if_sessions")
     .select(
-      "id, fasting_start_time, eating_start_time, eating_end_time, status"
+      "id, fasting_start_time, fasting_end_time, status"
     )
     .eq("id", sessionId)
     .eq("user_id", auth.userId)
@@ -53,25 +53,23 @@ export async function POST(request: Request) {
     return apiError("เซสชันนี้สิ้นสุดแล้ว", 409, "CONFLICT");
   }
 
-  if (session.eating_end_time) {
-    return apiError("การกินสิ้นสุดแล้ว", 409, "CONFLICT");
+  if (session.fasting_end_time) {
+    return apiError("การอดสิ้นสุดแล้ว", 409, "CONFLICT");
   }
 
   const now = new Date();
-  const eatingStart = session.eating_start_time
-    ? new Date(session.eating_start_time).getTime()
-    : new Date(session.fasting_start_time).getTime();
-  const eatingDurationMinutes = Math.max(
+  const fastingStart = new Date(session.fasting_start_time).getTime();
+  const fastingDurationMinutes = Math.max(
     0,
-    Math.round((now.getTime() - eatingStart) / 60000)
+    Math.round((now.getTime() - fastingStart) / 60000)
   );
 
   const { data: updated, error } = await supabase
     .from("if_sessions")
     .update({
-      eating_end_time: now.toISOString(),
-      eating_duration_minutes: eatingDurationMinutes,
-      fasting_start_time: now.toISOString(),
+      fasting_end_time: now.toISOString(),
+      fasting_duration_minutes: fastingDurationMinutes,
+      eating_start_time: now.toISOString(),
     })
     .eq("id", sessionId)
     .eq("user_id", auth.userId)
