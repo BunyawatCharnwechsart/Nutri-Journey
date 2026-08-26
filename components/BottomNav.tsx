@@ -4,7 +4,7 @@ import { useEffect } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 
-const HIDDEN_PATHS = ["/", "/logged-out", "/health-profile"];
+const HIDDEN_PATHS = ["/", "/logged-out", "/health-profile", "/privacy", "/terms"];
 
 // Routes that exist and are visited often - warmed up so navigation feels instant.
 const PREFETCH_PATHS = ["/dashboard", "/profile"];
