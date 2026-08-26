@@ -13,6 +13,7 @@ import {
 } from "@/lib/profile";
 import LogoutButton from "@/components/LogoutButton";
 import EggIconLink from "@/components/EggIconLink";
+import GoogleHealthSection from "@/components/GoogleHealthSection";
 
 export const dynamic = "force-dynamic";
 
@@ -215,6 +216,8 @@ export default async function ProfilePage() {
             value={profile.chest_cm != null ? `${profile.chest_cm} ซม.` : "—"}
           />
         </Card>
+
+        <GoogleHealthSection />
 
         <div className="flex flex-col gap-3">
           <Link
