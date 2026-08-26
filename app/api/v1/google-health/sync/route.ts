@@ -4,13 +4,13 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { googleHealthSyncSchema } from "@/lib/validation";
 import {
   getValidAccessToken,
-  fetchStepsData,
-  fetchDistanceData,
-  fetchActiveCaloriesData,
+  fetchStepsDailyRollUp,
+  fetchDistanceDailyRollUp,
+  fetchActiveCalDailyRollUp,
   fetchTotalCaloriesData,
-  processStepsData,
-  processDistanceData,
-  processActiveCaloriesData,
+  processStepsRollupData,
+  processDistanceRollupData,
+  processActiveCalRollupData,
   processTotalCaloriesData,
   mergeDailyMetrics,
   GoogleHealthError,
@@ -48,10 +48,14 @@ export async function POST(request: Request) {
 
     const [stepsMap, distanceMap, activeCalMap, totalCalMap] =
       await Promise.all([
-        fetchStepsData(accessToken, from, to).then(processStepsData),
-        fetchDistanceData(accessToken, from, to).then(processDistanceData),
-        fetchActiveCaloriesData(accessToken, from, to).then(
-          processActiveCaloriesData
+        fetchStepsDailyRollUp(accessToken, from, to).then(
+          processStepsRollupData
+        ),
+        fetchDistanceDailyRollUp(accessToken, from, to).then(
+          processDistanceRollupData
+        ),
+        fetchActiveCalDailyRollUp(accessToken, from, to).then(
+          processActiveCalRollupData
         ),
         fetchTotalCaloriesData(accessToken, from, to).then(
           processTotalCaloriesData

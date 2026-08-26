@@ -90,6 +90,8 @@ export interface RollupDataPoint {
   startTime?: string;
   endTime?: string;
   steps?: { countSum: string };
+  distance?: { millimetersSum: string };
+  activeEnergyBurned?: { kcalSum: string };
   totalCalories?: { kcalSum: string };
   heartRate?: { avgBpm: number };
 }
@@ -347,112 +349,79 @@ export async function getGoogleIdentity(
   };
 }
 
-// ---- Steps ----
+// ---- Steps (dailyRollUp) ----
 
-export async function fetchStepsData(
+export async function fetchStepsDailyRollUp(
   accessToken: string,
   from: string,
   to: string
-): Promise<DataPoint[]> {
-  const allPoints: DataPoint[] = [];
-  let pageToken: string | undefined;
+): Promise<RollupDataPoint[]> {
+  const startDate = new Date(`${from}T00:00:00Z`);
+  const endDate = new Date(`${to}T00:00:00Z`);
 
-  for (let i = 0; i < 5; i++) {
-    const params: Record<string, string> = {
-      filter: `steps.interval.start_time >= "${isoToStartOfDay(from)}" AND steps.interval.start_time < "${isoToEndOfDay(to)}"`,
-      pageSize: "5000",
-    };
-    if (pageToken) {
-      params.pageToken = pageToken;
+  const data = (await healthApiPost(
+    accessToken,
+    "/users/me/dataTypes/steps/dataPoints:dailyRollUp",
+    {
+      range: {
+        start: toCivilTime(startDate),
+        end: civilTimeToEndOfDay(endDate),
+      },
+      windowSizeDays: 1,
     }
+  )) as { rollupDataPoints?: RollupDataPoint[] };
 
-    const data = (await healthApiGet(
-      accessToken,
-      "/users/me/dataTypes/steps/dataPoints:reconcile",
-      params
-    )) as { dataPoints?: DataPoint[]; nextPageToken?: string };
-
-    if (data.dataPoints) {
-      allPoints.push(...data.dataPoints);
-    }
-
-    if (!data.nextPageToken) break;
-    pageToken = data.nextPageToken;
-  }
-
-  return allPoints;
+  return data.rollupDataPoints ?? [];
 }
 
-// ---- Distance ----
+// ---- Distance (dailyRollUp) ----
 
-export async function fetchDistanceData(
+export async function fetchDistanceDailyRollUp(
   accessToken: string,
   from: string,
   to: string
-): Promise<DataPoint[]> {
-  const allPoints: DataPoint[] = [];
-  let pageToken: string | undefined;
+): Promise<RollupDataPoint[]> {
+  const startDate = new Date(`${from}T00:00:00Z`);
+  const endDate = new Date(`${to}T00:00:00Z`);
 
-  for (let i = 0; i < 5; i++) {
-    const params: Record<string, string> = {
-      filter: `distance.interval.start_time >= "${isoToStartOfDay(from)}" AND distance.interval.start_time < "${isoToEndOfDay(to)}"`,
-      pageSize: "5000",
-    };
-    if (pageToken) {
-      params.pageToken = pageToken;
+  const data = (await healthApiPost(
+    accessToken,
+    "/users/me/dataTypes/distance/dataPoints:dailyRollUp",
+    {
+      range: {
+        start: toCivilTime(startDate),
+        end: civilTimeToEndOfDay(endDate),
+      },
+      windowSizeDays: 1,
     }
+  )) as { rollupDataPoints?: RollupDataPoint[] };
 
-    const data = (await healthApiGet(
-      accessToken,
-      "/users/me/dataTypes/distance/dataPoints:reconcile",
-      params
-    )) as { dataPoints?: DataPoint[]; nextPageToken?: string };
-
-    if (data.dataPoints) {
-      allPoints.push(...data.dataPoints);
-    }
-
-    if (!data.nextPageToken) break;
-    pageToken = data.nextPageToken;
-  }
-
-  return allPoints;
+  return data.rollupDataPoints ?? [];
 }
 
-// ---- Active Energy Burned ----
+// ---- Active Energy Burned (dailyRollUp) ----
 
-export async function fetchActiveCaloriesData(
+export async function fetchActiveCalDailyRollUp(
   accessToken: string,
   from: string,
   to: string
-): Promise<DataPoint[]> {
-  const allPoints: DataPoint[] = [];
-  let pageToken: string | undefined;
+): Promise<RollupDataPoint[]> {
+  const startDate = new Date(`${from}T00:00:00Z`);
+  const endDate = new Date(`${to}T00:00:00Z`);
 
-  for (let i = 0; i < 5; i++) {
-    const params: Record<string, string> = {
-      filter: `active_energy_burned.interval.start_time >= "${isoToStartOfDay(from)}" AND active_energy_burned.interval.start_time < "${isoToEndOfDay(to)}"`,
-      pageSize: "5000",
-    };
-    if (pageToken) {
-      params.pageToken = pageToken;
+  const data = (await healthApiPost(
+    accessToken,
+    "/users/me/dataTypes/active-energy-burned/dataPoints:dailyRollUp",
+    {
+      range: {
+        start: toCivilTime(startDate),
+        end: civilTimeToEndOfDay(endDate),
+      },
+      windowSizeDays: 1,
     }
+  )) as { rollupDataPoints?: RollupDataPoint[] };
 
-    const data = (await healthApiGet(
-      accessToken,
-      "/users/me/dataTypes/active-energy-burned/dataPoints:reconcile",
-      params
-    )) as { dataPoints?: DataPoint[]; nextPageToken?: string };
-
-    if (data.dataPoints) {
-      allPoints.push(...data.dataPoints);
-    }
-
-    if (!data.nextPageToken) break;
-    pageToken = data.nextPageToken;
-  }
-
-  return allPoints;
+  return data.rollupDataPoints ?? [];
 }
 
 // ---- Total Calories (dailyRollUp) ----
@@ -581,44 +550,47 @@ export async function fetchHeartRateData(
 // Data Processing Functions
 // ============================================================================
 
-export function processStepsData(dataPoints: DataPoint[]): Map<string, number> {
+export function processStepsRollupData(
+  rollupPoints: RollupDataPoint[]
+): Map<string, number> {
   const byDate = new Map<string, number>();
 
-  for (const point of dataPoints) {
-    if (!point.steps) continue;
-    const date = point.steps.interval.startTime.slice(0, 10);
-    const count = parseInt(point.steps.count, 10) || 0;
-    byDate.set(date, (byDate.get(date) ?? 0) + count);
+  for (const point of rollupPoints) {
+    if (!point.civilStartTime || !point.steps) continue;
+    const { year, month, day } = point.civilStartTime.date;
+    const date = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    byDate.set(date, parseInt(point.steps.countSum, 10) || 0);
   }
 
   return byDate;
 }
 
-export function processDistanceData(
-  dataPoints: DataPoint[]
+export function processDistanceRollupData(
+  rollupPoints: RollupDataPoint[]
 ): Map<string, number> {
   const byDate = new Map<string, number>();
 
-  for (const point of dataPoints) {
-    if (!point.distance) continue;
-    const date = point.distance.interval.startTime.slice(0, 10);
-    const meters = (parseInt(point.distance.millimeters, 10) || 0) / 1000;
-    byDate.set(date, (byDate.get(date) ?? 0) + meters);
+  for (const point of rollupPoints) {
+    if (!point.civilStartTime || !point.distance) continue;
+    const { year, month, day } = point.civilStartTime.date;
+    const date = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    const meters = (parseInt(point.distance.millimetersSum, 10) || 0) / 1000;
+    byDate.set(date, Math.round(meters * 100) / 100);
   }
 
   return byDate;
 }
 
-export function processActiveCaloriesData(
-  dataPoints: DataPoint[]
+export function processActiveCalRollupData(
+  rollupPoints: RollupDataPoint[]
 ): Map<string, number> {
   const byDate = new Map<string, number>();
 
-  for (const point of dataPoints) {
-    if (!point.activeEnergyBurned) continue;
-    const date = point.activeEnergyBurned.interval.startTime.slice(0, 10);
-    const kcal = parseFloat(point.activeEnergyBurned.kcal) || 0;
-    byDate.set(date, (byDate.get(date) ?? 0) + kcal);
+  for (const point of rollupPoints) {
+    if (!point.civilStartTime || !point.activeEnergyBurned) continue;
+    const { year, month, day } = point.civilStartTime.date;
+    const date = `${year}-${String(month).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
+    byDate.set(date, parseFloat(point.activeEnergyBurned.kcalSum) || 0);
   }
 
   return byDate;
