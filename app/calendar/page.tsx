@@ -15,7 +15,7 @@ import { th } from "date-fns/locale/th";
 
 import { getSessionUserId } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
-import { formatMinutes, getFastingMinutes } from "@/lib/if";
+import { getFastingMinutes } from "@/lib/if";
 import { toICT, getICTDay } from "@/lib/timezone";
 import EggIconLink from "@/components/EggIconLink";
 
@@ -206,31 +206,28 @@ export default async function CalendarPage({
                   >
                     {getICTDay(cell.date)}
                   </span>
-                  {cell.status !== "none" && cell.durationMinutes > 0 && (
-                    <span className="mt-0.5 text-[10px] font-medium text-zinc-500">
-                      {formatMinutes(cell.durationMinutes)}
-                    </span>
-                  )}
                 </div>
               );
             })}
           </div>
-        </section>
 
-        <div className="flex flex-col gap-2 text-sm text-zinc-500">
-          <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded bg-[#18A659]/40" />
-            สำเร็จ (ทำครบเป้าหมาย)
+          <div className="mt-4 border-t border-zinc-200 pt-4">
+            <div className="flex flex-col items-start gap-2 text-sm text-zinc-500 sm:flex-row sm:items-center sm:gap-6">
+              <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded bg-[#18A659]/40" />
+                สำเร็จ (ทำครบเป้าหมาย)
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded bg-[#FFAE00]/40" />
+                ไม่ถึงเป้าหมาย
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded bg-[#62D4F0]/40" />
+                กำลังอดอาหาร
+              </div>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded bg-[#FFAE00]/40" />
-            ไม่ถึงเป้าหมาย
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded bg-[#62D4F0]/40" />
-            กำลังอดอาหาร
-          </div>
-        </div>
+        </section>
       </div>
     </main>
   );
