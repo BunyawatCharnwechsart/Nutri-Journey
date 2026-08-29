@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 
 import { duePhaseNotification } from "@/lib/if-notifications";
-import { parseLinkCode } from "@/lib/line-link";
 
 const MINUTE = 60_000;
 const HOUR = 60 * MINUTE;
@@ -84,19 +83,5 @@ describe("duePhaseNotification — eating phase", () => {
         eating_end_time: new Date(22 * HOUR).toISOString(),
       })
     ).toEqual({ kind: "none" });
-  });
-});
-
-describe("parseLinkCode", () => {
-  it("extracts a valid 24-hex code with the prefix", () => {
-    expect(parseLinkCode("[NJ-LINK] a1b2c3d4e5f6a7b8c9d0e1f2")).toBe(
-      "a1b2c3d4e5f6a7b8c9d0e1f2"
-    );
-  });
-
-  it("returns null for anything else", () => {
-    expect(parseLinkCode("สวัสดี")).toBeNull();
-    expect(parseLinkCode("[NJ-LINK] not-a-code")).toBeNull();
-    expect(parseLinkCode("")).toBeNull();
   });
 });

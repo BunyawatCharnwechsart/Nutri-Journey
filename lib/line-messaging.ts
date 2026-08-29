@@ -5,9 +5,10 @@ import { createHmac, timingSafeEqual } from "node:crypto";
 // ============================================================================
 // LINE Messaging API helpers (the LINE OA / bot channel).
 //
-// The login (LIFF) channel and the Messaging API channel are DIFFERENT LINE
-// channels, so the user id a push targets is `users.oa_user_id`, not the
-// `sub` from the login idToken. Everything in this module touches server-only
+// The login (LIFF) channel and the Messaging API channel are two different
+// LINE channels, BUT because they belong to the same provider a user has the
+// SAME id on both — so `users.oa_user_id` is actually equal to the `sub` from
+// the login idToken (`users.line_user_id`). This module touches server-only
 // secrets and must never be imported from the browser bundle.
 // ============================================================================
 

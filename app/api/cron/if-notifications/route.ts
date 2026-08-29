@@ -7,6 +7,7 @@ import {
   sendPushMessage,
 } from "@/lib/line-messaging";
 import { duePhaseNotification } from "@/lib/if-notifications";
+import { checkFriendship } from "@/lib/line-friendship";
 
 export const runtime = "nodejs";
 
@@ -18,15 +19,25 @@ export const runtime = "nodejs";
 // phase from if_pattern (16:8 => 16h fasting, 8h eating), and pushes a LINE
 // message to the user's OA account once the phase has finished its time.
 //
-// Guards against duplicates:
+// Guards:
 //   * dedupe row `*_end_notified_at` is set only after a successful push.
 //   * a phase the user already stopped is skipped (they acted, no reminder).
-//   * users without a linked OA account (oa_user_id) are skipped.
+//   * users without an oa_user_id or with notifications disabled are skipped.
+//   * unreachable users (unfollowed/blocked) are skipped, and — the 2a guard —
+//     friendship is re-verified with GET /v2/bot/profile/{id} right before the
+//     send. A 404 flips line_unreachable=true so we do not hammer LINE again.
 //
 // Protected by CRON_SECRET — never exposed to the browser. pg_cron is
 // configured separately in Supabase with the header/query shown in the setup
 // notes, so a random caller cannot trigger expensive pushes.
 // ============================================================================
+
+interface CronUser {
+  line_user_id: string | null;
+  oa_user_id: string | null;
+  line_notifications_enabled: boolean | null;
+  line_unreachable: boolean | null;
+}
 
 interface CronSession {
   id: string;
@@ -37,20 +48,14 @@ interface CronSession {
   eating_end_time: string | null;
   eating_end_notified_at: string | null;
   if_pattern: string | null;
-  users?:
-    | { oa_user_id: string | null }
-    | { oa_user_id: string | null }[]
-    | null;
+  users?: CronUser | CronUser[] | null;
 }
 
-function getOaUserId(users: CronSession["users"]): string | null {
+function getCronUser(users: CronSession["users"]): CronUser | null {
   if (!users) {
     return null;
   }
-  if (Array.isArray(users)) {
-    return users[0]?.oa_user_id ?? null;
-  }
-  return users.oa_user_id ?? null;
+  return Array.isArray(users) ? (users[0] ?? null) : users;
 }
 
 function isAuthorized(request: Request): boolean {
@@ -80,7 +85,7 @@ export async function GET(request: Request) {
     .select(
       `id, fasting_start_time, fasting_end_time, fasting_end_notified_at,
        eating_start_time, eating_end_time, eating_end_notified_at, if_pattern,
-       users ( oa_user_id )`
+       users ( line_user_id, oa_user_id, line_notifications_enabled, line_unreachable )`
     )
     .eq("status", "active");
 
@@ -90,18 +95,53 @@ export async function GET(request: Request) {
   }
 
   let sent = 0;
-  let skippedLinking = 0;
+  let skippedUnlinked = 0;
+  let skippedUnreachable = 0;
+  const friendshipCheckFailures = new Set<string>();
 
   for (const session of sessions ?? []) {
-    const oaUserId = getOaUserId(session.users);
-    if (!oaUserId) {
-      skippedLinking += 1;
+    const user = getCronUser(session.users);
+    if (!user?.oa_user_id) {
+      skippedUnlinked += 1;
+      continue;
+    }
+    if (user.line_notifications_enabled === false) {
+      skippedUnlinked += 1;
       continue;
     }
 
     const decision = duePhaseNotification(nowMs, session);
     if (decision.kind !== "send") {
       continue;
+    }
+
+    // 2a guard: only push to users who are genuinely friends of the OA.
+    // A 404 (unfriended/blocked/wrong id) marks the user unreachable until a
+    // fresh `follow` webhook or a successful POST /api/v1/line/link.
+    if (user.line_unreachable) {
+      skippedUnreachable += 1;
+      continue;
+    }
+    const friendshipKey = user.line_user_id ?? user.oa_user_id;
+    if (!friendshipCheckFailures.has(friendshipKey)) {
+      const friendship = await checkFriendship(user.oa_user_id);
+      if (friendship !== "friend") {
+        if (friendship === "not_friend") {
+          await supabase
+            .from("users")
+            .update({ line_unreachable: true })
+            .eq("line_user_id", user.line_user_id);
+          skippedUnreachable += 1;
+        } else {
+          // Server-side failure (e.g. 401/403) — do not burn push quota now;
+          // try again next run.
+          console.warn(
+            `[IF notifications] friendship check failed for ${user.oa_user_id}`
+          );
+          friendshipCheckFailures.add(friendshipKey);
+        }
+        continue;
+      }
     }
 
     let liffUrl: string;
@@ -113,7 +153,7 @@ export async function GET(request: Request) {
 
     try {
       await sendPushMessage(
-        oaUserId,
+        user.oa_user_id,
         buildPhaseEndMessages(decision.phase, liffUrl)
       );
 
@@ -134,10 +174,10 @@ export async function GET(request: Request) {
 
       sent += 1;
     } catch (pushError) {
-      // e.g. LINE returned 400 because the user has not added the OA as a
-      // friend. Do not mark as notified → the next run will try again later.
+      // e.g. LINE rejected the push. Do not mark as notified → the next run
+      // will try again later.
       console.error(
-        `[IF notifications] push to ${oaUserId} failed:`,
+        `[IF notifications] push to ${user.oa_user_id} failed:`,
         pushError instanceof LineMessagingError
           ? pushError.message
           : pushError
@@ -145,5 +185,10 @@ export async function GET(request: Request) {
     }
   }
 
-  return apiSuccess({ checked: sessions?.length ?? 0, sent, skippedLinking });
+  return apiSuccess({
+    checked: sessions?.length ?? 0,
+    sent,
+    skippedUnlinked,
+    skippedUnreachable,
+  });
 }
