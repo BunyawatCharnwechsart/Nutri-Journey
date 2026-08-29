@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+import {
+  readLastAttempt,
+  shouldAutoAttempt,
+  writeLastAttempt,
+} from "@/lib/link-cooldown";
 
 interface LinkStatus {
   linked: boolean | null;
@@ -14,6 +20,29 @@ const LINE_GRADIENT = {
   background: "linear-gradient(135deg, #06C755 0%, #18A659 100%)",
 } as const;
 
+/** sessionStorage flag: resume an attach after liff.login() redirects back. */
+const SESSION_PENDING_ATTACH_KEY = "nj_line_auto_attach";
+
+const POLL_TURNS = 6;
+const POLL_DELAY_MS = 2000;
+
+/** Returns true/false when the server answered, null on network failure. */
+async function fetchLinked(): Promise<boolean | null> {
+  try {
+    const res = await fetch("/api/v1/line/link", { cache: "no-store" });
+    const json = (await res.json()) as {
+      success?: boolean;
+      data?: { linked?: boolean };
+    };
+    if (res.ok && json.success && json.data) {
+      return json.data.linked ?? false;
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export default function LineNotificationSection() {
   const [status, setStatus] = useState<LinkStatus>({
     linked: null,
@@ -23,39 +52,34 @@ export default function LineNotificationSection() {
     pendingCode: null,
   });
   const [copied, setCopied] = useState(false);
+  const [outsideLine, setOutsideLine] = useState(false);
+  const runningRef = useRef(false);
+  const runLinkFlowRef = useRef<typeof runLinkFlow>(() => Promise.resolve());
 
-  /** Returns true/false when the server answered, null on network failure. */
-  async function fetchLinked(): Promise<boolean | null> {
-    try {
-      const res = await fetch("/api/v1/line/link", { cache: "no-store" });
-      const json = (await res.json()) as {
-        success?: boolean;
-        data?: { linked?: boolean };
-      };
-      if (res.ok && json.success && json.data) {
-        return json.data.linked ?? false;
-      }
-      return null;
-    } catch {
-      return null;
+  /**
+   * Creates a fresh [NJ-LINK] code, tries to send it automatically through the
+   * LINE app and waits for the webhook to confirm the account binding.
+   *
+   * `auto` marks this as the background attempt: it respects the cooldown in
+   * the mount effect and records the attempt so we do not spam the OA chat.
+   */
+  const runLinkFlow = useCallback(
+    async function runLinkFlow({ auto = false }: { auto?: boolean } = {}) {
+    if (runningRef.current) {
+      return;
     }
-  }
+    runningRef.current = true;
 
-  useEffect(() => {
-    let cancelled = false;
-    (async () => {
-      const linked = await fetchLinked();
-      if (!cancelled) {
-        setStatus((prev) => ({ ...prev, linked, loading: false }));
-      }
-    })();
-    return () => {
-      cancelled = true;
+    const finish = (patch: Partial<LinkStatus>) => {
+      setStatus((prev) => ({ ...prev, ...patch, working: false }));
+      runningRef.current = false;
     };
-  }, []);
 
-  async function connect() {
-    setStatus((prev) => ({ ...prev, working: true, message: null }));
+    setStatus((prev) => ({
+      ...prev,
+      working: true,
+      message: auto ? "กำลังเชื่อมต่อ LINE แจ้งเตือนอัตโนมัติ..." : null,
+    }));
 
     try {
       const res = await fetch("/api/v1/line/link", { method: "POST" });
@@ -66,15 +90,16 @@ export default function LineNotificationSection() {
       };
 
       if (!res.ok || !json.success || !json.data?.code) {
-        setStatus((prev) => ({
-          ...prev,
+        finish({
           message: json.error?.message ?? "สร้างรหัสเชื่อมต่อไม่สำเร็จ",
-        }));
+        });
         return;
       }
 
       const code = json.data.code;
-      // Always expose a copy-able code: it is the reliable fallback path.
+      if (auto) {
+        writeLastAttempt();
+      }
       setStatus((prev) => ({ ...prev, pendingCode: code }));
 
       // Get a ready-to-use liff instance (init only once).
@@ -82,7 +107,7 @@ export default function LineNotificationSection() {
       const configuredLiffId = process.env.NEXT_PUBLIC_LIFF_ID;
 
       if (!configuredLiffId) {
-        setStatus((prev) => ({ ...prev, message: "ค่า LIFF ยังไม่ถูกตั้งค่า" }));
+        finish({ message: "ค่า LIFF ยังไม่ถูกตั้งค่า" });
         return;
       }
 
@@ -95,27 +120,52 @@ export default function LineNotificationSection() {
         inClient = liff.isInClient?.() ?? false;
       }
 
-      // Try sending the code automatically, but only inside the LINE app.
-      let autoSent = false;
-      if (inClient && liff.isLoggedIn()) {
+      if (!inClient) {
+        // Outside the LINE app we cannot send a message — hide the code card
+        // and let the user open the app inside LINE for a fully automatic link.
+        setOutsideLine(true);
+        finish({
+          pendingCode: null,
+          message:
+            "เปิดแอปนี้ภายใน LINE แล้วระบบจะเชื่อมต่อ LINE แจ้งเตือนให้อัตโนมัติ",
+        });
+        return;
+      }
+      setOutsideLine(false);
+
+      if (!liff.isLoggedIn()) {
+        // Ask LINE for login first; when the user returns we resume via the
+        // sessionStorage flag in the mount effect.
         try {
-          await liff.sendMessages([
-            {
-              type: "text",
-              text: `[NJ-LINK] ${code}`,
-            },
-          ]);
-          autoSent = true;
-        } catch (error) {
-          const raw =
-            error instanceof Error && error.message ? error.message : "";
-          if (raw.toLowerCase().includes("permission")) {
-            setStatus((prev) => ({
-              ...prev,
-              message:
-                "LINE ยังไม่อนุญาตให้ส่งข้อความอัตโนมัติ — กดคัดลอกรหัสด้านล่างแล้ววางส่งในแชทกับ LINE (NutriJourney) แทน",
-            }));
-          }
+          sessionStorage.setItem(SESSION_PENDING_ATTACH_KEY, "1");
+        } catch {
+          // storage unavailable — the manual button is still available
+        }
+        finish({
+          message: "กำลังเข้าสู่ระบบ LINE แล้วจะเชื่อมต่อให้อัตโนมัติ...",
+        });
+        liff.login();
+        return;
+      }
+
+      // Send the code automatically through LINE.
+      let autoSent = false;
+      try {
+        await liff.sendMessages([
+          {
+            type: "text",
+            text: `[NJ-LINK] ${code}`,
+          },
+        ]);
+        autoSent = true;
+      } catch (error) {
+        const raw = error instanceof Error ? error.message : "";
+        if (raw.toLowerCase().includes("permission")) {
+          finish({
+            message:
+              "LINE ยังไม่อนุญาตให้ส่งข้อความ — กดคัดลอกรหัสด้านล่างแล้ววางส่งในแชทกับ LINE (NutriJourney) แทน",
+          });
+          return;
         }
       }
 
@@ -125,7 +175,8 @@ export default function LineNotificationSection() {
           message: "ส่งรหัสให้ LINE เรียบร้อย กำลังรอระบบยืนยัน...",
         }));
       } else {
-        // Do not overwrite a more specific message (e.g. permission hint).
+        // Auto-send failed for an unknown reason — keep the copy card as a
+        // manual rescue instead of showing nothing.
         setStatus((prev) =>
           prev.message === null
             ? {
@@ -138,34 +189,76 @@ export default function LineNotificationSection() {
       }
 
       // The webhook binds oa_user_id within a few seconds — poll briefly.
-      for (let i = 0; i < 6; i += 1) {
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+      for (let i = 0; i < POLL_TURNS; i += 1) {
+        await new Promise((resolve) => setTimeout(resolve, POLL_DELAY_MS));
         const linked = await fetchLinked();
         if (linked === true) {
-          setStatus((prev) => ({ ...prev, linked: true, message: null }));
+          finish({ linked: true, message: null, pendingCode: null });
           return;
         }
       }
 
-      setStatus((prev) => ({
-        ...prev,
+      finish({
         message:
           "ยังไม่เห็นการยืนยัน — ตรวจสอบว่าได้เพิ่มเพื่อนกับ LINE (NutriJourney) แล้ว และมีรหัส [NJ-LINK] อยู่ในแชทหรือยัง",
-      }));
+      });
     } catch (error) {
-      const msg = error instanceof Error && error.message ? error.message : "";
+      const msg = error instanceof Error ? error.message : "";
       const permissionBlocked = msg.toLowerCase().includes("permission");
-      setStatus((prev) => ({
-        ...prev,
+      finish({
         message: permissionBlocked
           ? "LINE ยังไม่อนุญาตให้ส่งข้อความ — กดคัดลอกรหัสด้านล่างแล้ววางส่งในแชทกับ LINE (NutriJourney) แทน"
           : "ไม่สามารถส่งข้อความได้ เปิดแอปนี้ภายใน LINE แล้วลองอีกครั้ง" +
             (msg ? ` (${msg})` : ""),
-      }));
-    } finally {
-      setStatus((prev) => ({ ...prev, working: false }));
+      });
     }
-  }
+    },
+    [],
+  );
+
+  // Keep the latest runLinkFlow instance available to the mount effect.
+  useEffect(() => {
+    runLinkFlowRef.current = runLinkFlow;
+  }, [runLinkFlow]);
+
+  // Load the link status and, when not linked yet, attempt the automatic link
+  // once (either because this visit is outside the cooldown, or because the
+  // user just returned from a liff.login() redirect).
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const linked = await fetchLinked();
+      if (cancelled) {
+        return;
+      }
+      setStatus((prev) => ({ ...prev, linked, loading: false }));
+
+      if (linked === true) {
+        return;
+      }
+
+      let shouldAuto = false;
+      try {
+        if (sessionStorage.getItem(SESSION_PENDING_ATTACH_KEY) === "1") {
+          sessionStorage.removeItem(SESSION_PENDING_ATTACH_KEY);
+          shouldAuto = true;
+        } else if (shouldAutoAttempt(readLastAttempt(), Date.now())) {
+          shouldAuto = true;
+        }
+      } catch {
+        // storage unavailable — stick to the manual button
+      }
+
+      if (shouldAuto) {
+        setTimeout(() => {
+          void runLinkFlowRef.current({ auto: true });
+        }, 300);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function disconnect() {
     setStatus((prev) => ({ ...prev, working: true, message: null }));
@@ -214,7 +307,9 @@ export default function LineNotificationSection() {
           <div className="flex flex-col gap-3">
             <button
               type="button"
-              onClick={connect}
+              onClick={() => {
+                void runLinkFlow();
+              }}
               disabled={status.working}
               style={LINE_GRADIENT}
               className="w-full rounded-xl px-6 py-3 text-[16px] font-bold text-white transition-[filter] hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
@@ -229,14 +324,14 @@ export default function LineNotificationSection() {
               )}
             </button>
             <p className="text-center text-xs text-zinc-400">
-              เปิดแอปภายใน LINE แล้วกดปุ่มนี้ ระบบจะส่งรหัสผูกบัญชีเข้าแชท
-              (อย่าลืม Add friend กับ LINE (NutriJourney) ก่อน)
+              เปิดแอปภายใน LINE ระบบจะผูกบัญชีให้อัตโนมัติ (อย่าลืม Add friend
+              กับ LINE (NutriJourney) ก่อน)
             </p>
           </div>
         )
       )}
 
-      {!status.linked && status.pendingCode && (
+      {!status.linked && status.pendingCode && !outsideLine && (
         <div className="flex flex-col gap-2 rounded-xl bg-amber-50 p-4">
           <p className="text-sm font-medium text-amber-800">
             ผูกบัญชีด้วยตนเอง (ถ้าส่งอัตโนมัติไม่ได้)
