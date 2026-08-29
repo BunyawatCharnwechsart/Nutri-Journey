@@ -1,25 +1,34 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 
 // ============================================================================
 // LINE แจ้งเตือน
 //
 // LINE user ids are identical across our login (LIFF) and OA channels because
-// both belong to the same provider. The email of the account is bound server
-// side at login (users.oa_user_id === users.line_user_id), so the ONLY thing a
-// user must do to start receiving pushes is make the OA a friend. This
-// component therefore never sends codes anymore — it just guides the user
-// through the "add friend" step and reflects the real friendship state.
+// both belong to the same provider. The account is bound server side at login
+// (users.oa_user_id === users.line_user_id), so the ONLY thing a user must do
+// to start receiving pushes is make the OA a friend.
+//
+// The friendship answer comes from the SERVER (GET/POST /api/v1/line/link,
+// backed by the LINE `GET /v2/bot/profile/{id}` check with a short DB cache).
+// We do NOT use liff.getFriendship() anymore — it returns false in many
+// legitimate contexts (app opened from a URL instead of a chat, missing scope,
+// wrong channel) and made the UI claim "not a friend" for real friends.
 //
 // The opt-in question is asked exactly ONCE, on the first login. After the
 // user answers (accept or decline) the prompt never shows again; later visits
-// only show a quiet on/off switch. The answer is stored server side in
-// users.line_onboarding_answered.
+// only show a quiet on/off switch.
+//
+// Every successful state change dispatches `line:link-state-changed` so the
+// little green status dot in the dashboard header updates without a reload.
 // ============================================================================
 
 /** Public "Add friend" page of the OA (basic id @988yvqaz). */
 const OA_ADD_FRIEND_URL = "https://line.me/R/ti/p/@988yvqaz";
+
+/** Window event the header dot listens for. */
+const LINE_STATUS_EVENT = "line:link-state-changed";
 
 const LINE_GRADIENT = {
   background: "linear-gradient(135deg, #06C755 0%, #18A659 100%)",
@@ -31,9 +40,19 @@ interface LinkStatus {
   linked: boolean;
   /** Has the one-time onboarding prompt been answered? */
   onboarded: boolean;
-  /** true = friend, false = not a friend, null = unknown/undeciable. */
+  /** true = friend, false = not a friend, null = check failed/unknown. */
   friend: boolean | null;
   message: string | null;
+}
+
+function emitLineStatus(linked: boolean, friend: boolean | null) {
+  try {
+    window.dispatchEvent(
+      new CustomEvent(LINE_STATUS_EVENT, { detail: { linked, friend } })
+    );
+  } catch {
+    // non-browser environment — nothing listens anyway
+  }
 }
 
 async function getLiff() {
@@ -59,23 +78,7 @@ export default function LineNotificationSection() {
     message: null,
   });
 
-  /** Reads the friendship flag from the LIFF client (real-time, no server call). */
-  const detectFriendship = useCallback(async (): Promise<boolean | null> => {
-    try {
-      const liff = await getLiff();
-      if (!liff) {
-        return null;
-      }
-      const result = await liff.getFriendship();
-      return result.friendFlag;
-    } catch {
-      // getFriendship needs the "profile" scope; when it is unavailable we
-      // fall back to the server's friendship answer from POST /link.
-      return null;
-    }
-  }, []);
-
-  // Load the notification state once on mount.
+  // Load the notification state once on mount. friend comes from the server.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -83,22 +86,25 @@ export default function LineNotificationSection() {
         const res = await fetch("/api/v1/line/link", { cache: "no-store" });
         const json = (await res.json()) as {
           success?: boolean;
-          data?: { linked?: boolean; onboarded?: boolean };
+          data?: {
+            linked?: boolean;
+            onboarded?: boolean;
+            friend?: boolean | null;
+          };
         };
         if (cancelled) {
           return;
         }
+        const { linked, onboarded, friend } = json.success
+          ? json.data ?? {}
+          : {};
         setStatus((prev) => ({
           ...prev,
-          linked: Boolean(json.success && json.data?.linked),
-          onboarded: Boolean(json.success && json.data?.onboarded),
+          linked: Boolean(linked),
+          onboarded: Boolean(onboarded),
+          friend: friend ?? null,
           loading: false,
         }));
-
-        const friend = await detectFriendship();
-        if (!cancelled) {
-          setStatus((prev) => ({ ...prev, friend }));
-        }
       } catch {
         if (!cancelled) {
           setStatus((prev) => ({
@@ -112,10 +118,14 @@ export default function LineNotificationSection() {
     return () => {
       cancelled = true;
     };
-  }, [detectFriendship]);
+  }, []);
 
   async function enable() {
     setStatus((prev) => ({ ...prev, working: true, message: null }));
+    const apply = (next: LinkStatus) => {
+      setStatus(next);
+      emitLineStatus(next.linked, next.friend);
+    };
     try {
       const res = await fetch("/api/v1/line/link", { method: "POST" });
       const json = (await res.json()) as {
@@ -123,26 +133,26 @@ export default function LineNotificationSection() {
         data?: { linked?: boolean; friend?: boolean | null };
       };
       if (res.ok && json.success) {
-        setStatus((prev) => ({
-          ...prev,
+        apply({
+          ...status,
           linked: true,
           onboarded: true,
-          friend: json.data?.friend ?? prev.friend,
+          friend: json.data?.friend ?? null,
           working: false,
-        }));
+        });
       } else {
-        setStatus((prev) => ({
-          ...prev,
+        apply({
+          ...status,
           working: false,
           message: "เปิดการแจ้งเตือนไม่สำเร็จ ลองอีกครั้ง",
-        }));
+        });
       }
     } catch {
-      setStatus((prev) => ({
-        ...prev,
+      apply({
+        ...status,
         working: false,
         message: "เชื่อมต่อไม่สำเร็จ ลองอีกครั้ง",
-      }));
+      });
     }
   }
 
@@ -154,13 +164,15 @@ export default function LineNotificationSection() {
         success?: boolean;
         data?: { linked?: boolean; onboarded?: boolean };
       };
-      setStatus((prev) => ({
-        ...prev,
+      const next: LinkStatus = {
+        ...status,
         linked: Boolean(res.ok && json.success && json.data?.linked),
         onboarded: Boolean(res.ok && json.success && json.data?.onboarded),
         friend: null,
         working: false,
-      }));
+      };
+      setStatus(next);
+      emitLineStatus(next.linked, next.friend);
     } catch {
       setStatus((prev) => ({
         ...prev,
@@ -207,30 +219,33 @@ export default function LineNotificationSection() {
     window.open(OA_ADD_FRIEND_URL, "_blank", "noopener,noreferrer");
   }
 
+  /** "เพิ่มเพื่อนแล้ว กดตรวจสอบ" — always asks the server for a fresh answer. */
   async function refresh() {
     setStatus((prev) => ({ ...prev, working: true, message: null }));
-    const [friend, linkRes] = await Promise.all([
-      detectFriendship(),
-      fetch("/api/v1/line/link", { method: "POST" }),
-    ]);
-    let serverFriend: boolean | null = null;
     try {
-      const json = (await linkRes.json()) as {
+      const res = await fetch("/api/v1/line/link", { method: "POST" });
+      const json = (await res.json()) as {
         success?: boolean;
         data?: { linked?: boolean; friend?: boolean | null };
       };
-      if (linkRes.ok && json.success) {
-        setStatus((prev) => ({ ...prev, linked: true }));
-        serverFriend = json.data?.friend ?? null;
-      }
+      const next: LinkStatus = {
+        ...status,
+        linked: Boolean(res.ok && json.success && json.data?.linked),
+        onboarded: true,
+        friend:
+          res.ok && json.success && json.data ? json.data.friend ?? null : null,
+        message: null,
+        working: false,
+      };
+      setStatus(next);
+      emitLineStatus(next.linked, next.friend);
     } catch {
-      // ignore — friendship from the client still updates the state
+      setStatus((prev) => ({
+        ...prev,
+        working: false,
+        message: "ตรวจสอบไม่สำเร็จ ลองอีกครั้ง",
+      }));
     }
-    setStatus((prev) => ({
-      ...prev,
-      friend: friend ?? serverFriend ?? prev.friend,
-      working: false,
-    }));
   }
 
   return (
@@ -294,7 +309,7 @@ export default function LineNotificationSection() {
             <div className="rounded-xl bg-[#18A659]/10 px-4 py-3 text-sm font-medium text-[#148D4C]">
               ✓ LINE พร้อมส่งการแจ้งเตือนแล้ว
             </div>
-          ) : (
+          ) : status.friend === false ? (
             <>
               <div className="rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-700">
                 ยังต้องเพิ่ม LINE (NutriJourney) เป็นเพื่อนก่อน ถึงจะได้รับ
@@ -315,6 +330,20 @@ export default function LineNotificationSection() {
                 className="w-full rounded-xl border border-zinc-300 px-6 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {status.working ? "กำลังตรวจสอบ..." : "เพิ่มเพื่อนแล้ว กดตรวจสอบ"}
+              </button>
+            </>
+          ) : (
+            <>
+              <div className="rounded-xl bg-zinc-50 px-4 py-3 text-sm text-zinc-500">
+                ตรวจสอบสถานะ LINE ไม่สำเร็จชั่วคราว
+              </div>
+              <button
+                type="button"
+                onClick={refresh}
+                disabled={status.working}
+                className="w-full rounded-xl border border-zinc-300 px-6 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+              >
+                {status.working ? "กำลังตรวจสอบ..." : "ลองตรวจสอบอีกครั้ง"}
               </button>
             </>
           )}
