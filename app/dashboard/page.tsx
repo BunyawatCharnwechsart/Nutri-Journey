@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSessionUserId } from "@/lib/auth";
 import EggIconLink from "@/components/EggIconLink";
 import GoogleHealthSection from "@/components/GoogleHealthSection";
+import LineNotificationSection from "@/components/LineNotificationSection";
 
 export const dynamic = "force-dynamic";
 
@@ -26,6 +27,7 @@ export default async function DashboardPage() {
           </div>
         </header>
         <GoogleHealthSection />
+        <LineNotificationSection />
       </div>
     </main>
   );
