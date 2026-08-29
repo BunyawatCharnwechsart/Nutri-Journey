@@ -20,6 +20,8 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 export interface LineLinkState {
   linked: boolean;
   unreachable: boolean;
+  /** True once the one-time "want LINE notifications?" prompt was answered. */
+  onboarded: boolean;
 }
 
 /**
@@ -43,7 +45,9 @@ export async function getLineLinkState(
 ): Promise<LineLinkState> {
   const { data } = await db
     .from("users")
-    .select("oa_user_id, line_notifications_enabled, line_unreachable")
+    .select(
+      "oa_user_id, line_notifications_enabled, line_unreachable, line_onboarding_answered"
+    )
     .eq("user_id", userId)
     .maybeSingle();
 
@@ -52,5 +56,6 @@ export async function getLineLinkState(
       data?.oa_user_id && data.line_notifications_enabled !== false
     ),
     unreachable: Boolean(data?.line_unreachable === true),
+    onboarded: Boolean(data?.line_onboarding_answered === true),
   };
 }
