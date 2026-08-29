@@ -37,11 +37,16 @@ export async function POST(request: Request) {
 
   // Upsert the user by their LINE userId. Existing users get their latest
   // profile data refreshed; new users are created automatically.
+  // The LINE user id is identical across the login and OA channels because
+  // both channels live under the same provider. Binding oa_user_id here makes
+  // every logged-in user ready to receive push notifications (only adding the
+  // OA as a friend is left for the user to do).
   const { data: user, error: userError } = await supabase
     .from("users")
     .upsert(
       {
         line_user_id: lineUser.sub,
+        oa_user_id: lineUser.sub,
         display_name: lineUser.name ?? null,
         avatar_url: lineUser.picture ?? null,
         email: lineUser.email ?? null,

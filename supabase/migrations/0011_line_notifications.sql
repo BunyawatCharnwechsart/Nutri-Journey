@@ -2,14 +2,16 @@
 -- 0011_line_notifications.sql
 -- LINE OA notification foundation (Messaging API channel, separate from LIFF).
 --
+-- Note: as later discovered, LINE user ids are the same across channels of one
+-- provider, so oa_user_id equals line_user_id (0012 auto-binds it at login).
+-- The code-based linking below became unnecessary but is kept as it is already
+-- applied everywhere.
+--
 -- Adds:
 --   1. notified_at guards on if_sessions — the cron job can only send each
 --      "phase finished" push once, even if it scans the same session again.
---   2. users.oa_user_id — the user's id on the Messaging API channel. This
---      differs from the LIFF channel id (logins), so accounts must be linked
---      once via a one-time code before we can push to the right person.
---   3. line_link_codes — one-time, expiring codes that bridge the LIFF user
---      and the OA user (sent into the OA chat via liff.sendMessages).
+--   2. users.oa_user_id — the user's id on the Messaging API channel.
+--   3. line_link_codes — the (now retired) one-time linking handshake.
 --
 -- Every statement is idempotent so node scripts/run-migration.mjs (or the
 -- Supabase SQL editor) can run it repeatedly.

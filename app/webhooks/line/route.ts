@@ -1,6 +1,5 @@
 import { createServiceClient } from "@/lib/supabase/service";
 import { verifyLineSignature } from "@/lib/line-messaging";
-import { consumeLinkCode, parseLinkCode } from "@/lib/line-link";
 
 export const runtime = "nodejs";
 
@@ -8,9 +7,16 @@ export const runtime = "nodejs";
 // POST /webhooks/line
 //
 // Endpoint that the LINE Messaging API (channel 2011317842) calls when events
-// happen in the OA chat. Currently it only cares about one pattern: the user
-// sends a "[NJ-LINK] <code>" text message (via liff.sendMessages inside the
-// app) which binds their OA userId to their app account.
+// happen in the OA chat.
+//
+// LINE user ids are the same on every channel within one provider, so the
+// `source.userId` here maps straight onto our `users.line_user_id`. We only
+// need to keep the friendship state aligned with reality:
+//
+//   * follow (added as a friend)  → bind oa_user_id + mark reachable
+//   * unfollow (removed / blocked) → mark unreachable so the cron stops
+//                                    pushing (the user has to re-follow or a
+//                                    fresh friendship check to flip it back)
 //
 // Security: every request must carry a valid X-Line-Signature (HMAC-SHA256
 // with the channel secret) or it is rejected. This endpoint is NOT under
@@ -20,7 +26,6 @@ export const runtime = "nodejs";
 
 interface LineWebhookEvent {
   type?: string;
-  message?: { type?: string; text?: string };
   source?: { userId?: string };
 }
 
@@ -39,20 +44,32 @@ export async function POST(request: Request) {
     const supabase = createServiceClient();
 
     for (const event of events) {
-      if (event.type !== "message") {
-        continue;
-      }
-      if (event.message?.type !== "text") {
-        continue;
-      }
-
-      const oaUserId = event.source?.userId;
-      const code = parseLinkCode(event.message.text ?? "");
-      if (!oaUserId || !code) {
+      const userId = event.source?.userId;
+      if (!userId) {
         continue;
       }
 
-      await consumeLinkCode(supabase, code, oaUserId);
+      if (event.type === "follow") {
+        const { error } = await supabase
+          .from("users")
+          .update({ oa_user_id: userId, line_unreachable: false })
+          .eq("line_user_id", userId);
+
+        if (error) {
+          console.error(`[LINE webhook] follow bind failed for ${userId}`, error);
+        }
+      }
+
+      if (event.type === "unfollow") {
+        const { error } = await supabase
+          .from("users")
+          .update({ line_unreachable: true })
+          .eq("line_user_id", userId);
+
+        if (error) {
+          console.error(`[LINE webhook] unfollow mark failed for ${userId}`, error);
+        }
+      }
     }
   } catch (error) {
     // Keep the wire protocol healthy: LINE never sees a 5xx for events we
