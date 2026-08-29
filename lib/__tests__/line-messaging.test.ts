@@ -40,7 +40,7 @@ describe("buildPhaseEndMessages", () => {
   it("builds the fasting end message with the app link", () => {
     const [message] = buildPhaseEndMessages("fasting", LIFF_URL);
     expect(message.type).toBe("text");
-    expect(message.text).toContain("หมดอด");
+    expect(message.text).toContain("หมดเวลาอด");
     expect(message.text).toContain(LIFF_URL);
   });
 

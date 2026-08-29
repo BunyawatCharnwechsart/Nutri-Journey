@@ -7,6 +7,7 @@ interface LinkStatus {
   loading: boolean;
   working: boolean;
   message: string | null;
+  pendingCode: string | null;
 }
 
 const LINE_GRADIENT = {
@@ -19,7 +20,9 @@ export default function LineNotificationSection() {
     loading: true,
     working: false,
     message: null,
+    pendingCode: null,
   });
+  const [copied, setCopied] = useState(false);
 
   /** Returns true/false when the server answered, null on network failure. */
   async function fetchLinked(): Promise<boolean | null> {
@@ -70,6 +73,10 @@ export default function LineNotificationSection() {
         return;
       }
 
+      const code = json.data.code;
+      // Always expose a copy-able code: it is the reliable fallback path.
+      setStatus((prev) => ({ ...prev, pendingCode: code }));
+
       // Get a ready-to-use liff instance (init only once).
       const liff = (await import("@line/liff")).default;
       const configuredLiffId = process.env.NEXT_PUBLIC_LIFF_ID;
@@ -79,23 +86,56 @@ export default function LineNotificationSection() {
         return;
       }
 
+      let inClient = false;
       try {
         liff.isLoggedIn();
+        inClient = liff.isInClient?.() ?? false;
       } catch {
         await liff.init({ liffId: configuredLiffId });
+        inClient = liff.isInClient?.() ?? false;
       }
 
-      await liff.sendMessages([
-        {
-          type: "text",
-          text: `[NJ-LINK] ${json.data.code}`,
-        },
-      ]);
+      // Try sending the code automatically, but only inside the LINE app.
+      let autoSent = false;
+      if (inClient && liff.isLoggedIn()) {
+        try {
+          await liff.sendMessages([
+            {
+              type: "text",
+              text: `[NJ-LINK] ${code}`,
+            },
+          ]);
+          autoSent = true;
+        } catch (error) {
+          const raw =
+            error instanceof Error && error.message ? error.message : "";
+          if (raw.toLowerCase().includes("permission")) {
+            setStatus((prev) => ({
+              ...prev,
+              message:
+                "LINE ยังไม่อนุญาตให้ส่งข้อความอัตโนมัติ — กดคัดลอกรหัสด้านล่างแล้ววางส่งในแชทกับ LINE (NutriJourney) แทน",
+            }));
+          }
+        }
+      }
 
-      setStatus((prev) => ({
-        ...prev,
-        message: "ส่งรหัสให้ LINE เรียบร้อย กำลังรอระบบยืนยัน..."
-      }));
+      if (autoSent) {
+        setStatus((prev) => ({
+          ...prev,
+          message: "ส่งรหัสให้ LINE เรียบร้อย กำลังรอระบบยืนยัน...",
+        }));
+      } else {
+        // Do not overwrite a more specific message (e.g. permission hint).
+        setStatus((prev) =>
+          prev.message === null
+            ? {
+                ...prev,
+                message:
+                  "ส่งอัตโนมัติไม่ได้ — ใช้รหัสด้านล่างวางส่งในแชทกับ LINE (NutriJourney) ด้วยตนเอง",
+              }
+            : prev,
+        );
+      }
 
       // The webhook binds oa_user_id within a few seconds — poll briefly.
       for (let i = 0; i < 6; i += 1) {
@@ -110,19 +150,17 @@ export default function LineNotificationSection() {
       setStatus((prev) => ({
         ...prev,
         message:
-          "ยังไม่เห็นการยืนยัน อาจยังไม่ได้เพิ่มเพื่อนกับ LINE (NutriJourney) — ตรวจสอบแชท LINE อีกครั้ง",
+          "ยังไม่เห็นการยืนยัน — ตรวจสอบว่าได้เพิ่มเพื่อนกับ LINE (NutriJourney) แล้ว และมีรหัส [NJ-LINK] อยู่ในแชทหรือยัง",
       }));
     } catch (error) {
-      const msg =
-        error instanceof Error && error.message
-          ? error.message
-          : "เกิดข้อผิดพลาด ลองอีกครั้ง";
+      const msg = error instanceof Error && error.message ? error.message : "";
+      const permissionBlocked = msg.toLowerCase().includes("permission");
       setStatus((prev) => ({
         ...prev,
-        message:
-          "ไม่สามารถส่งข้อความได้ เปิดแอปนี้ภายใน LINE แล้วลองอีกครั้ง (" +
-          msg +
-          ")",
+        message: permissionBlocked
+          ? "LINE ยังไม่อนุญาตให้ส่งข้อความ — กดคัดลอกรหัสด้านล่างแล้ววางส่งในแชทกับ LINE (NutriJourney) แทน"
+          : "ไม่สามารถส่งข้อความได้ เปิดแอปนี้ภายใน LINE แล้วลองอีกครั้ง" +
+            (msg ? ` (${msg})` : ""),
       }));
     } finally {
       setStatus((prev) => ({ ...prev, working: false }));
@@ -196,6 +234,38 @@ export default function LineNotificationSection() {
             </p>
           </div>
         )
+      )}
+
+      {!status.linked && status.pendingCode && (
+        <div className="flex flex-col gap-2 rounded-xl bg-amber-50 p-4">
+          <p className="text-sm font-medium text-amber-800">
+            ผูกบัญชีด้วยตนเอง (ถ้าส่งอัตโนมัติไม่ได้)
+          </p>
+          <div className="flex items-center gap-2">
+            <code className="min-w-0 flex-1 overflow-x-auto rounded-lg bg-white px-3 py-2 font-mono text-sm text-zinc-800">
+              [NJ-LINK] {status.pendingCode}
+            </code>
+            <button
+              type="button"
+              onClick={() => {
+                void navigator.clipboard
+                  .writeText(`[NJ-LINK] ${status.pendingCode}`)
+                  .then(() => {
+                    setCopied(true);
+                    setTimeout(() => setCopied(false), 2000);
+                  })
+                  .catch(() => {});
+              }}
+              className="shrink-0 rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm font-medium text-amber-700 transition-colors hover:bg-amber-100"
+            >
+              {copied ? "คัดลอกแล้ว" : "คัดลอก"}
+            </button>
+          </div>
+          <p className="text-xs leading-5 text-amber-700">
+            เปิดแชทกับ LINE (NutriJourney) แล้ววาง/พิมพ์ข้อความนี้ส่ง —
+            ระบบจะผูกบัญชีให้ภายในไม่กี่วินาที
+          </p>
+        </div>
       )}
 
       {status.message && (
