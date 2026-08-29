@@ -12,9 +12,15 @@ export const runtime = "nodejs";
 // Notification readiness management. Because oa_user_id === line_user_id
 // (same LINE provider), there is no account-linking handshake left:
 //
-//   GET    → whether this user is ready to receive LINE pushes.
-//   POST   → re-check OA friendship and turn notifications ON.
-//   DELETE → turn notifications OFF (the OA id stays; login re-enables it).
+//   GET    → readiness state, including whether the one-time onboarding prompt
+//            has been answered (onboarded).
+//   POST   → answer the prompt with "yes": re-check OA friendship and turn
+//            notifications ON (also marks the prompt answered).
+//   DELETE → turn notifications OFF / answer "no" later (marks it answered).
+//            The OA id stays; login re-binds it.
+//
+// Answering "no" once (first login) without asking again lives in
+// ./dismiss/route.ts.
 //
 // Only the session owner can do any of this (requireAuth).
 // ============================================================================
@@ -63,14 +69,18 @@ export async function POST() {
 
     const { error } = await supabase
       .from("users")
-      .update({ line_notifications_enabled: true, line_unreachable: false })
+      .update({
+        line_notifications_enabled: true,
+        line_unreachable: false,
+        line_onboarding_answered: true,
+      })
       .eq("user_id", auth.userId);
 
     if (error) {
       return apiError("เปิดการแจ้งเตือนไม่สำเร็จ", 500, "INTERNAL_ERROR");
     }
 
-    return apiSuccess({ linked: true, friend });
+    return apiSuccess({ linked: true, friend, onboarded: true });
   } catch (error) {
     console.error("[LINE link] enable failed", error);
     return apiError("เปิดการแจ้งเตือนไม่สำเร็จ", 500, "INTERNAL_ERROR");
@@ -87,14 +97,17 @@ export async function DELETE() {
     const supabase = createServiceClient();
     const { error } = await supabase
       .from("users")
-      .update({ line_notifications_enabled: false })
+      .update({
+        line_notifications_enabled: false,
+        line_onboarding_answered: true,
+      })
       .eq("user_id", auth.userId);
 
     if (error) {
       return apiError("ปิดการแจ้งเตือนไม่สำเร็จ", 500, "INTERNAL_ERROR");
     }
 
-    return apiSuccess({ linked: false });
+    return apiSuccess({ linked: false, onboarded: true });
   } catch (error) {
     console.error("[LINE link] disable failed", error);
     return apiError("ปิดการแจ้งเตือนไม่สำเร็จ", 500, "INTERNAL_ERROR");

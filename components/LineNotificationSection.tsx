@@ -11,6 +11,11 @@ import { useCallback, useEffect, useState } from "react";
 // user must do to start receiving pushes is make the OA a friend. This
 // component therefore never sends codes anymore — it just guides the user
 // through the "add friend" step and reflects the real friendship state.
+//
+// The opt-in question is asked exactly ONCE, on the first login. After the
+// user answers (accept or decline) the prompt never shows again; later visits
+// only show a quiet on/off switch. The answer is stored server side in
+// users.line_onboarding_answered.
 // ============================================================================
 
 /** Public "Add friend" page of the OA (basic id @988yvqaz). */
@@ -24,6 +29,8 @@ interface LinkStatus {
   loading: boolean;
   working: boolean;
   linked: boolean;
+  /** Has the one-time onboarding prompt been answered? */
+  onboarded: boolean;
   /** true = friend, false = not a friend, null = unknown/undeciable. */
   friend: boolean | null;
   message: string | null;
@@ -47,6 +54,7 @@ export default function LineNotificationSection() {
     loading: true,
     working: false,
     linked: false,
+    onboarded: false,
     friend: null,
     message: null,
   });
@@ -75,7 +83,7 @@ export default function LineNotificationSection() {
         const res = await fetch("/api/v1/line/link", { cache: "no-store" });
         const json = (await res.json()) as {
           success?: boolean;
-          data?: { linked?: boolean };
+          data?: { linked?: boolean; onboarded?: boolean };
         };
         if (cancelled) {
           return;
@@ -83,6 +91,7 @@ export default function LineNotificationSection() {
         setStatus((prev) => ({
           ...prev,
           linked: Boolean(json.success && json.data?.linked),
+          onboarded: Boolean(json.success && json.data?.onboarded),
           loading: false,
         }));
 
@@ -117,6 +126,7 @@ export default function LineNotificationSection() {
         setStatus((prev) => ({
           ...prev,
           linked: true,
+          onboarded: true,
           friend: json.data?.friend ?? prev.friend,
           working: false,
         }));
@@ -142,11 +152,12 @@ export default function LineNotificationSection() {
       const res = await fetch("/api/v1/line/link", { method: "DELETE" });
       const json = (await res.json()) as {
         success?: boolean;
-        data?: { linked?: boolean };
+        data?: { linked?: boolean; onboarded?: boolean };
       };
       setStatus((prev) => ({
         ...prev,
         linked: Boolean(res.ok && json.success && json.data?.linked),
+        onboarded: Boolean(res.ok && json.success && json.data?.onboarded),
         friend: null,
         working: false,
       }));
@@ -155,6 +166,29 @@ export default function LineNotificationSection() {
         ...prev,
         working: false,
         message: "ปิดการแจ้งเตือนไม่สำเร็จ ลองอีกครั้ง",
+      }));
+    }
+  }
+
+  /** Declines the one-time prompt. Called only at first login, once. */
+  async function dismiss() {
+    setStatus((prev) => ({ ...prev, working: true, message: null }));
+    try {
+      const res = await fetch("/api/v1/line/link/dismiss", { method: "POST" });
+      const json = (await res.json()) as {
+        success?: boolean;
+        data?: { onboarded?: boolean };
+      };
+      setStatus((prev) => ({
+        ...prev,
+        onboarded: Boolean(res.ok && json.success && json.data?.onboarded),
+        working: false,
+      }));
+    } catch {
+      setStatus((prev) => ({
+        ...prev,
+        working: false,
+        message: "บันทึกการตัดสินใจไม่สำเร็จ ลองอีกครั้ง",
       }));
     }
   }
@@ -207,8 +241,8 @@ export default function LineNotificationSection() {
       <p className="text-sm leading-6 text-zinc-500">
         รับการแจ้งเตือนผ่าน LINE เมื่อ{" "}
         <span className="font-medium text-zinc-700">หมดเวลาอด</span> และ{" "}
-        <span className="font-medium text-zinc-700">หมดเวลากิน</span> — เพียง
-        เพิ่ม LINE (NutriJourney) เป็นเพื่อนครั้งเดียว
+        <span className="font-medium text-zinc-700">หมดเวลากิน</span> —
+        ถามครั้งเดียวตอนเข้าสู่ระบบครั้งแรกเท่านั้น
       </p>
 
       {status.loading ? (
@@ -216,8 +250,11 @@ export default function LineNotificationSection() {
           <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#18A659] border-t-transparent" />
           กำลังตรวจสอบ...
         </div>
-      ) : !status.linked ? (
+      ) : !status.onboarded ? (
         <div className="flex flex-col gap-3">
+          <p className="text-sm font-medium text-zinc-800">
+            อยากให้ NutriJourney ส่ง LINE แจ้งเตือนเมื่อหมดเวลาอด/กินไหม?
+          </p>
           <button
             type="button"
             onClick={enable}
@@ -227,10 +264,29 @@ export default function LineNotificationSection() {
           >
             {status.working ? "กำลังเปิดใช้งาน..." : "เปิด LINE แจ้งเตือน"}
           </button>
-          <p className="text-center text-xs text-zinc-400">
-            กดเปิดแล้ว ระบบจะผูก LINE ให้อัตโนมัติ — ถ้ายังไม่เป็นเพื่อนกับ
-            LINE (NutriJourney) ระบบจะพาไปเพิ่มเพื่อนให้ทีละขั้น
+          <button
+            type="button"
+            onClick={dismiss}
+            disabled={status.working}
+            className="w-full rounded-xl border border-zinc-300 px-6 py-2.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            ไม่สนใจ (ไม่ถามอีก)
+          </button>
+        </div>
+      ) : !status.linked ? (
+        <div className="flex flex-col gap-3">
+          <p className="text-sm text-zinc-500">
+            LINE แจ้งเตือนปิดอยู่ — เปิดได้ทุกเมื่อเมื่อต้องการ
           </p>
+          <button
+            type="button"
+            onClick={enable}
+            disabled={status.working}
+            style={LINE_GRADIENT}
+            className="w-full rounded-xl px-6 py-3 text-[16px] font-bold text-white transition-[filter] hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {status.working ? "กำลังเปิดใช้งาน..." : "เปิด LINE แจ้งเตือน"}
+          </button>
         </div>
       ) : (
         <div className="flex flex-col gap-3">
