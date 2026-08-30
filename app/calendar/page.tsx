@@ -15,7 +15,7 @@ import { th } from "date-fns/locale/th";
 
 import { getSessionUserId } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
-import { getFastingMinutes } from "@/lib/if";
+import { getEatingMinutes, getFastingMinutes } from "@/lib/if";
 import { toICT, getICTDay } from "@/lib/timezone";
 import EggIconLink from "@/components/EggIconLink";
 
@@ -66,7 +66,7 @@ export default async function CalendarPage({
   const { data: sessions } = await supabase
     .from("if_sessions")
     .select(
-      "fasting_start_time, fasting_end_time, status, fasting_duration_minutes, if_pattern"
+      "fasting_start_time, fasting_end_time, status, fasting_duration_minutes, eating_duration_minutes, if_pattern"
     )
     .eq("user_id", userId)
     .gte("fasting_start_time", monthStart.toISOString())
@@ -80,8 +80,13 @@ export default async function CalendarPage({
     const ictDate = toICT(utcDate);
     const key = format(ictDate, "yyyy-MM-dd");
 
-    const planned = getFastingMinutes(session.if_pattern);
-    const duration = session.fasting_duration_minutes ?? 0;
+    // Success requires BOTH planned targets: the fasting phase reached its
+    // pattern goal (e.g. 16h for 16:8) AND the eating phase reached its goal
+    // (e.g. 8h for 16:8). Missing either one counts as "fail".
+    const plannedFasting = getFastingMinutes(session.if_pattern);
+    const plannedEating = getEatingMinutes(session.if_pattern);
+    const fastingDuration = session.fasting_duration_minutes ?? 0;
+    const eatingDuration = session.eating_duration_minutes ?? 0;
 
     const existing = byDay.get(key);
     const candidate: DayStatus = {
@@ -91,10 +96,15 @@ export default async function CalendarPage({
       status:
         session.status === "active"
           ? "active"
-          : session.status === "completed" && duration >= planned
+          : session.status === "completed" &&
+              fastingDuration >= plannedFasting &&
+              eatingDuration >= plannedEating
             ? "success"
             : "fail",
-      durationMinutes: Math.max(duration, existing?.durationMinutes ?? 0),
+      durationMinutes: Math.max(
+        fastingDuration,
+        existing?.durationMinutes ?? 0
+      ),
       isToday: isToday(ictDate),
     };
 
@@ -215,7 +225,7 @@ export default async function CalendarPage({
             <div className="flex flex-col items-start gap-2 text-sm text-zinc-500 sm:flex-row sm:items-center sm:gap-6">
               <div className="flex items-center gap-2">
                 <span className="h-3 w-3 rounded bg-[#18A659]/40" />
-                สำเร็จ (ทำครบเป้าหมาย)
+                สำเร็จ (อดครบ + กินครบ)
               </div>
               <div className="flex items-center gap-2">
                 <span className="h-3 w-3 rounded bg-[#FFAE00]/40" />
