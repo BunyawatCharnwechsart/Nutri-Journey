@@ -15,7 +15,7 @@
 --   * Replace :CRON_SECRET below with the real value (same secret as the
 --     CRON_SECRET env var on Vercel) BEFORE running. Never commit it.
 --   * The secret lives only in this SQL job inside your own Supabase database.
---   * Also add https://nutri-journey-hazel.vercel.app to the pg_net allow-list
+--   * Also add https://www.nutrijourney88.com to the pg_net allow-list
 --     (Supabase dashboard: Settings → API → pg_net allow list).
 --
 -- Idempotent — safe to run again (the old job is unscheduled first).
@@ -34,7 +34,7 @@ select cron.schedule(
   '* * * * *',  -- every minute
   $$
   select net.http_post(
-    url := 'https://nutri-journey-hazel.vercel.app/api/cron/if-notifications',
+    url := 'https://www.nutrijourney88.com/api/cron/if-notifications',
     headers := jsonb_build_object(
       'Authorization', 'Bearer :CRON_SECRET',
       'Content-Type', 'application/json'
