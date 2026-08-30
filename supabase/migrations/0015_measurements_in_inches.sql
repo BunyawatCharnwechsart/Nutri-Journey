@@ -8,8 +8,10 @@
 --   hip_cm    -> hip_in
 --   chest_cm  -> chest_in
 --
--- Idempotent: the DO block checks for the old column name first, so once the
--- rename has happened the block is a no-op on re-runs.
+-- Idempotent: conversion only runs when the old *_cm column exists AND the new
+-- *_in column does not (migration 0004 re-adds the *_cm columns on every full
+-- migration run, so "both exist" must mean "already converted" -> skip).
+-- The orphaned *_cm columns are dropped every run to stay fully idempotent.
 -- ============================================================================
 
 do $$
@@ -17,6 +19,9 @@ begin
   if exists (
     select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'profiles' and column_name = 'waist_cm'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'profiles' and column_name = 'waist_in'
   ) then
     alter table public.profiles rename column waist_cm to waist_in;
     update public.profiles
@@ -27,6 +32,9 @@ begin
   if exists (
     select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'profiles' and column_name = 'hip_cm'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'profiles' and column_name = 'hip_in'
   ) then
     alter table public.profiles rename column hip_cm to hip_in;
     update public.profiles
@@ -37,6 +45,9 @@ begin
   if exists (
     select 1 from information_schema.columns
     where table_schema = 'public' and table_name = 'profiles' and column_name = 'chest_cm'
+  ) and not exists (
+    select 1 from information_schema.columns
+    where table_schema = 'public' and table_name = 'profiles' and column_name = 'chest_in'
   ) then
     alter table public.profiles rename column chest_cm to chest_in;
     update public.profiles
@@ -44,6 +55,12 @@ begin
      where chest_in is not null;
   end if;
 end $$;
+
+-- Migration 0004 re-adds the *_cm columns on the next full migration run; drop
+-- the orphaned (now empty) columns every run so re-runs never leave clutter.
+alter table public.profiles drop column if exists waist_cm;
+alter table public.profiles drop column if exists hip_cm;
+alter table public.profiles drop column if exists chest_cm;
 
 -- Defense-in-depth: re-assert that anon/authenticated can never touch profiles.
 revoke all on table public.profiles from anon, authenticated;
