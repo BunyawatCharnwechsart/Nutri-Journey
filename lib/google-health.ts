@@ -11,10 +11,11 @@ const GOOGLE_TOKEN_URL = "https://oauth2.googleapis.com/token";
 const GOOGLE_REVOKE_URL = "https://oauth2.googleapis.com/revoke";
 const HEALTH_API_BASE = "https://health.googleapis.com/v4";
 
+// Least-privilege: only request the scope the app actually reads today
+// (steps, distance, calories). Add sleep / measurements scopes later when the
+// matching features are shipped (users then re-consent via prompt=consent).
 const SCOPES = [
   "https://www.googleapis.com/auth/googlehealth.activity_and_fitness.readonly",
-  "https://www.googleapis.com/auth/googlehealth.health_metrics_and_measurements.readonly",
-  "https://www.googleapis.com/auth/googlehealth.sleep.readonly",
 ].join(" ");
 
 // ============================================================================
