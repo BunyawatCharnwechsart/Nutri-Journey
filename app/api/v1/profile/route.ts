@@ -37,9 +37,9 @@ export async function POST(request: Request) {
     heightCm,
     weightKg,
     activityLevel,
-    waistCm,
-    hipCm,
-    chestCm,
+    waistIn,
+    hipIn,
+    chestIn,
     goal,
     targetWeightKg,
   } = parsed.data;
@@ -53,11 +53,11 @@ export async function POST(request: Request) {
       height: heightCm,
       weight: weightKg,
       activity_level: activityLevel,
-      waist_cm: waistCm ?? null,
-      hip_cm: hipCm ?? null,
-      chest_cm: chestCm ?? null,
-      goal: goal ?? null,
-      target_weight: targetWeightKg ?? null,
+      waist_in: waistIn,
+      hip_in: hipIn,
+      chest_in: chestIn,
+      goal,
+      target_weight: targetWeightKg,
     })
     .eq("user_id", auth.userId)
     .select("*")

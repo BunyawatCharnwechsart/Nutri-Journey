@@ -81,7 +81,7 @@ export default async function ProfilePage() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "gender, birth_date, height, weight, activity_level, waist_cm, hip_cm, chest_cm, goal, target_weight"
+      "gender, birth_date, height, weight, activity_level, waist_in, hip_in, chest_in, goal, target_weight"
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -202,17 +202,17 @@ export default async function ProfilePage() {
           <InfoRow
             icon="/icon/heightIcon.png"
             label="รอบเอว"
-            value={profile.waist_cm != null ? `${profile.waist_cm} ซม.` : "—"}
+            value={profile.waist_in != null ? `${profile.waist_in} นิ้ว` : "—"}
           />
           <InfoRow
             icon="/icon/heightIcon.png"
             label="รอบสะโพก"
-            value={profile.hip_cm != null ? `${profile.hip_cm} ซม.` : "—"}
+            value={profile.hip_in != null ? `${profile.hip_in} นิ้ว` : "—"}
           />
           <InfoRow
             icon="/icon/heightIcon.png"
             label="รอบอก"
-            value={profile.chest_cm != null ? `${profile.chest_cm} ซม.` : "—"}
+            value={profile.chest_in != null ? `${profile.chest_in} นิ้ว` : "—"}
           />
         </Card>
 

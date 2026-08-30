@@ -17,9 +17,9 @@ export interface HealthProfileValues {
   heightCm: number | null;
   weightKg: number | null;
   activityLevel: string;
-  waistCm: number | null;
-  hipCm: number | null;
-  chestCm: number | null;
+  waistIn: number | null;
+  hipIn: number | null;
+  chestIn: number | null;
   goal: string;
   targetWeightKg: number | null;
 }
@@ -56,12 +56,12 @@ export default function HealthProfileForm({
     initialValues.weightKg?.toString() ?? ""
   );
   const [activityLevel, setActivityLevel] = useState(initialValues.activityLevel);
-  const [waistCm, setWaistCm] = useState(
-    initialValues.waistCm?.toString() ?? ""
+  const [waistIn, setWaistIn] = useState(
+    initialValues.waistIn?.toString() ?? ""
   );
-  const [hipCm, setHipCm] = useState(initialValues.hipCm?.toString() ?? "");
-  const [chestCm, setChestCm] = useState(
-    initialValues.chestCm?.toString() ?? ""
+  const [hipIn, setHipIn] = useState(initialValues.hipIn?.toString() ?? "");
+  const [chestIn, setChestIn] = useState(
+    initialValues.chestIn?.toString() ?? ""
   );
   const [goal, setGoal] = useState(initialValues.goal);
   const [targetWeightKg, setTargetWeightKg] = useState(
@@ -81,9 +81,33 @@ export default function HealthProfileForm({
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
 
-    if (step === 1 && birthDate === "") {
-      setError("กรุณาเลือกวันเกิดของคุณ");
-      return;
+    if (step === 1) {
+      if (gender === "") {
+        setError("กรุณาเลือกเพศของคุณ");
+        return;
+      }
+      if (birthDate === "") {
+        setError("กรุณาเลือกวันเกิดของคุณ");
+        return;
+      }
+    }
+
+    if (step === 2) {
+      if (waistIn === "" || hipIn === "" || chestIn === "") {
+        setError("กรุณากรอกสัดส่วนให้ครบทั้ง เอว สะโพก และอก");
+        return;
+      }
+    }
+
+    if (step === 3) {
+      if (goal === "") {
+        setError("กรุณาเลือกเป้าหมายของคุณ");
+        return;
+      }
+      if (targetWeightKg === "") {
+        setError("กรุณากรอกน้ำหนักเป้าหมายของคุณ");
+        return;
+      }
     }
 
     if (step < 3) {
@@ -105,12 +129,11 @@ export default function HealthProfileForm({
           heightCm: Number(heightCm),
           weightKg: Number(weightKg),
           activityLevel,
-          waistCm: waistCm === "" ? null : Number(waistCm),
-          hipCm: hipCm === "" ? null : Number(hipCm),
-          chestCm: chestCm === "" ? null : Number(chestCm),
-          goal: goal === "" ? undefined : goal,
-          targetWeightKg:
-            targetWeightKg === "" ? undefined : Number(targetWeightKg),
+          waistIn: Number(waistIn),
+          hipIn: Number(hipIn),
+          chestIn: Number(chestIn),
+          goal,
+          targetWeightKg: Number(targetWeightKg),
         }),
       });
 
@@ -342,58 +365,61 @@ export default function HealthProfileForm({
       {step === 2 && (
         <section className="flex flex-col gap-6">
           <div>
-            <label htmlFor="waist-cm" className={labelClass}>
-              รอบเอว (เซนติเมตร)
+            <label htmlFor="waist-in" className={labelClass}>
+              รอบเอว (นิ้ว)
             </label>
-              <input
-                id="waist-cm"
-                type="number"
-                inputMode="decimal"
-                min={30}
-                max={250}
-                step={0.1}
-                placeholder="เช่น 75"
-                value={waistCm}
-                onChange={(e) => setWaistCm(e.target.value)}
-                className={inputClass}
-              />
-            </div>
+            <input
+              id="waist-in"
+              type="number"
+              inputMode="decimal"
+              min={12}
+              max={98}
+              step={0.1}
+              placeholder="เช่น 29.5"
+              value={waistIn}
+              onChange={(e) => setWaistIn(e.target.value)}
+              className={inputClass}
+              required
+            />
+          </div>
 
-            <div>
-              <label htmlFor="hip-cm" className={labelClass}>
-                รอบสะโพก (เซนติเมตร)
-              </label>
-              <input
-                id="hip-cm"
-                type="number"
-                inputMode="decimal"
-                min={30}
-                max={250}
-                step={0.1}
-                placeholder="เช่น 95"
-                value={hipCm}
-                onChange={(e) => setHipCm(e.target.value)}
-                className={inputClass}
-              />
-            </div>
+          <div>
+            <label htmlFor="hip-in" className={labelClass}>
+              รอบสะโพก (นิ้ว)
+            </label>
+            <input
+              id="hip-in"
+              type="number"
+              inputMode="decimal"
+              min={12}
+              max={98}
+              step={0.1}
+              placeholder="เช่น 37"
+              value={hipIn}
+              onChange={(e) => setHipIn(e.target.value)}
+              className={inputClass}
+              required
+            />
+          </div>
 
-            <div>
-              <label htmlFor="chest-cm" className={labelClass}>
-                รอบอก (เซนติเมตร)
-              </label>
-              <input
-                id="chest-cm"
-                type="number"
-                inputMode="decimal"
-                min={30}
-                max={250}
-                step={0.1}
-                placeholder="เช่น 88"
-                value={chestCm}
-                onChange={(e) => setChestCm(e.target.value)}
-                className={inputClass}
-              />
-            </div>
+          <div>
+            <label htmlFor="chest-in" className={labelClass}>
+              รอบอก (นิ้ว)
+            </label>
+            <input
+              id="chest-in"
+              type="number"
+              inputMode="decimal"
+              min={12}
+              max={98}
+              step={0.1}
+              placeholder="เช่น 34.5"
+              value={chestIn}
+              onChange={(e) => setChestIn(e.target.value)}
+              className={inputClass}
+              required
+            />
+          </div>
         </section>
       )}
 
@@ -408,6 +434,7 @@ export default function HealthProfileForm({
               value={goal}
               onChange={(e) => setGoal(e.target.value)}
               className={inputClass}
+              required
             >
               <option value="" disabled>
                 เลือกเป้าหมายของคุณ
@@ -435,6 +462,7 @@ export default function HealthProfileForm({
               value={targetWeightKg}
               onChange={(e) => setTargetWeightKg(e.target.value)}
               className={inputClass}
+              required
             />
           </div>
         </section>

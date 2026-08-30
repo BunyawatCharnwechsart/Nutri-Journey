@@ -50,6 +50,11 @@ export function isProfileComplete(
     "height",
     "weight",
     "activity_level",
+    "waist_in",
+    "hip_in",
+    "chest_in",
+    "goal",
+    "target_weight",
   ];
 
   return requiredKeys.every(
