@@ -12,9 +12,10 @@ import { checkFriendship } from "@/lib/line-friendship";
 export const runtime = "nodejs";
 
 // ============================================================================
-// GET /api/cron/if-notifications?secret=... (or Authorization: Bearer ...)
+// GET|POST /api/cron/if-notifications?secret=... (or Authorization: Bearer ...)
 //
-// Called periodically (supabase pg_cron → pg_net, e.g. every 1 minute). It
+// Called periodically (supabase pg_cron → pg_net sends an HTTP POST every 1
+// minute; a manual GET with the same secret also works for testing). It
 // looks at every ACTIVE IF session, computes the planned end of the current
 // phase from if_pattern (16:8 => 16h fasting, 8h eating), and pushes a LINE
 // message to the user's OA account once the phase has finished its time.
@@ -79,6 +80,14 @@ function isAuthorized(request: Request): boolean {
 }
 
 export async function GET(request: Request) {
+  return handleCron(request);
+}
+
+export async function POST(request: Request) {
+  return handleCron(request);
+}
+
+async function handleCron(request: Request) {
   if (!isAuthorized(request)) {
     return apiError("Unauthorized", 401, "UNAUTHORIZED");
   }
