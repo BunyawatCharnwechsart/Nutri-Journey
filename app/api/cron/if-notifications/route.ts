@@ -14,14 +14,20 @@ export const runtime = "nodejs";
 // ============================================================================
 // GET /api/cron/if-notifications?secret=... (or Authorization: Bearer ...)
 //
-// Called periodically (supabase pg_cron → pg_net, e.g. every 5 minutes). It
+// Called periodically (supabase pg_cron → pg_net, e.g. every 1 minute). It
 // looks at every ACTIVE IF session, computes the planned end of the current
 // phase from if_pattern (16:8 => 16h fasting, 8h eating), and pushes a LINE
 // message to the user's OA account once the phase has finished its time.
 //
+// Reminders repeat while the phase is still running: `*_end_notified_at` holds
+// the *last* successful send time and `duePhaseNotification` re-arms it every
+// PHASE_REMINDER_INTERVAL_MS (10 min) as long as the phase end is still inside
+// PHASE_REMINDER_WINDOW_MS (3 h). A phase the user already stopped is skipped
+// (they acted, no reminder).
+//
 // Guards:
-//   * dedupe row `*_end_notified_at` is set only after a successful push.
-//   * a phase the user already stopped is skipped (they acted, no reminder).
+//   * `*_end_notified_at` is updated only after a successful push; on failure
+//     the next run simply retries.
 //   * users without an oa_user_id or with notifications disabled are skipped.
 //   * unreachable users (unfollowed/blocked) are skipped, and — the 2a guard —
 //     friendship is re-verified with GET /v2/bot/profile/{id} right before the
