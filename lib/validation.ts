@@ -46,33 +46,19 @@ export const healthProfileSchema = z.object({
     "very_active",
   ]),
 
-  // Optional fields (step 2 + step 3 of the health profile wizard).
-  // Empty string from skipped inputs is treated as undefined so the numeric
-  // enums can pass through as optional instead of failing coercion to NaN.
-  waistCm: optionalCm(),
-  hipCm: optionalCm(),
-  chestCm: optionalCm(),
-  goal: z
-    .enum(["weight_loss", "eating_behavior", "maintain_muscle", "endurance_mindset"])
-    .optional(),
-  targetWeightKg: z.coerce.number().min(20).max(300).optional(),
+  // Required fields (step 2 + step 3 of the health profile wizard).
+  // Measurements are captured in inches and stored in inches.
+  waistIn: z.coerce.number().min(12).max(98),
+  hipIn: z.coerce.number().min(12).max(98),
+  chestIn: z.coerce.number().min(12).max(98),
+  goal: z.enum([
+    "weight_loss",
+    "eating_behavior",
+    "maintain_muscle",
+    "endurance_mindset",
+  ]),
+  targetWeightKg: z.coerce.number().min(20).max(300),
 });
-
-/**
- * Coerces a string-or-number into an optional, range-checked centimetre
- * value. Blank input becomes undefined; anything else must be a decimal
- * number inside the stated range.
- */
-function optionalCm() {
-  return z
-    .preprocess(
-      (value) =>
-        value === "" || value === null || value === undefined
-          ? undefined
-          : value,
-      z.coerce.number().min(30).max(250).optional()
-    );
-}
 
 // ---- Google Health ----
 

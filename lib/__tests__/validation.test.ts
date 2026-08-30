@@ -44,26 +44,34 @@ describe("sessionIdSchema", () => {
 });
 
 describe("healthProfileSchema", () => {
+  const fullProfile = {
+    gender: "male",
+    birthDate: "2000-01-01",
+    heightCm: "175",
+    weightKg: "70",
+    activityLevel: "moderate",
+    waistIn: "29.5",
+    hipIn: "37",
+    chestIn: "34.5",
+    goal: "weight_loss",
+    targetWeightKg: "65",
+  };
+
   it("accepts a valid profile and coerces numeric strings", () => {
-    const result = healthProfileSchema.parse({
-      gender: "male",
-      birthDate: "2000-01-01",
-      heightCm: "175",
-      weightKg: "70",
-      activityLevel: "moderate",
-    });
+    const result = healthProfileSchema.parse(fullProfile);
     expect(result.heightCm).toBe(175);
     expect(result.weightKg).toBe(70);
+    expect(result.waistIn).toBe(29.5);
+    expect(result.chestIn).toBe(34.5);
+    expect(result.goal).toBe("weight_loss");
+    expect(result.targetWeightKg).toBe(65);
   });
 
   it("rejects a future birth date", () => {
     expect(() =>
       healthProfileSchema.parse({
-        gender: "female",
+        ...fullProfile,
         birthDate: "2999-01-01",
-        heightCm: "160",
-        weightKg: "55",
-        activityLevel: "light",
       })
     ).toThrow();
   });
@@ -71,24 +79,39 @@ describe("healthProfileSchema", () => {
   it("rejects out-of-range height", () => {
     expect(() =>
       healthProfileSchema.parse({
-        gender: "male",
-        birthDate: "2000-01-01",
+        ...fullProfile,
         heightCm: "10",
-        weightKg: "70",
-        activityLevel: "moderate",
       })
     ).toThrow();
   });
 
-  it("treats a blank optional measurement as undefined", () => {
-    const result = healthProfileSchema.parse({
-      gender: "female",
-      birthDate: "2000-01-01",
-      heightCm: "160",
-      weightKg: "55",
-      activityLevel: "moderate",
-      waistCm: "",
-    });
-    expect(result.waistCm).toBeUndefined();
+  it("rejects a missing (blank) measurement", () => {
+    expect(() =>
+      healthProfileSchema.parse({
+        ...fullProfile,
+        waistIn: "",
+      })
+    ).toThrow();
+  });
+
+  it("rejects a measurement outside the inch range", () => {
+    expect(() =>
+      healthProfileSchema.parse({
+        ...fullProfile,
+        hipIn: "200",
+      })
+    ).toThrow();
+  });
+
+  it("rejects a missing goal", () => {
+    const withoutGoal: Record<string, unknown> = { ...fullProfile };
+    delete withoutGoal.goal;
+    expect(() => healthProfileSchema.parse(withoutGoal)).toThrow();
+  });
+
+  it("rejects a missing target weight", () => {
+    const withoutTarget: Record<string, unknown> = { ...fullProfile };
+    delete withoutTarget.targetWeightKg;
+    expect(() => healthProfileSchema.parse(withoutTarget)).toThrow();
   });
 });

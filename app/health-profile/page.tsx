@@ -13,9 +13,9 @@ const EMPTY_FORM = {
   heightCm: null,
   weightKg: null,
   activityLevel: "",
-  waistCm: null,
-  hipCm: null,
-  chestCm: null,
+  waistIn: null,
+  hipIn: null,
+  chestIn: null,
   goal: "",
   targetWeightKg: null,
 };
@@ -37,7 +37,7 @@ export default async function HealthProfilePage({
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "gender, birth_date, height, weight, activity_level, waist_cm, hip_cm, chest_cm, goal, target_weight"
+      "gender, birth_date, height, weight, activity_level, waist_in, hip_in, chest_in, goal, target_weight"
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -63,9 +63,9 @@ export default async function HealthProfilePage({
     weightKg: profile?.weight != null ? Number(profile.weight) : null,
     activityLevel:
       typeof profile?.activity_level === "string" ? profile.activity_level : "",
-    waistCm: profile?.waist_cm != null ? Number(profile.waist_cm) : null,
-    hipCm: profile?.hip_cm != null ? Number(profile.hip_cm) : null,
-    chestCm: profile?.chest_cm != null ? Number(profile.chest_cm) : null,
+    waistIn: profile?.waist_in != null ? Number(profile.waist_in) : null,
+    hipIn: profile?.hip_in != null ? Number(profile.hip_in) : null,
+    chestIn: profile?.chest_in != null ? Number(profile.chest_in) : null,
     goal: typeof profile?.goal === "string" ? profile.goal : "",
     targetWeightKg:
       profile?.target_weight != null ? Number(profile.target_weight) : null,
