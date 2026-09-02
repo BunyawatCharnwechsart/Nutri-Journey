@@ -78,7 +78,7 @@ export default function GoogleHealthConnectButton({
       )}
 
       <p className="text-center text-xs text-zinc-400">
-        เชื่อมต่อเพื่อดึงข้อมูลกิจกรรม น้ำหนัก การนอน และอัตราการเต้นหัวใจจาก Google Health
+        เชื่อมต่อเพื่อดึงข้อมูลกิจกรรม ก้าวเดิน ระยะทาง และแคลอรี่จาก Google Health
       </p>
     </div>
   );
