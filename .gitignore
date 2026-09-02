@@ -48,3 +48,6 @@ scripts/dev-session.mjs
 
 # supabase local tooling artifacts
 supabase/.temp/
+
+# local-only Google OAuth verification prep (do not publish)
+docs/google-oauth-verification.md
