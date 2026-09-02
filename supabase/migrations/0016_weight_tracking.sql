@@ -36,11 +36,25 @@ alter table public.weight_logs
 
 -- Backfill from the legacy columns for rows created before this migration.
 -- recorded_on is the ICT calendar day of logged_at.
-update public.weight_logs
-   set recorded_on = (logged_at at time zone 'Asia/Bangkok')::date,
-       weight_kg   = weight,
-       updated_at  = now()
- where recorded_on is null or weight_kg is null;
+-- The legacy `weight` column may have been dropped by a later run (e.g.
+-- 0017 on an already-migrated DB), so guard its existence to keep this
+-- migration idempotent across clean and re-run database states.
+do $$
+begin
+  if exists (
+    select 1
+    from pg_attribute
+    where attrelid = 'public.weight_logs'::regclass
+      and attname = 'weight'
+      and not attisdropped
+  ) then
+    update public.weight_logs
+       set recorded_on = (logged_at at time zone 'Asia/Bangkok')::date,
+           weight_kg   = weight,
+           updated_at  = now()
+     where recorded_on is null or weight_kg is null;
+  end if;
+end $$;
 
 -- Future inserts via the tracking API always set recorded_on; still default it
 -- to the current ICT day as a safe fallback.
