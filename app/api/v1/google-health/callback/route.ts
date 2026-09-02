@@ -4,6 +4,7 @@ import { NextResponse } from "next/server";
 
 import { createServiceClient } from "@/lib/supabase/service";
 import {
+  SCOPES,
   exchangeCodeForTokens,
   getGoogleIdentity,
 } from "@/lib/google-health";
@@ -53,13 +54,24 @@ export async function GET(request: Request) {
 
     const tokens = await exchangeCodeForTokens(code);
 
+    const grantedScopes = tokens.scope.split(" ");
+
+    if (!grantedScopes.includes(SCOPES)) {
+      return NextResponse.redirect(
+        new URL(
+          `/dashboard?google_error=scope_not_granted&google_granted=${encodeURIComponent(
+            grantedScopes.join(",")
+          )}`,
+          request.url
+        )
+      );
+    }
+
     const identity = await getGoogleIdentity(tokens.access_token);
 
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000);
 
     const supabase = createServiceClient();
-
-    const grantedScopes = tokens.scope.split(" ");
 
     await supabase.from("google_health_connections").upsert(
       {
