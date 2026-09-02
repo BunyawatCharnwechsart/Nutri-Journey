@@ -84,22 +84,27 @@ export async function POST(request: Request) {
     .eq("user_id", auth.userId)
     .maybeSingle();
 
+  // Upsert so a brand-new (or accidentally-cleared) profile row is created
+  // automatically instead of failing an UPDATE that matches nothing.
   const { data: profile, error } = await supabase
     .from("profiles")
-    .update({
-      gender,
-      birth_date: birthDate,
-      height: heightCm,
-      weight: weightKg,
-      starting_weight: existingProfile?.starting_weight ?? weightKg,
-      activity_level: activityLevel,
-      waist_in: waistIn,
-      hip_in: hipIn,
-      chest_in: chestIn,
-      goal,
-      target_weight: targetWeightKg,
-    })
-    .eq("user_id", auth.userId)
+    .upsert(
+      {
+        user_id: auth.userId,
+        gender,
+        birth_date: birthDate,
+        height: heightCm,
+        weight: weightKg,
+        starting_weight: existingProfile?.starting_weight ?? weightKg,
+        activity_level: activityLevel,
+        waist_in: waistIn,
+        hip_in: hipIn,
+        chest_in: chestIn,
+        goal,
+        target_weight: targetWeightKg,
+      },
+      { onConflict: "user_id" }
+    )
     .select("*")
     .single();
 
