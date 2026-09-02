@@ -3,12 +3,7 @@ import { redirect } from "next/navigation";
 import { getSessionUserId } from "@/lib/auth";
 import { isProfileComplete } from "@/lib/profile";
 import { createServiceClient } from "@/lib/supabase/service";
-import {
-  canUpdateWeight,
-  daysUntilNextUpdate,
-} from "@/lib/weight-log";
 import HealthProfileForm from "@/components/HealthProfileForm";
-import WeightUpdateCard from "@/components/WeightUpdateCard";
 
 export const dynamic = "force-dynamic";
 
@@ -42,7 +37,7 @@ export default async function HealthProfilePage({
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "gender, birth_date, height, weight, starting_weight, activity_level, waist_in, hip_in, chest_in, goal, target_weight"
+      "gender, birth_date, height, weight, activity_level, waist_in, hip_in, chest_in, goal, target_weight"
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -59,20 +54,6 @@ export default async function HealthProfilePage({
     .maybeSingle();
 
   const avatarUrl = user?.avatar_url ?? null;
-
-  // Latest weight entry — drives the 15-day "อัปเดตน้ำหนัก" lock.
-  const { data: lastLog } = await supabase
-    .from("weight_logs")
-    .select("recorded_on")
-    .eq("user_id", userId)
-    .order("recorded_on", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  const lastRecordedDate = lastLog?.recorded_on ?? null;
-  const nowMs = new Date().getTime();
-  const canUpdateWeightNow = canUpdateWeight(nowMs, lastRecordedDate);
-  const daysUntilNext = daysUntilNextUpdate(nowMs, lastRecordedDate);
 
   const initialValues = {
     ...EMPTY_FORM,
@@ -93,21 +74,6 @@ export default async function HealthProfilePage({
   return (
     <main className="flex flex-1 flex-col px-6 pt-6 pb-10">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-8">
-        {editMode && profile?.weight != null && (
-          <WeightUpdateCard
-            startingWeightKg={
-              profile.starting_weight != null
-                ? Number(profile.starting_weight)
-                : null
-            }
-            currentWeightKg={Number(profile.weight)}
-            targetWeightKg={
-              profile.target_weight != null ? Number(profile.target_weight) : null
-            }
-            canUpdate={canUpdateWeightNow}
-            daysUntilNext={daysUntilNext}
-          />
-        )}
         <HealthProfileForm initialValues={initialValues} avatarUrl={avatarUrl} />
       </div>
     </main>

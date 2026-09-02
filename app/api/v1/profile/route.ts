@@ -36,7 +36,6 @@ export async function POST(request: Request) {
     gender,
     birthDate,
     heightCm,
-    weightKg,
     activityLevel,
     waistIn,
     hipIn,
@@ -44,6 +43,10 @@ export async function POST(request: Request) {
     goal,
     targetWeightKg,
   } = parsed.data;
+
+  // Round to one decimal so stored profiles/weight_logs values stay clean and
+  // consistent with the /api/v1/weight-logs route.
+  const weightKg = Math.round(parsed.data.weightKg * 10) / 10;
 
   const supabase = createServiceClient();
 
