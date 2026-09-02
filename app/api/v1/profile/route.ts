@@ -2,6 +2,7 @@ import { requireAuth } from "@/lib/auth";
 import { apiError, apiSuccess } from "@/lib/response";
 import { createServiceClient } from "@/lib/supabase/service";
 import { healthProfileSchema } from "@/lib/validation";
+import { getICTDateKey } from "@/lib/weight-log";
 
 export const runtime = "nodejs";
 
@@ -45,6 +46,41 @@ export async function POST(request: Request) {
   } = parsed.data;
 
   const supabase = createServiceClient();
+
+  // New-user weight anchor: the very first weight entry (from the profile
+  // setup wizard) starts the 15-day update clock. Existing users saving the
+  // form again do NOT create/log new entries (count > 0), so the clock can
+  // never be reset by editing the profile.
+  const { count } = await supabase
+    .from("weight_logs")
+    .select("user_id", { count: "exact", head: true })
+    .eq("user_id", auth.userId);
+
+  if (count === 0) {
+    const now = new Date();
+    const { error: anchorError } = await supabase.from("weight_logs").upsert(
+      {
+        user_id: auth.userId,
+        recorded_on: getICTDateKey(now.getTime()),
+        weight_kg: weightKg,
+        updated_at: now.toISOString(),
+      },
+      { onConflict: "user_id,recorded_on" }
+    );
+
+    if (anchorError) {
+      return apiError("Failed to save profile", 500, "INTERNAL_ERROR");
+    }
+  }
+
+  // Keep an already-established starting weight; seed it from the current
+  // weight for a brand-new user (starting weight = current weight).
+  const { data: existingProfile } = await supabase
+    .from("profiles")
+    .select("starting_weight")
+    .eq("user_id", auth.userId)
+    .maybeSingle();
+
   const { data: profile, error } = await supabase
     .from("profiles")
     .update({
@@ -52,6 +88,7 @@ export async function POST(request: Request) {
       birth_date: birthDate,
       height: heightCm,
       weight: weightKg,
+      starting_weight: existingProfile?.starting_weight ?? weightKg,
       activity_level: activityLevel,
       waist_in: waistIn,
       hip_in: hipIn,

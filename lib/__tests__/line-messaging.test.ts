@@ -3,6 +3,7 @@ import { describe, expect, it, beforeEach } from "vitest";
 
 import {
   buildPhaseEndMessages,
+  buildWeightReminderMessages,
   verifyLineSignature,
 } from "@/lib/line-messaging";
 
@@ -40,14 +41,21 @@ describe("buildPhaseEndMessages", () => {
   it("builds the fasting end message with the app link", () => {
     const [message] = buildPhaseEndMessages("fasting", LIFF_URL);
     expect(message.type).toBe("text");
-    expect(message.text).toContain("หมดเวลาอด");
+    expect(message.text).toContain("หมดเวลาการอดแล้ว");
     expect(message.text).toContain(LIFF_URL);
   });
 
   it("builds the eating end message with the app link", () => {
     const [message] = buildPhaseEndMessages("eating", LIFF_URL);
     expect(message.type).toBe("text");
-    expect(message.text).toContain("หมดเวลากิน");
+    expect(message.text).toContain("หมดเวลาการกินแล้ว");
+    expect(message.text).toContain(LIFF_URL);
+  });
+
+  it("builds the weight update reminder with the app link", () => {
+    const [message] = buildWeightReminderMessages(LIFF_URL);
+    expect(message.type).toBe("text");
+    expect(message.text).toContain("อัปเดตน้ำหนัก");
     expect(message.text).toContain(LIFF_URL);
   });
 });
