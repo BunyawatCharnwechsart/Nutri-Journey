@@ -143,3 +143,21 @@ export function buildPhaseEndMessages(
     },
   ];
 }
+
+/**
+ * Builds the "time to update your weight" reminder sent by the weight cron.
+ * Kept pure so it is easy to unit test.
+ */
+export function buildWeightReminderMessages(
+  liffUrl: string
+): LineSendMessage[] {
+  return [
+    {
+      type: "text",
+      text:
+        "⚖️ ครบ 15 วันแล้ว อย่าลืมอัปเดตน้ำหนักนะ 🎯\n" +
+        "กดบันทึกน้ำหนักวันนี้ได้เลย:\n" +
+        liffUrl,
+    },
+  ];
+}

@@ -11,8 +11,13 @@ import {
   getBmiCategory,
   isProfileComplete,
 } from "@/lib/profile";
+import {
+  canUpdateWeight,
+  daysUntilNextUpdate,
+} from "@/lib/weight-log";
 import LogoutButton from "@/components/LogoutButton";
 import EggIconLink from "@/components/EggIconLink";
+import WeightUpdateCard from "@/components/WeightUpdateCard";
 
 export const dynamic = "force-dynamic";
 
@@ -81,7 +86,7 @@ export default async function ProfilePage() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "gender, birth_date, height, weight, activity_level, waist_in, hip_in, chest_in, goal, target_weight"
+      "gender, birth_date, height, weight, starting_weight, activity_level, waist_in, hip_in, chest_in, goal, target_weight"
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -96,9 +101,25 @@ export default async function ProfilePage() {
     ACTIVITY_LABELS[profile.activity_level] ?? profile.activity_level;
 
   const weightKg = profile.weight != null ? Number(profile.weight) : null;
+  const startingWeightKg =
+    profile.starting_weight != null ? Number(profile.starting_weight) : null;
   const heightCm = profile.height != null ? Number(profile.height) : null;
   const targetWeightKg =
     profile.target_weight != null ? Number(profile.target_weight) : null;
+
+  // Latest weight entry — drives the 15-day "อัปเดตน้ำหนัก" lock.
+  const { data: lastLog } = await supabase
+    .from("weight_logs")
+    .select("recorded_on")
+    .eq("user_id", userId)
+    .order("recorded_on", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const lastRecordedDate = lastLog?.recorded_on ?? null;
+  const nowMs = new Date().getTime();
+  const canUpdateWeightNow = canUpdateWeight(nowMs, lastRecordedDate);
+  const daysUntilNext = daysUntilNextUpdate(nowMs, lastRecordedDate);
 
   const bmi = calculateBmi(weightKg, heightCm);
   const bmiCategory = getBmiCategory(bmi);
@@ -180,23 +201,18 @@ export default async function ProfilePage() {
           />
         </Card>
 
-        <Card title="การจัดการน้ำหนัก">
-          <InfoRow
-            icon="/icon/weightIcon.png"
-            label="น้ำหนักปัจจุบัน"
-            value={weightKg != null ? `${weightKg} กก.` : "—"}
-          />
-          <InfoRow
-            icon="/icon/targetIcon.svg"
-            label="น้ำหนักเป้าหมาย"
-            value={targetWeightKg != null ? `${targetWeightKg} กก.` : "—"}
-          />
-          {goalMessage && (
-            <div className="rounded-xl bg-[#18A659]/10 px-4 py-3 text-center text-sm font-medium text-[#148D4C]">
-              {goalMessage}
-            </div>
-          )}
-        </Card>
+        <WeightUpdateCard
+          startingWeightKg={startingWeightKg}
+          currentWeightKg={weightKg}
+          targetWeightKg={targetWeightKg}
+          canUpdate={canUpdateWeightNow}
+          daysUntilNext={daysUntilNext}
+        />
+        {goalMessage && (
+          <div className="rounded-xl bg-[#18A659]/10 px-4 py-3 text-center text-sm font-medium text-[#148D4C]">
+            {goalMessage}
+          </div>
+        )}
 
         <Card title="สัดส่วน">
           <InfoRow

@@ -60,6 +60,16 @@ export const healthProfileSchema = z.object({
   targetWeightKg: z.coerce.number().min(20).max(300),
 });
 
+/**
+ * Record a new weight (from the "อัปเดตน้ำหนัก" modal on the health profile).
+ */
+export const weightLogSchema = z.object({
+  weightKg: z.coerce
+    .number()
+    .min(20, "น้ำหนักต้องอยู่ระหว่าง 20-300 กก.")
+    .max(300, "น้ำหนักต้องอยู่ระหว่าง 20-300 กก."),
+});
+
 // ---- Google Health ----
 
 export const googleHealthSyncSchema = z.object({
