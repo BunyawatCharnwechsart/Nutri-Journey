@@ -70,6 +70,25 @@ export const weightLogSchema = z.object({
     .max(300, "น้ำหนักต้องอยู่ระหว่าง 20-300 กก."),
 });
 
+/**
+ * Record new body measurements (from the "อัปเดตสัดส่วน" modal).
+ * Measurements are captured in inches.
+ */
+export const measurementLogSchema = z.object({
+  waistIn: z.coerce
+    .number()
+    .min(12, "รอบเอวต้องอยู่ระหว่าง 12-98 นิ้ว")
+    .max(98, "รอบเอวต้องอยู่ระหว่าง 12-98 นิ้ว"),
+  hipIn: z.coerce
+    .number()
+    .min(12, "รอบสะโพกต้องอยู่ระหว่าง 12-98 นิ้ว")
+    .max(98, "รอบสะโพกต้องอยู่ระหว่าง 12-98 นิ้ว"),
+  chestIn: z.coerce
+    .number()
+    .min(12, "รอบอกต้องอยู่ระหว่าง 12-98 นิ้ว")
+    .max(98, "รอบอกต้องอยู่ระหว่าง 12-98 นิ้ว"),
+});
+
 // ---- Google Health ----
 
 export const googleHealthSyncSchema = z.object({

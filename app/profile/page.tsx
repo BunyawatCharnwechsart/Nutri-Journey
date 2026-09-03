@@ -15,9 +15,14 @@ import {
   canUpdateWeight,
   daysUntilNextUpdate,
 } from "@/lib/weight-log";
+import {
+  canUpdateMeasurement,
+  daysUntilNextMeasurementUpdate,
+} from "@/lib/measurement-log";
 import LogoutButton from "@/components/LogoutButton";
 import EggIconLink from "@/components/EggIconLink";
 import WeightUpdateCard from "@/components/WeightUpdateCard";
+import MeasurementUpdateCard from "@/components/MeasurementUpdateCard";
 
 export const dynamic = "force-dynamic";
 
@@ -121,6 +126,25 @@ export default async function ProfilePage() {
   const canUpdateWeightNow = canUpdateWeight(nowMs, lastRecordedDate);
   const daysUntilNext = daysUntilNextUpdate(nowMs, lastRecordedDate);
 
+  // Latest measurement entry — drives the 14-day "อัปเดตสัดส่วน" lock.
+  const { data: lastMeasurementLog } = await supabase
+    .from("measurement_logs")
+    .select("recorded_on")
+    .eq("user_id", userId)
+    .order("recorded_on", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const lastMeasurementDate = lastMeasurementLog?.recorded_on ?? null;
+  const canUpdateMeasurementNow = canUpdateMeasurement(
+    nowMs,
+    lastMeasurementDate
+  );
+  const daysUntilNextMeasurement = daysUntilNextMeasurementUpdate(
+    nowMs,
+    lastMeasurementDate
+  );
+
   const bmi = calculateBmi(weightKg, heightCm);
   const bmiCategory = getBmiCategory(bmi);
   const bmiColor = BMI_COLORS[bmiCategory] ?? "#18A659";
@@ -197,23 +221,15 @@ export default async function ProfilePage() {
           daysUntilNext={daysUntilNext}
         />
 
-        <Card title="สัดส่วน">
-          <InfoRow
-            icon="/icon/heightIcon.png"
-            label="รอบเอว"
-            value={profile.waist_in != null ? `${profile.waist_in} นิ้ว` : "—"}
-          />
-          <InfoRow
-            icon="/icon/heightIcon.png"
-            label="รอบสะโพก"
-            value={profile.hip_in != null ? `${profile.hip_in} นิ้ว` : "—"}
-          />
-          <InfoRow
-            icon="/icon/heightIcon.png"
-            label="รอบอก"
-            value={profile.chest_in != null ? `${profile.chest_in} นิ้ว` : "—"}
-          />
-        </Card>
+        <MeasurementUpdateCard
+          waistIn={profile.waist_in != null ? Number(profile.waist_in) : null}
+          hipIn={profile.hip_in != null ? Number(profile.hip_in) : null}
+          chestIn={
+            profile.chest_in != null ? Number(profile.chest_in) : null
+          }
+          canUpdate={canUpdateMeasurementNow}
+          daysUntilNext={daysUntilNextMeasurement}
+        />
 
         <div className="flex flex-col gap-3">
           <Link
