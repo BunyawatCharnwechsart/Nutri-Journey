@@ -161,3 +161,21 @@ export function buildWeightReminderMessages(
     },
   ];
 }
+
+/**
+ * Builds the "time to update your measurements" reminder sent by the
+ * measurement cron. Kept pure so it is easy to unit test.
+ */
+export function buildMeasurementReminderMessages(
+  liffUrl: string
+): LineSendMessage[] {
+  return [
+    {
+      type: "text",
+      text:
+        "📏 ครบ 14 วันแล้ว อย่าลืมอัปเดตสัดส่วนนะ 🎯\n" +
+        "กดบันทึกสัดส่วนวันนี้ได้เลย:\n" +
+        liffUrl,
+    },
+  ];
+}

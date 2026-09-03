@@ -4,6 +4,7 @@ import {
   healthProfileSchema,
   ifStartSchema,
   loginSchema,
+  measurementLogSchema,
   sessionIdSchema,
 } from "@/lib/validation";
 
@@ -113,5 +114,39 @@ describe("healthProfileSchema", () => {
     const withoutTarget: Record<string, unknown> = { ...fullProfile };
     delete withoutTarget.targetWeightKg;
     expect(() => healthProfileSchema.parse(withoutTarget)).toThrow();
+  });
+});
+
+describe("measurementLogSchema", () => {
+  it("accepts a full set of measurements", () => {
+    const result = measurementLogSchema.parse({
+      waistIn: "29.5",
+      hipIn: "37",
+      chestIn: "34.5",
+    });
+    expect(result.waistIn).toBe(29.5);
+    expect(result.hipIn).toBe(37);
+    expect(result.chestIn).toBe(34.5);
+  });
+
+  it("accepts a partial update (only the waist)", () => {
+    const result = measurementLogSchema.parse({ waistIn: "21" });
+    expect(result.waistIn).toBe(21);
+    expect(result.hipIn).toBeUndefined();
+    expect(result.chestIn).toBeUndefined();
+  });
+
+  it("rejects an empty object (nothing to update)", () => {
+    expect(() => measurementLogSchema.parse({})).toThrow();
+  });
+
+  it("treats an empty-string field as not provided", () => {
+    const result = measurementLogSchema.parse({ waistIn: "", hipIn: "30" });
+    expect(result.waistIn).toBeUndefined();
+    expect(result.hipIn).toBe(30);
+  });
+
+  it("rejects a measurement outside the inch range", () => {
+    expect(() => measurementLogSchema.parse({ waistIn: "200" })).toThrow();
   });
 });
