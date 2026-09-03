@@ -192,7 +192,7 @@ export default async function ProfilePage() {
           <InfoRow
             icon="/icon/weightIcon.png"
             label="น้ำหนัก"
-            value={weightKg != null ? `${weightKg} กก.` : "—"}
+            value={startingWeightKg != null ? `${startingWeightKg} กก.` : "—"}
           />
           <InfoRow
             icon="/icon/activityLevelIcon.png"
