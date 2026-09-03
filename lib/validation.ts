@@ -117,23 +117,3 @@ export const measurementLogSchema = z
       data.chestIn !== undefined,
     { message: "กรุณากรอกสัดส่วนอย่างน้อย 1 ค่า", path: ["waistIn"] }
   );
-
-// ---- Google Health ----
-
-export const googleHealthSyncSchema = z.object({
-  from: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "รูปแบบวันที่ไม่ถูกต้อง"),
-  to: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "รูปแบบวันที่ไม่ถูกต้อง"),
-});
-
-export const googleHealthDailySchema = z.object({
-  from: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "รูปแบบวันที่ไม่ถูกต้อง"),
-  to: z
-    .string()
-    .regex(/^\d{4}-\d{2}-\d{2}$/, "รูปแบบวันที่ไม่ถูกต้อง"),
-});

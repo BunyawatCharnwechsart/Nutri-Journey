@@ -23,14 +23,13 @@
 เอกสารฉบับนี้จัดทำขึ้นเพื่ออธิบายการออกแบบเชิงเทคนิคของระบบ Nutri Journey ซึ่งเป็น LINE Mini App สำหรับติดตามสุขภาพ โดยครอบคลุมสถาปัตยกรรมของระบบ โครงสร้างฐานข้อมูล การออกแบบส่วนติดต่อ ขั้นตอนการทำงานของแต่ละฟีเจอร์ และการเชื่อมต่อกับบริการภายนอก เพื่อใช้เป็นแนวทางในการพัฒนาและทดสอบระบบให้เป็นไปในทิศทางเดียวกัน
 
 ### 1.2 ขอบเขตของระบบ
-ระบบ Nutri Journey เป็นเว็บแอปพลิเคชัน (LINE Mini App) ที่ทำงานภายใน LINE Application ผ่าน LIFF สำหรับติดตามการทำ Intermittent Fasting (IF) รองรับการเข้าสู่ระบบผ่านบัญชี LINE เชื่อมต่อข้อมูลสุขภาพจาก Google Health API และมีระบบกระตุ้นพฤติกรรม (Gamification) เพื่อเสริมแรงจูงใจให้ผู้ใช้งาน
+ระบบ Nutri Journey เป็นเว็บแอปพลิเคชัน (LINE Mini App) ที่ทำงานภายใน LINE Application ผ่าน LIFF สำหรับติดตามการทำ Intermittent Fasting (IF) รองรับการเข้าสู่ระบบผ่านบัญชี LINE และมีระบบกระตุ้นพฤติกรรม (Gamification) เพื่อเสริมแรงจูงใจให้ผู้ใช้งาน
 
 ฟังก์ชันหลักของระบบ:
 - ติดตามการทำ Intermittent Fasting (IF Tracker)
 - ดูประวัติการทำ IF แบบปฏิทิน (IF Calendar)
 - ตั้งเป้าหมายน้ำหนักและติดตามความคืบหน้า (Weight Goal)
 - บันทึกน้ำหนักรายวัน (Weight Log)
-- เชื่อมต่อและดึงข้อมูลสุขภาพจาก Google Health API
 - แสดงข้อมูลสรุปสุขภาพ (Health Dashboard)
 - ระบบสะสมคะแนนและติดตามความก้าวหน้า (Healthy Journey)
 - แจ้งเตือนผ่าน LINE Official Account
@@ -43,7 +42,6 @@
 | LIFF | LINE Front-end Framework สำหรับสร้างเว็บแอปที่ทำงานภายใน LINE |
 | OA | Official Account - บัญชีทางการของ LINE |
 | SDS | System Design Specification |
-| Google Health API | บริการ API ของ Google ที่ตรวจสอบข้อมูลสุขภาพได้ เช่น ก้าวเดิน, ระยะทางเดิน, แคลอรี่ที่เผาผลาญในแต่ละวัน |
 | Supabase | บริการ backend-as-a-service ที่ใช้ PostgreSQL |
 | BMI | Body Mass Index - ดัชนีมวลกาย คำนวณจากน้ำหนัก (กก.) หารด้วยส่วนสูง (ม.) ยกกำลังสอง |
 | BMR | Basal Metabolic Rate - อัตราการเผาผลาญพลังงานขั้นพื้นฐานของร่างกายขณะพัก |
@@ -55,7 +53,6 @@
 ### 1.4 เอกสารอ้างอิง
 - LINE LIFF Documentation - https://developers.line.biz/en/docs/liff/
 - LINE Messaging API Documentation - https://developers.line.biz/en/docs/messaging-api/
-- Google Health API Documentation - https://developers.google.com/fit
 - Supabase Documentation - https://supabase.com/docs
 - Next.js Documentation - https://nextjs.org/docs
 - Project Proposal: Nutri Journey (ระบบติดตามสุขภาพและการทำ Intermittent Fasting)
@@ -73,14 +70,14 @@
 | Frontend / Backend | Next.js (React, TypeScript) |
 | Login / Mini App | LINE LIFF |
 | Database & Auth | Supabase (PostgreSQL) |
-| ข้อมูลสุขภาพ | Google Health API |
+| ข้อมูลสุขภาพ | Supabase (Weight Logs) |
 | การแจ้งเตือน | LINE Messaging API |
 | Deploy | Vercel, GitHub |
 | Testing | Postman, Playwright |
 
 ### 2.2 สถาปัตยกรรมระบบ (System Architecture)
 
-ระบบ Nutri Journey มีสถาปัตยกรรมแบบ Client-Server โดยฝั่ง Client ทำงานบน LINE Mini App ผ่าน LIFF (เว็บแอปพลิเคชันที่ทำงานภายใน LINE Application) และฝั่ง Server ใช้ Next.js Framework ในการจัดการทั้ง Frontend และ Backend API Routes โดยมี Supabase เป็นฐานข้อมูลหลัก และ Google Health API สำหรับดึงข้อมูลสุขภาพ
+ระบบ Nutri Journey มีสถาปัตยกรรมแบบ Client-Server โดยฝั่ง Client ทำงานบน LINE Mini App ผ่าน LIFF (เว็บแอปพลิเคชันที่ทำงานภายใน LINE Application) และฝั่ง Server ใช้ Next.js Framework ในการจัดการทั้ง Frontend และ Backend API Routes โดยมี Supabase เป็นฐานข้อมูลหลัก
 
 ```
 ┌─────────────────────────────┐
@@ -99,17 +96,10 @@
 │  (DB/Auth/     │  │  LINE OA       │
 │   Storage)     │  │  (Login/Notify)│
 └──────────┬─────┘  └────────────────┘
-           │
-┌──────────▼─────┐
-│  Google        │
-│  Health API    │
-│  (ข้อมูลสุขภาพ) │
-└────────────────┘
 ```
 
 - **Next.js** ทำหน้าที่เป็นทั้ง Frontend (แสดงผล UI) และ Backend (API Routes จัดการ Business Logic)
 - **Supabase** ใช้เป็นฐานข้อมูลหลัก (PostgreSQL), ระบบ Authentication และ Storage
-- **Google Health API** ใช้ดึงข้อมูลสุขภาพ เช่น ก้าวเดิน ระยะทาง และแคลอรี่ที่เผาผลาญ
 - **LINE LIFF / LINE Official Account** ใช้สำหรับ Login และส่งการแจ้งเตือน
 
 ### 2.3 แผนผังบริบทของระบบ (Context Diagram)
@@ -119,7 +109,6 @@
 - ผ่าน LINE OA Chat สำหรับรับการแจ้งเตือนและข้อความจากระบบ
 
 ระบบเชื่อมต่อกับบริการภายนอกดังนี้
-- Google Health API สำหรับดึงข้อมูลสุขภาพของผู้ใช้
 - Supabase Database สำหรับจัดเก็บข้อมูล
 - LINE Platform สำหรับ Login และส่งข้อความ
 
@@ -140,8 +129,7 @@
 | บันทึกน้ำหนักรายวัน | บันทึกและแก้ไขน้ำหนักประจำวันย้อนหลังได้ |
 | เริ่ม/สิ้นสุด IF | ตั้งค่าและติดตามช่วงเวลาการทำ IF |
 | ดู IF Calendar | ดูประวัติการทำ IF แบบปฏิทินรายเดือน |
-| ดู Health Dashboard | ดูสรุปข้อมูลสุขภาพ สถานะ IF และข้อมูลจาก Google Health API |
-| เชื่อมต่อ Google Health | อนุญาตและดึงข้อมูลสุขภาพจากบัญชี Google |
+| ดู Health Dashboard | ดูสรุปข้อมูลสุขภาพและสถานะ IF |
 | เล่น Healthy Journey | ทำเควสและสะสมคะแนน |
 | รับการแจ้งเตือน | รับแจ้งเตือนช่วง IF และกิจกรรมระบบผ่าน LINE |
 
@@ -159,42 +147,37 @@
 - ระบบแสดงสถานะการอดแบบ real-time
 - ระบบแสดงสถิติการทำ IF ย้อนหลัง
 
-**3.2.3 การเชื่อมต่อ Google Health API**
-- ผู้ใช้สามารถเชื่อมต่อบัญชี Google เพื่ออนุญาตให้ระบบเข้าถึงข้อมูลสุขภาพ
-- ระบบดึงข้อมูล ก้าวเดิน (steps), ระยะทาง (distance) และแคลอรี่ที่เผาผลาญ (kcal) ต่อวัน
-- ข้อมูลที่ดึงมาจะถูกนำไปแสดงผลรวมใน Health Dashboard
-
-**3.2.4 การแสดงข้อมูลสุขภาพ (Health Dashboard)**
-- ระบบแสดงสรุปข้อมูลจาก Google Health API (ก้าวเดิน, ระยะทาง, แคลอรี่ที่เผาผลาญ)
+**3.2.3 การแสดงข้อมูลสุขภาพ (Health Dashboard)**
+- ระบบแสดงสรุปข้อมูลสุขภาพ (สถิติการทำ IF)
 - ระบบแสดงสถิติการทำ IF (จำนวนครั้ง, ชั่วโมงอดสะสม)
 - ระบบแสดงข้อมูลเปรียบเทียบระหว่างวัน/สัปดาห์/เดือน
 
-**3.2.5 Healthy Journey (Gamification)**
+**3.2.4 Healthy Journey (Gamification)**
 - ผู้ใช้สามารถทำภารกิจ (missions) เพื่อรับคะแนน
 - ภารกิจ เช่น ทำ IF ครบตามกำหนด, เดินครบเป้าขั้นตอน, ดื่มน้ำครบตามเป้า
 - ผู้ใช้สามารถดูระดับ (level) และความคืบหน้า
 - ระบบแสดง badges หรือรางวัลเมื่อบรรลุเป้าหมาย
 
-**3.2.6 การแจ้งเตือนผ่าน LINE OA**
+**3.2.5 การแจ้งเตือนผ่าน LINE OA**
 - ระบบส่งการแจ้งเตือนสถานะการทำ IF (เริ่ม/สิ้นสุด/ใกล้ครบกำหนด)
 - ระบบส่งสรุปประจำวัน (Daily Summary)
 
-**3.2.7 การคำนวณ BMI และ BMR**
+**3.2.6 การคำนวณ BMI และ BMR**
 - ระบบคำนวณ BMI อัตโนมัติจากน้ำหนักและส่วนสูงของผู้ใช้ และแสดงหมวดหมู่ (น้ำหนักน้อย/ปกติ/เกิน/อ้วน)
 - ระบบคำนวณ BMR ด้วยสูตร Mifflin-St Jeor จากเพศ อายุ น้ำหนัก และส่วนสูงของผู้ใช้
 - ค่าที่คำนวณได้จะแสดงผลบนหน้า Dashboard และหน้า Profile
 
-**3.2.8 การตั้งเป้าหมายน้ำหนัก (Weight Goal)**
+**3.2.7 การตั้งเป้าหมายน้ำหนัก (Weight Goal)**
 - ผู้ใช้สามารถตั้งค่าน้ำหนักเป้าหมาย (target_weight) และวันครบกำหนด (target_date) ภายในสัปดาห์หรือเดือน
 - ระบบติดตามความคืบหน้าโดยเปรียบเทียบน้ำหนักล่าสุดจาก Weight Log กับน้ำหนักเป้าหมาย
 - ระบบแสดงผลความคืบหน้าเป็นเปอร์เซ็นต์และสถานะ (ถึงเป้า/ใกล้เป้า/ห่างเป้า) บนหน้า Dashboard
 
-**3.2.9 บันทึกน้ำหนักรายวัน (Weight Log)**
+**3.2.8 บันทึกน้ำหนักรายวัน (Weight Log)**
 - ผู้ใช้สามารถบันทึกน้ำหนักของแต่ละวันได้
 - ผู้ใช้สามารถดูและแก้ไขบันทึกน้ำหนักย้อนหลังได้
 - บันทึกน้ำหนักจะถูกนำไปใช้คำนวณ BMI, BMR และความคืบหน้าเป้าหมายน้ำหนัก
 
-**3.2.10 ปฏิทินการทำ IF (IF Calendar)**
+**3.2.9 ปฏิทินการทำ IF (IF Calendar)**
 - ระบบแสดงปฏิทินรายเดือนของประวัติการทำ IF
 - แต่ละวันแสดงสถานะการทำ IF เช่น สำเร็จ/ล้มเหลว/ไม่อด พร้อมจำนวนชั่วโมงที่ทำได้
 
@@ -209,7 +192,6 @@
 - การเชื่อมต่อทั้งหมดต้องใช้ HTTPS
 - ใช้ LINE Login เป็นระบบยืนยันตัวตนหลัก โดยต้องตรวจสอบ Token ที่ Backend ทุกครั้ง
 - ใช้ Row Level Security (RLS) กับทุกตาราง เพื่อให้ผู้ใช้เข้าถึงได้เฉพาะข้อมูลของตนเอง
-- เก็บ refresh_token ของ Google Health API ไว้ฝั่ง Backend เท่านั้น ไม่เปิดเผยสู่ Client
 - ข้อมูลสุขภาพต้องถูกส่งผ่าน API แบบเข้ารหัส
 
 **3.3.3 Usability (การใช้งาน)**
@@ -254,36 +236,30 @@
 4. เมื่อครบกำหนดหรือผู้ใช้กด "สิ้นสุด Fasting" ระบบบันทึกเวลาสิ้นสุด และคำนวณระยะเวลาที่ทำได้จริง (duration_minutes)
 5. ข้อมูลเซสชันจะถูกส่งไปแสดงผลรวมใน Health Dashboard และใช้ตรวจสอบภารกิจใน Healthy Journey
 
-### 4.4 ข้อมูลจาก Google Health API
-1. ผู้ใช้ทำการเชื่อมต่อบัญชี Google ผ่าน OAuth 2.0 flow ที่จัดการโดย Backend
-2. ระบบรับ `refresh_token` และเก็บไว้ใน Backend อย่างปลอดภัย (ไม่ส่งไปยัง Client)
-3. Backend ส่งคำขอไปยัง Google Health API เพื่อดึงข้อมูล ก้าวเดิน (steps), ระยะทาง (distance) และแคลอรี่ที่เผาผลาญ (kcal) ของวันนั้น
-4. ระบบนำข้อมูลที่ได้มาบันทึกและแสดงผลรวมใน Health Dashboard ร่วมกับข้อมูล IF
-
-### 4.5 Health Dashboard
-1. ระบบดึงข้อมูลจากหลายตาราง (`if_sessions`, `profiles`) และ Google Health API มาประมวลผลรวม
+### 4.4 Health Dashboard
+1. ระบบดึงข้อมูลจากตาราง `if_sessions` และ `profiles` มาประมวลผลรวม
 2. คำนวณสรุปรายวัน/รายสัปดาห์ เช่น ระยะเวลา IF เฉลี่ย, ก้าวเดิน, ระยะทาง, แคลอรี่ที่เผาผลาญ, แนวโน้มน้ำหนัก
 3. แสดงค่า BMI พร้อมหมวดหมู่ และค่า BMR ที่คำนวณจากข้อมูลโปรไฟล์
 4. แสดงผลเป็นกราฟและการ์ดสรุป (Chart/Widget) บนหน้า Dashboard
 
-### 4.6 Healthy Journey (ระบบเควสและคะแนน)
+### 4.5 Healthy Journey (ระบบเควสและคะแนน)
 1. ระบบตรวจสอบพฤติกรรมผู้ใช้ (เช่น ทำ IF ครบตามเป้า, เดินครบเป้า) เทียบกับเงื่อนไขภารกิจในตาราง `missions`
 2. เมื่อผู้ใช้ทำเงื่อนไขสำเร็จ ระบบเพิ่มคะแนน/รางวัลลงตาราง `healthy_journey`
 3. หน้า Healthy Journey แสดงภารกิจที่ทำได้ ภารกิจที่ยังไม่สำเร็จ และคะแนนสะสมทั้งหมด
 4. คะแนนสะสมอาจใช้แลกเป็น Badge หรือ Level เพื่อสร้างแรงจูงใจต่อเนื่อง
 
-### 4.7 ระบบแจ้งเตือน (Notification)
+### 4.6 ระบบแจ้งเตือน (Notification)
 1. ระบบมี Scheduler/Cron Job ตรวจสอบสถานะผู้ใช้ (เช่น ใกล้ครบเวลา Fasting)
 2. เมื่อเข้าเงื่อนไข ระบบเรียก LINE Messaging API เพื่อส่งข้อความแจ้งเตือนผ่าน LINE Official Account
 3. ผู้ใช้กดที่ข้อความแจ้งเตือนเพื่อเปิดกลับเข้าสู่ระบบ (Deep Link ผ่าน LIFF)
 
-### 4.8 การตั้งเป้าหมายน้ำหนักและบันทึกน้ำหนักรายวัน (Weight Goal & Weight Log)
+### 4.7 การตั้งเป้าหมายน้ำหนักและบันทึกน้ำหนักรายวัน (Weight Goal & Weight Log)
 1. ผู้ใช้ตั้งเป้าหมายน้ำหนัก (`target_weight`) และวันครบกำหนด (`target_date`) ที่หน้า Profile
 2. ผู้ใช้บันทึกน้ำหนักประจำวันลงตาราง `weight_logs` (สามารถแก้ไขย้อนหลังได้)
 3. ระบบคำนวณความคืบหน้าโดยเปรียบเทียบน้ำหนักล่าสุดกับเป้าหมาย
 4. ระบบแสดงผลความคืบหน้าเป็นเปอร์เซ็นต์และสถานะบนหน้า Dashboard และแจ้งเตือนเมื่อถึงเป้าหมาย
 
-### 4.9 ปฏิทินการทำ IF (IF Calendar)
+### 4.8 ปฏิทินการทำ IF (IF Calendar)
 1. ผู้ใช้เข้าหน้า "IF Calendar"
 2. ระบบดึงข้อมูลจากตาราง `if_sessions` ตามเดือนที่เลือก
 3. ระบบประมวลผลสถานะของแต่ละวัน (สำเร็จ/ล้มเหลว/ไม่อด) พร้อมจำนวนชั่วโมงที่ทำได้
@@ -346,12 +322,12 @@ LINE Mini App จะพัฒนาโดยใช้ Next.js และ LIFF SDK
 
 หน้าหลักของระบบประกอบด้วย:
 
-1. **หน้า Dashboard** - แสดงสรุปข้อมูลสุขภาพประจำวัน ได้แก่ ข้อมูลจาก Google Health API สถานะ IF และความคืบหน้า Healthy Journey
+1. **หน้า Dashboard** - แสดงสรุปข้อมูลสุขภาพประจำวัน ได้แก่ สถานะ IF และความคืบหน้า Healthy Journey
 2. **หน้า IF Tracker** - แสดงสถานะการอดแบบ real-time จับเวลา และประวัติการทำ IF
 3. **หน้า IF Calendar** - แสดงปฏิทินรายเดือนของประวัติการทำ IF พร้อมสถานะแต่ละวัน
-4. **หน้า Health Dashboard** - แสดงกราฟและสถิติข้อมูลสุขภาพรายสัปดาห์/รายเดือน รวมถึงข้อมูลจาก Google Health API, BMI และ BMR
+4. **หน้า Health Dashboard** - แสดงกราฟและสถิติข้อมูลสุขภาพรายสัปดาห์/รายเดือน รวมถึง BMI และ BMR
 5. **หน้า Healthy Journey** - แสดงภารกิจ คะแนนสะสม ระดับ และ badges
-6. **หน้า Profile** - แสดงข้อมูลผู้ใช้ การตั้งค่า IF การตั้งเป้าหมายน้ำหนัก การบันทึกน้ำหนักรายวัน การเชื่อมต่อ Google Health และการตั้งค่าการแจ้งเตือน พร้อมแสดงค่า BMI และ BMR
+6. **หน้า Profile** - แสดงข้อมูลผู้ใช้ การตั้งค่า IF การตั้งเป้าหมายน้ำหนัก การบันทึกน้ำหนักรายวัน และการตั้งค่าการแจ้งเตือน พร้อมแสดงค่า BMI และ BMR
 
 ### 6.2 ส่วนติดต่อระบบภายนอก
 
@@ -361,17 +337,12 @@ LINE Mini App จะพัฒนาโดยใช้ Next.js และ LIFF SDK
 - ใช้ `liff.login()` สำหรับการเข้าสู่ระบบ
 - ใช้ `liff.getDecodedIDToken()` เพื่อตรวจสอบ userId ฝั่ง Frontend
 
-**6.2.2 Google Health API**
-- ใช้ OAuth 2.0 flow สำหรับการเชื่อมต่อบัญชี Google
-- เก็บ `refresh_token` ไว้ใน Backend เท่านั้น
-- ดึงข้อมูล steps, distance และ kcal ผ่าน API เพื่อแสดงผลใน Health Dashboard
-
-**6.2.3 Supabase API**
+**6.2.2 Supabase API**
 - ใช้ Supabase Client (JavaScript SDK) สำหรับเชื่อมต่อฐานข้อมูล
 - ใช้ Row Level Security (RLS) สำหรับควบคุมการเข้าถึงข้อมูล
 - จัดเก็บและเรียกใช้ข้อมูลผู้ใช้ ข้อมูล IF และความก้าวหน้า
 
-**6.2.4 LINE Messaging API**
+**6.2.3 LINE Messaging API**
 - ใช้ LINE Messaging API สำหรับส่ง Push Notification ถึงผู้ใช้
 - ใช้ Rich Menu สำหรับสร้างเมนูใน LINE OA Chat
 - ใช้ Reply Token สำหรับตอบกลับข้อความอัตโนมัติ
@@ -393,7 +364,7 @@ LINE Mini App จะพัฒนาโดยใช้ Next.js และ LIFF SDK
 2. **API Routes Component (Next.js Backend)**
    - รับผิดชอบการประมวลผล business logic
    - จัดการ authentication middleware (ตรวจสอบ idToken จาก LINE)
-   - เชื่อมต่อกับ Supabase และ Google Health API
+   - เชื่อมต่อกับ Supabase
    - แบ่งเป็น modules: auth, if, journey, notification
 
 3. **Database Component (Supabase)**
@@ -403,7 +374,6 @@ LINE Mini App จะพัฒนาโดยใช้ Next.js และ LIFF SDK
 
 4. **External Service Component**
    - LINE Platform (LIFF + Messaging API)
-   - Google Health API
 
 5. **Scheduler Component**
    - ตรวจสอบเวลาและสถานะผู้ใช้เป็นระยะ (Cron Job)
@@ -422,14 +392,6 @@ LINE Mini App จะพัฒนาโดยใช้ Next.js และ LIFF SDK
 7. API Route คำนวณ duration และอัปเดต record
 8. API Route ตรวจสอบและอัปเดตคะแนนใน `healthy_journey`
 9. ระบบตอบกลับผลลัพธ์
-
-**Flow การดึงข้อมูลจาก Google Health API:**
-
-1. ผู้ใช้กด "เชื่อมต่อ Google" ที่หน้า Profile
-2. Backend เริ่ม OAuth 2.0 flow และขอสิทธิ์เข้าถึงข้อมูลสุขภาพ
-3. ระบบรับ `refresh_token` และเก็บไว้ใน Backend
-4. Scheduler หรือคำขอจากผู้ใช้กระตุ้นให้ Backend เรียก Google Health API
-5. Backend นำข้อมูล steps, distance, kcal มาประมวลผลและแสดงผลใน Health Dashboard
 
 **Flow การตั้งเป้าหมายน้ำหนักและบันทึกน้ำหนักรายวัน:**
 
@@ -472,7 +434,6 @@ LINE Mini App จะพัฒนาโดยใช้ Next.js และ LIFF SDK
 - ใช้ LINE Login (OAuth 2.0) เป็นช่องทางยืนยันตัวตนหลัก ลดความเสี่ยงจากการจัดการรหัสผ่านเอง
 - ตรวจสอบ idToken จาก LIFF ที่ Backend ทุกครั้งด้วย `jose` หรือ `jsonwebtoken` ก่อนเชื่อถือ userId (ป้องกันการปลอมแปลง token)
 - ใช้ Supabase Row Level Security (RLS) เพื่อจำกัดให้ผู้ใช้เข้าถึงได้เฉพาะข้อมูลของตนเองในทุกตาราง
-- เก็บ `refresh_token` ของ Google Health API ไว้ใน Backend เท่านั้น (ใช้ `server-only` import) ไม่เปิดเผยสู่ Client
 - Validate ทุก input จาก Client ด้วย Zod ก่อนส่งไปยัง Database
 - ใช้ Next.js Server Actions CSRF protection และ Rate Limiting เพื่อป้องกันการใช้งานที่ไม่เหมาะสม
 - การเชื่อมต่อทั้งหมดใช้ HTTPS และกำหนด Environment Variables ใน Vercel Dashboard
@@ -483,7 +444,7 @@ LINE Mini App จะพัฒนาโดยใช้ Next.js และ LIFF SDK
 
 | ประเภทการทดสอบ | เครื่องมือ | ขอบเขต |
 |---|---|---|
-| API Testing | Postman | ทดสอบ API Routes ของ Next.js เช่น Auth, IF Session, IF Calendar, Weight Log, Google Health |
+| API Testing | Postman | ทดสอบ API Routes ของ Next.js เช่น Auth, IF Session, IF Calendar, Weight Log |
 | End-to-End Testing | Playwright | ทดสอบ Flow การใช้งานจริงผ่านหน้าเว็บ เช่น Login → เริ่ม IF → ดู Dashboard |
 | UI/UX Testing | LINE Official Account Emulator | ทดสอบการแสดงผลและการทำงานภายใน LINE Mini App |
 
@@ -498,13 +459,12 @@ LINE Mini App จะพัฒนาโดยใช้ Next.js และ LIFF SDK
 | 3 | ติดตั้งและตั้งค่าโครงการ Next.js + Supabase | สัปดาห์ที่ 3-4 |
 | 4 | พัฒนาระบบยืนยันตัวตน (LINE Login) | สัปดาห์ที่ 4-5 |
 | 5 | พัฒนาระบบ IF Tracker | สัปดาห์ที่ 5-6 |
-| 6 | พัฒนาการเชื่อมต่อ Google Health API | สัปดาห์ที่ 6-7 |
-| 7 | พัฒนาระบบ Healthy Journey (Gamification) | สัปดาห์ที่ 7-8 |
-| 8 | พัฒนาระบบเป้าหมายน้ำหนักและบันทึกน้ำหนักรายวัน | สัปดาห์ที่ 8-9 |
-| 9 | พัฒนาระบบแจ้งเตือนผ่าน LINE OA | สัปดาห์ที่ 9-10 |
-| 10 | พัฒนาระบบ Health Dashboard และ IF Calendar | สัปดาห์ที่ 10-11 |
-| 11 | ทดสอบระบบและแก้ไขข้อผิดพลาด | สัปดาห์ที่ 11-13 |
-| 12 | จัดทำเอกสารและนำเสนอโครงการ | สัปดาห์ที่ 13-14 |
+| 6 | พัฒนาระบบ Healthy Journey (Gamification) | สัปดาห์ที่ 6-7 |
+| 7 | พัฒนาระบบเป้าหมายน้ำหนักและบันทึกน้ำหนักรายวัน | สัปดาห์ที่ 7-8 |
+| 8 | พัฒนาระบบแจ้งเตือนผ่าน LINE OA | สัปดาห์ที่ 8-9 |
+| 9 | พัฒนาระบบ Health Dashboard และ IF Calendar | สัปดาห์ที่ 9-10 |
+| 10 | ทดสอบระบบและแก้ไขข้อผิดพลาด | สัปดาห์ที่ 10-12 |
+| 11 | จัดทำเอกสารและนำเสนอโครงการ | สัปดาห์ที่ 12-13 |
 
 ---
 
@@ -540,7 +500,7 @@ LINE Mini App จะพัฒนาโดยใช้ Next.js และ LIFF SDK
 
 12.1 ผู้ใช้สามารถติดตามพฤติกรรมการดูแลสุขภาพได้อย่างสะดวกผ่าน LINE
 
-12.2 ผู้ใช้สามารถติดตามการทำ Intermittent Fasting (IF) และข้อมูลสุขภาพจาก Google Health API ได้อย่างเป็นระบบ
+12.2 ผู้ใช้สามารถติดตามการทำ Intermittent Fasting (IF) ได้อย่างเป็นระบบ
 
 12.3 ผู้ใช้ได้รับการแจ้งเตือนผ่าน LINE Official Account เพื่อช่วยสร้างวินัยและความต่อเนื่องในการดูแลสุขภาพ
 
@@ -577,7 +537,7 @@ LINE Mini App จะพัฒนาโดยใช้ Next.js และ LIFF SDK
 | 429 | `RATE_LIMITED` | เกินอัตราการเรียก |
 | 500 | `INTERNAL_ERROR` | ข้อผิดพลาดภายในระบบ |
 
-**Public (ไม่ต้อง auth):** `/auth/login`, `/google-health/callback`, `/webhooks/line` — นอกนั้นทั้งหมดผ่าน `requireAuth()` (verify cookie JWT แล้ว inject `userId` เข้า handler)
+**Public (ไม่ต้อง auth):** `/auth/login`, `/webhooks/line` — นอกนั้นทั้งหมดผ่าน `requireAuth()` (verify cookie JWT แล้ว inject `userId` เข้า handler)
 
 ### 13.2 ตาราง Endpoints
 
@@ -628,24 +588,13 @@ LINE Mini App จะพัฒนาโดยใช้ Next.js และ LIFF SDK
 | DELETE | `/if-sessions/:id` | — | ยกเลิก (เฉพาะยังไม่ completed) |
 | GET | `/if-sessions/calendar?month=YYYY-MM&tz` | — | per-day `{ date, status, duration_minutes }` |
 
-#### 13.2.6 Google Health
-
-| Method | Path | Request | Response |
-|---|---|---|---|
-| GET | `/google-health/auth-url` | — | OAuth URL (state เก็บใน signed cookie) |
-| GET | `/google-health/callback?code&state` | — | แลก `refresh_token` → เก็บ server-only (ตาราง `user_google_tokens`) |
-| GET | `/google-health/status` | — | เชื่อม/ไม่เชื่อม |
-| POST | `/google-health/disconnect` | — | ลบ token |
-| POST | `/google-health/sync` | `{ from, to }` | ดึง steps/distance/kcal → บันทึก `health_daily` |
-| GET | `/google-health/daily?from&to` | — | ข้อมูลรายวัน (steps, distance, kcal) |
-
-#### 13.2.7 Dashboard
+#### 13.2.6 Dashboard
 
 | Method | Path | Request | Response |
 |---|---|---|---|
 | GET | `/dashboard?date&tz` | — | สรุปรวม: IF stats, weight progress, health summary, journey |
 
-#### 13.2.8 Journey (Gamification) — อ่านเป็นหลัก, points ถูก auto-award
+#### 13.2.7 Journey (Gamification) — อ่านเป็นหลัก, points ถูก auto-award
 
 | Method | Path | Request | Response |
 |---|---|---|---|
@@ -653,7 +602,7 @@ LINE Mini App จะพัฒนาโดยใช้ Next.js และ LIFF SDK
 | GET | `/missions` | — | mission list + สถานะสำเร็จของผู้ใช้ |
 | GET | `/missions/:id` | — | รายละเอียด + สถานะ |
 
-#### 13.2.9 Notifications
+#### 13.2.8 Notifications
 
 | Method | Path | Request | Response |
 |---|---|---|---|
@@ -672,7 +621,6 @@ app/api/v1/
   weight-logs/  route.ts, [id]/route.ts
   weight-goals/ route.ts, [id]/route.ts, [id]/progress/route.ts
   if-sessions/  route.ts, active/route.ts, start/route.ts, end/route.ts, [id]/route.ts, calendar/route.ts
-  google-health/ auth-url|callback|status|disconnect|sync|daily/route.ts
   dashboard/     route.ts
   journey/       route.ts, missions/route.ts, missions/[id]/route.ts
   notifications/ route.ts, [id]/read/route.ts, settings/route.ts
@@ -681,7 +629,6 @@ lib/
   auth.ts          verify LINE idToken (jose) + issue/verify JWT session + requireAuth()
   supabase.ts      createServerClient (server-only)
   line.ts          LINE Messaging API
-  google-health.ts OAuth + refresh_token (server-only import)
   response.ts      apiSuccess / apiError envelope
   validation.ts    Zod schemas
 proxy.ts           rate limiting
@@ -690,15 +637,12 @@ proxy.ts           rate limiting
 ### 13.4 การเพิ่มเติมฐานข้อมูล (Database Additions)
 
 - `weight_goals` — id, user_id, target_weight, target_date, goal_type, status, timestamps
-- `user_google_tokens` — user_id, google_user_id, refresh_token, expires_at (อ่านจาก server-only เท่านั้น)
-- `health_daily` — id, user_id, date, steps, distance_m, kcal
 - เปิด RLS ทุกตาราง + policy ให้ผู้ใช้เข้าถึงเฉพาะข้อมูลของตนเอง (ตามแบบ Custom JWT / app-level check)
 
 ### 13.5 Security ที่ฝังในทุก Endpoint
 
 - `requireAuth()` verify JWT cookie ก่อนเข้า handler; `userId` มาจาก cookie ที่ sign โดยระบบ ไม่เชื่อ `liff.getDecodedIDToken()` ตรง ๆ
 - Zod validate input ทุกตัว; ใช้ Supabase SDK แทน SQL string concat (ป้องกัน SQL Injection)
-- `google-health.ts` ใช้ `import "server-only"` — `refresh_token` / client secret ไม่รั่วสู่ client
 - Rate limit ผ่าน `proxy.ts` + webhook ตรวจ `X-Line-Signature`
 
 ### 14 Theme

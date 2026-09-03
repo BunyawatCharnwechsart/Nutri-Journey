@@ -5,7 +5,7 @@ import LineLoginButton from "@/components/LineLoginButton";
 export const metadata: Metadata = {
   title: "Nutri Journey - แอปติดตาม Intermittent Fasting",
   description:
-    "Nutri Journey แอปติดตามการทำ Intermittent Fasting และสุขภาพของคุณในที่เดียว จับเวลา ดูสถิติ และเชื่อมต่อกับ Google Health API",
+    "Nutri Journey แอปติดตามการทำ Intermittent Fasting และสุขภาพของคุณในที่เดียว จับเวลา ดูสถิติ และติดตามผลลัพธ์",
 };
 
 interface FeatureCard {
@@ -29,11 +29,6 @@ const FEATURES: FeatureCard[] = [
     icon: "\uD83D\uDCCA",
     title: "สถิติ",
     description: "วิเคราะห์ผลลัพธ์ ดูกราฟแนวโน้มน้ำหนัก และระยะเวลาอดอาหาร",
-  },
-  {
-    icon: "\u2764\uFE0F",
-    title: "Google Health",
-    description: "เชื่อมต่อกับ Google Health API ดึงข้อมูลก้าวเดิน แคลอรี และการนอน",
   },
 ];
 
@@ -135,82 +130,6 @@ export default function Home() {
         </div>
       </section>
 
-      <section className="bg-zinc-50 px-6 py-16">
-        <div className="mx-auto max-w-3xl">
-          <h2 className="mb-2 text-center text-xl font-bold text-zinc-900">
-            ทำไมต้องเชื่อมต่อ Google Health
-          </h2>
-          <p className="mb-10 text-center text-sm text-zinc-500">
-            Nutri Journey ขอเข้าถึงข้อมูลสุขภาพจาก Google Health API
-            เพื่อช่วยให้คุณเห็นภาพรวมสุขภาพได้ชัดเจนยิ่งขึ้น
-          </p>
-
-          <div className="mb-8 rounded-xl border border-zinc-200 bg-white p-6">
-            <h3 className="mb-3 text-sm font-semibold text-zinc-900">
-              ข้อมูลที่เราเข้าถึง
-            </h3>
-            <ul className="mb-6 space-y-2 text-sm text-zinc-600">
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-[#18A659]">&#10003;</span>
-                <span>จำนวนก้าวเดินในแต่ละวัน</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-[#18A659]">&#10003;</span>
-                <span>ระยะทางที่เดิน (เมตร)</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-[#18A659]">&#10003;</span>
-                <span>แคลอรีที่เผาผลาญจากกิจกรรม</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-[#18A659]">&#10003;</span>
-                <span>ข้อมูลการนอนหลับ</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-[#18A659]">&#10003;</span>
-                <span>อัตราการเต้นของหัวใจ</span>
-              </li>
-            </ul>
-
-            <h3 className="mb-3 text-sm font-semibold text-zinc-900">
-              วัตถุประสงค์การใช้ข้อมูล
-            </h3>
-            <ul className="mb-6 space-y-2 text-sm text-zinc-600">
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-[#18A659]">&#10003;</span>
-                <span>แสดงผลข้อมูลสุขภาพในหน้า Dashboard</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-[#18A659]">&#10003;</span>
-                <span>คำนวณสถิติรายวันและรายสัปดาห์</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-[#18A659]">&#10003;</span>
-                <span>ช่วยให้เห็นภาพรวมสุขภาพควบคู่กับการทำ IF</span>
-              </li>
-            </ul>
-
-            <h3 className="mb-3 text-sm font-semibold text-zinc-900">
-              การรักษาความปลอดภัย
-            </h3>
-            <ul className="space-y-2 text-sm text-zinc-600">
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-[#18A659]">&#10003;</span>
-                <span>ข้อมูลจะไม่ถูกแชร์ให้บุคคลที่สาม</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-[#18A659]">&#10003;</span>
-                <span>คุณสามารถยกเลิกการเชื่อมต่อได้ตลอดเวลา</span>
-              </li>
-              <li className="flex items-start gap-2">
-                <span className="mt-0.5 text-[#18A659]">&#10003;</span>
-                <span>ข้อมูลถูกเข้ารหัสและเก็บบนเซิร์ฟเวอร์ที่ปลอดภัย</span>
-              </li>
-            </ul>
-          </div>
-        </div>
-      </section>
-
       <section className="border-t border-zinc-200 bg-zinc-50 px-6 py-12">
         <div className="mx-auto max-w-3xl text-center">
           <h2 className="mb-3 text-xl font-bold text-zinc-900">
@@ -219,7 +138,6 @@ export default function Home() {
           <p className="mb-6 text-sm leading-6 text-zinc-600">
             Nutri Journey เป็นแอปพลิเคชันสำหรับติดตามการทำ Intermittent
             Fasting (IF) และสุขภาพโดยรวม ออกแบบมาให้ใช้งานง่ายบนมือถือ
-            เชื่อมต่อกับ Google Health API เพื่อดึงข้อมูลสุขภาพอัตโนมัติ
           </p>
           <div className="flex justify-center gap-6 text-sm">
             <Link href="/privacy" className="text-[#18A659] hover:underline">

@@ -29,7 +29,7 @@ export default function TermsPage() {
           <ul className="list-inside list-disc space-y-1 pl-2">
             <li><strong>ผู้ใช้</strong> หมายถึง บุคคลที่เข้าถึงและใช้งานแอปพลิเคชัน</li>
             <li><strong>บริการ</strong> หมายถึง ฟีเจอร์ต่างๆ ของ Nutri Journey รวมถึงการติดตาม IF, ปฏิทิน, และสถิติ</li>
-            <li><strong>ข้อมูลสุขภาพ</strong> หมายถึง น้ำหนัก, ช่วงเวลาอดอาหาร, และข้อมูลจาก Google Health API</li>
+            <li><strong>ข้อมูลสุขภาพ</strong> หมายถึง น้ำหนัก, ช่วงเวลาอดอาหาร, และข้อมูลสุขภาพอื่นๆ</li>
           </ul>
         </section>
 
@@ -59,7 +59,7 @@ export default function TermsPage() {
         <section>
           <h2 className="mb-3 text-lg font-semibold text-zinc-900">5. การเชื่อมต่อบุคคลที่สาม</h2>
           <p>
-            แอปพลิเคชันเชื่อมต่อกับ LINE Login และ Google Health API
+            แอปพลิเคชันเชื่อมต่อกับ LINE Login
             การใช้งานบริการของบุคคลที่สามอยู่ภายใต้ข้อตกลงของบริการนั้นๆ
             เราไม่รับผิดชอบต่อความเสียหายที่เกิดจากบริการของบุคคลที่สาม
           </p>

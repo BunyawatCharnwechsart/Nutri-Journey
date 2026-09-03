@@ -36,10 +36,6 @@ export default function PrivacyPage() {
               <strong>ข้อมูลสุขภาพ:</strong> น้ำหนัก, ช่วงเวลาอดอาหาร (IF Sessions),
               เป้าหมายน้ำหนัก, และข้อมูลสุขภาพประจำวัน
             </li>
-            <li>
-              <strong>ข้อมูลจาก Google Health API:</strong> ข้อมูลสุขภาพที่คุณเชื่อมต่อ เช่น
-              จำนวนก้าวเดิน, อัตราการเต้นของหัวใจ, และข้อมูลการนอน (หากคุณอนุญาต)
-            </li>
           </ul>
         </section>
 
@@ -49,7 +45,6 @@ export default function PrivacyPage() {
           <ul className="list-inside list-disc space-y-1 pl-2">
             <li>ให้บริการติดตามการทำ Intermittent Fasting และสุขภาพ</li>
             <li>แสดงผลสถิติและปฏิทินการทำ IF</li>
-            <li>เชื่อมต่อและซิงค์ข้อมูลสุขภาพจาก Google Health API</li>
             <li>พัฒนาและปรับปรุงประสบการณ์การใช้งาน</li>
           </ul>
         </section>
@@ -77,7 +72,6 @@ export default function PrivacyPage() {
             <li>เข้าถึงและดาวน์โหลดข้อมูลของคุณ</li>
             <li>แก้ไขข้อมูลส่วนบุคคลของคุณ</li>
             <li>ลบบัญชีและข้อมูลของคุณ</li>
-            <li>ยกเลิกการเชื่อมต่อ Google Health API</li>
           </ul>
         </section>
 

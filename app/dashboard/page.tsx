@@ -3,7 +3,6 @@ import { redirect } from "next/navigation";
 import { getSessionUserId } from "@/lib/auth";
 import BellButton from "@/components/BellButton";
 import EggIconLink from "@/components/EggIconLink";
-import GoogleHealthSection from "@/components/GoogleHealthSection";
 import IfTracker from "@/components/IfTracker";
 
 export const dynamic = "force-dynamic";
@@ -29,7 +28,6 @@ export default async function DashboardPage() {
           </div>
         </header>
         <IfTracker allowEditTime={false} />
-        <GoogleHealthSection />
       </div>
     </main>
   );
