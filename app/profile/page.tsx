@@ -125,18 +125,6 @@ export default async function ProfilePage() {
   const bmiCategory = getBmiCategory(bmi);
   const bmiColor = BMI_COLORS[bmiCategory] ?? "#18A659";
 
-  const remainingKg =
-    weightKg != null && targetWeightKg != null
-      ? Math.round(Math.abs(weightKg - targetWeightKg) * 10) / 10
-      : null;
-
-  const goalMessage =
-    remainingKg === null
-      ? null
-      : weightKg === targetWeightKg
-        ? "น้ำหนักถึงเป้าหมายแล้ว"
-        : `อีก ${remainingKg} กก. จะถึงเป้าหมาย`;
-
   return (
     <main className="flex flex-1 flex-col px-6 pt-6 pb-10">
       <div className="mx-auto flex w-full max-w-2xl flex-col gap-6">
@@ -208,11 +196,6 @@ export default async function ProfilePage() {
           canUpdate={canUpdateWeightNow}
           daysUntilNext={daysUntilNext}
         />
-        {goalMessage && (
-          <div className="rounded-xl bg-[#18A659]/10 px-4 py-3 text-center text-sm font-medium text-[#148D4C]">
-            {goalMessage}
-          </div>
-        )}
 
         <Card title="สัดส่วน">
           <InfoRow

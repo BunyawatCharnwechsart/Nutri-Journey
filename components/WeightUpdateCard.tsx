@@ -101,6 +101,19 @@ export default function WeightUpdateCard({
         value={targetWeightKg != null ? `${targetWeightKg} กก.` : "—"}
       />
 
+      {currentWeightKg != null && targetWeightKg != null && (() => {
+        const remaining = Math.round(Math.abs(currentWeightKg - targetWeightKg) * 10) / 10;
+        const message =
+          currentWeightKg === targetWeightKg
+            ? "น้ำหนักถึงเป้าหมายแล้ว"
+            : `อีก ${remaining} กก. จะถึงเป้าหมาย`;
+        return (
+          <div className="rounded-xl bg-[#18A659]/10 px-4 py-3 text-center text-sm font-medium text-[#148D4C]">
+            {message}
+          </div>
+        );
+      })()}
+
       {canUpdate ? (
         <button
           type="button"
