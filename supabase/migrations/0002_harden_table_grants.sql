@@ -5,8 +5,7 @@
 -- The server reads/writes exclusively with the service role key (which
 -- bypasses RLS) and enforces user scoping in code via requireAuth(). The
 -- publishable key ships in the browser bundle, so the anon role must not be
--- able to touch any table directly. This closes the surface even for
--- google_health_connections, which stores Google access/refresh tokens.
+-- able to touch any table directly.
 -- Idempotent: revoking a privilege that was never granted is a no-op.
 -- ============================================================================
 

@@ -23,14 +23,13 @@ Requirements:
 ## เป้าหมาย
 นี่เป็นเว็บแอปพลิเคชั่นการทำ IF(Intermittent Fasting) มี การจับเวลาการทำ IF
 มีหน้า Dashboard ดูประวัติการทำ IF แบบ Calendar
-และเชื่อมต่อกับ line-liff เพื่อเข้าสู้เว็บแอป มีการเชื่อมต่อกับ Google health API
+และเชื่อมต่อกับ line-liff เพื่อเข้าสู่เว็บแอป
 
 ## tech stack
 
 - Frontend: Next.js version latest, Tailwind CSS version latest
 - Backend: Next.js version latest
 - database: Supabase PostgresSQL
-- API : Google Health API
 - DevOps: Docker
 - Deployment: vercel
 
@@ -55,7 +54,7 @@ DB Access:
 - RLS เปิดทุกตาราง + grant `anon, authenticated` ถูก revoke แล้ว (publishable key แตะตารางไม่ได้) — RLS policy ที่ใช้ pattern `app.current_user_id` ยังอยู่เป็น defense-in-depth
 
 ## ฐานข้อมูล (Supabase)
-- ตารางทั้งหมด 10 ตารางมีอยู่แล้ว: `users`, `profiles`, `if_sessions`, `weight_logs`, `missions`, `user_missions`, `healthy_journey`, `daily_metrics`, `google_health_connections`, `notifications` — **ห้ามสร้างซ้ำ**
+- ตารางทั้งหมด 8 ตารางมีอยู่แล้ว: `users`, `profiles`, `if_sessions`, `weight_logs`, `missions`, `user_missions`, `healthy_journey`, `notifications` — **ห้ามสร้างซ้ำ**
 - ตารางที่ยังไม่มีถ้าต้องทำ feature: `weight_goals`, `notification_settings`
 - Migration เก็บที่ `supabase/migrations/` ไล่เลข `0001_`, `0002_`, `0003_` — ใช้ `create table if not exists` / รันซ้ำได้ (idempotent)
 - วิธีรัน migration: เครื่อง dev ไม่มี `psql` → ใช้ node script + แพ็กเกจ `pg` (เชื่อมผ่าน pooler) หรือรันใน Supabase SQL Editor
@@ -73,11 +72,6 @@ DB Access:
 - ใช้ **service role client** (`lib/supabase/service.ts`) ฝั่ง server เท่านั้น — ห้ามรั่ว `SUPABASE_SERVICE_ROLE_KEY` ไป client bundle
 - ทุก query filter `user_id` จาก `requireAuth()` เสมอ (service role bypass RLS → ต้องบังคับที่ app level)
 - **ไม่ใช้** Supabase Auth session / `createServerClient` — session คือ custom JWT cookie `nj_session`
-- `google_health_connections` เก็บ access/refresh token ของ Google — ตรวจ RLS + revoke grant ทุกครั้ง, อ่านจาก server-only เท่านั้น
-
-### Google Health API
-- OAuth 2.0 flow — `refresh_token` ต้องเก็บใน Backend (ตาราง `google_health_connections`) ไม่ expose ให้ Client
-- ใช้ `server-only` import สำหรับ client secret / refresh token
 
 ### Input Validation
 - Validate ทุก input จาก Client ด้วย **Zod** ก่อนส่งไป Database
