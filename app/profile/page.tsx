@@ -107,7 +107,7 @@ export default async function ProfilePage() {
   const targetWeightKg =
     profile.target_weight != null ? Number(profile.target_weight) : null;
 
-  // Latest weight entry — drives the 15-day "อัปเดตน้ำหนัก" lock.
+  // Latest weight entry — drives the 7-day "อัปเดตน้ำหนัก" lock.
   const { data: lastLog } = await supabase
     .from("weight_logs")
     .select("recorded_on")

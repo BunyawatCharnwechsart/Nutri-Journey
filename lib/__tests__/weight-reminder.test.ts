@@ -21,18 +21,18 @@ describe("dueWeightReminder", () => {
     expect(dueWeightReminder(BASE, { lastRecordedDate: null, lastReminderAt: null })).toBe(false);
   });
 
-  it("does not fire before 15 days have passed", () => {
+  it("does not fire before 7 days have passed", () => {
     expect(
-      dueWeightReminder(BASE, { lastRecordedDate: recorded(10), lastReminderAt: null })
+      dueWeightReminder(BASE, { lastRecordedDate: recorded(3), lastReminderAt: null })
     ).toBe(false);
     expect(
-      dueWeightReminder(BASE, { lastRecordedDate: recorded(14), lastReminderAt: null })
+      dueWeightReminder(BASE, { lastRecordedDate: recorded(6), lastReminderAt: null })
     ).toBe(false);
   });
 
-  it("fires the first reminder once 15 days have passed", () => {
+  it("fires the first reminder once 7 days have passed", () => {
     expect(
-      dueWeightReminder(BASE, { lastRecordedDate: recorded(15), lastReminderAt: null })
+      dueWeightReminder(BASE, { lastRecordedDate: recorded(7), lastReminderAt: null })
     ).toBe(true);
     expect(
       dueWeightReminder(BASE, { lastRecordedDate: recorded(20), lastReminderAt: null })
@@ -41,22 +41,22 @@ describe("dueWeightReminder", () => {
 
   it("does not re-fire before one full interval since the last push", () => {
     const input = {
-      lastRecordedDate: recorded(16),
-      lastReminderAt: iso(BASE - 10 * DAY),
+      lastRecordedDate: recorded(8),
+      lastReminderAt: iso(BASE - 3 * DAY),
     };
     expect(dueWeightReminder(BASE, input)).toBe(false);
   });
 
-  it("re-fires every 15 days while the user keeps missing the update", () => {
+  it("re-fires every 7 days while the user keeps missing the update", () => {
     const input = {
       lastRecordedDate: recorded(30),
-      lastReminderAt: iso(BASE - 15 * DAY),
+      lastReminderAt: iso(BASE - 7 * DAY),
     };
     expect(dueWeightReminder(BASE, input)).toBe(true);
   });
 
   it("a fresh weight entry wins even after earlier reminders", () => {
-    // Logged 15 days ago, but the clock must count from the NEW entry, so a
+    // Logged 7 days ago, but the clock must count from the NEW entry, so a
     // very old reminder does not trigger while the anchor is fresh.
     const input = {
       lastRecordedDate: recorded(5),
@@ -65,10 +65,10 @@ describe("dueWeightReminder", () => {
     expect(dueWeightReminder(BASE, input)).toBe(false);
   });
 
-  it("a new entry re-arms the reminder after 15 more days", () => {
+  it("a new entry re-arms the reminder after 7 more days", () => {
     const input = {
-      lastRecordedDate: recorded(15),
-      lastReminderAt: recorded(15) + "T00:00:00.000Z", // older than the anchor
+      lastRecordedDate: recorded(7),
+      lastReminderAt: recorded(7) + "T00:00:00.000Z", // older than the anchor
     };
     expect(dueWeightReminder(BASE, input)).toBe(true);
   });

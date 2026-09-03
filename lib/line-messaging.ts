@@ -155,7 +155,7 @@ export function buildWeightReminderMessages(
     {
       type: "text",
       text:
-        "⚖️ ครบ 15 วันแล้ว อย่าลืมอัปเดตน้ำหนักนะ 🎯\n" +
+        "⚖️ ครบ 7 วันแล้ว อย่าลืมอัปเดตน้ำหนักนะ 🎯\n" +
         "กดบันทึกน้ำหนักวันนี้ได้เลย:\n" +
         liffUrl,
     },

@@ -51,7 +51,7 @@ export async function POST(request: Request) {
   const supabase = createServiceClient();
 
   // New-user weight anchor: the very first weight entry (from the profile
-  // setup wizard) starts the 15-day update clock. Existing users saving the
+  // setup wizard) starts the 7-day update clock. Existing users saving the
   // form again do NOT create/log new entries (count > 0), so the clock can
   // never be reset by editing the profile.
   const { count } = await supabase
