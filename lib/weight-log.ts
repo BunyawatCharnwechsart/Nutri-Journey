@@ -3,7 +3,7 @@ import { toICT } from "@/lib/timezone";
 // ============================================================================
 // Pure weight-update gate logic.
 //
-// The user may only record a new weight once every 15 days, counted by ICT
+// The user may only record a new weight once every 7 days, counted by ICT
 // calendar day since their LAST recorded entry (weight_logs.recorded_on).
 // A brand-new user with no history is always allowed to start.
 //
@@ -12,7 +12,7 @@ import { toICT } from "@/lib/timezone";
 // ============================================================================
 
 /** How many calendar days must pass before the user may update their weight. */
-export const WEIGHT_UPDATE_INTERVAL_DAYS = 15;
+export const WEIGHT_UPDATE_INTERVAL_DAYS = 7;
 
 /** Returns the current day as "yyyy-MM-dd" in Asia/Bangkok (ICT). */
 export function getICTDateKey(ms: number): string {

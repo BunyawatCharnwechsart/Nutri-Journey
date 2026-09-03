@@ -23,7 +23,7 @@ function Row({ label, value }: { label: string; value: string }) {
 /**
  * Shows starting / current / target weight and the "อัปเดตน้ำหนัก" button.
  *
- * The button (and the API behind it) is locked until 15 days have passed since
+ * The button (and the API behind it) is locked until 7 days have passed since
  * the last recorded weight; until then a countdown is shown instead. Uses a
  * small modal for input so recording a new weight does not touch the bigger
  * profile form.

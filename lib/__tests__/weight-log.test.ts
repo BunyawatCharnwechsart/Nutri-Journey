@@ -21,15 +21,15 @@ describe("canUpdateWeight", () => {
     expect(canUpdateWeight(BASE, null)).toBe(true);
   });
 
-  it("blocks before 15 full calendar days have passed", () => {
-    expect(canUpdateWeight(BASE, key(-1))).toBe(false); // 14 days elapsed
+  it("blocks before 7 full calendar days have passed", () => {
+    expect(canUpdateWeight(BASE, key(-1))).toBe(false); // 6 days elapsed
   });
 
-  it("unlocks exactly on the 15th calendar day", () => {
-    expect(canUpdateWeight(BASE, key(-15))).toBe(true);
+  it("unlocks exactly on the 7th calendar day", () => {
+    expect(canUpdateWeight(BASE, key(-7))).toBe(true);
   });
 
-  it("stays unlocked past 15 days", () => {
+  it("stays unlocked past 7 days", () => {
     expect(canUpdateWeight(BASE, key(-20))).toBe(true);
   });
 });
@@ -40,12 +40,12 @@ describe("daysUntilNextUpdate", () => {
   });
 
   it("counts down the remaining days", () => {
-    expect(daysUntilNextUpdate(BASE, key(-1))).toBe(14);
-    expect(daysUntilNextUpdate(BASE, key(-10))).toBe(5);
+    expect(daysUntilNextUpdate(BASE, key(-1))).toBe(6);
+    expect(daysUntilNextUpdate(BASE, key(-10))).toBe(0);
   });
 
   it("floors at 0 once due", () => {
-    expect(daysUntilNextUpdate(BASE, key(-15))).toBe(0);
+    expect(daysUntilNextUpdate(BASE, key(-7))).toBe(0);
     expect(daysUntilNextUpdate(BASE, key(-30))).toBe(0);
   });
 });

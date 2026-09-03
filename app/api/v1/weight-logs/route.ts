@@ -13,8 +13,8 @@ export const runtime = "nodejs";
  * it onto profiles.weight (current weight). Seeds profiles.starting_weight on
  * the very first entry.
  *
- * Guarded server-side by the 15-day rule: the user may only log a new weight
- * once at least 15 days have passed since their latest entry. The client hides
+ * Guarded server-side by the 7-day rule: the user may only log a new weight
+ * once at least 7 days have passed since their latest entry. The client hides
  * the button, but the API re-checks so the rule cannot be bypassed.
  */
 export async function POST(request: Request) {
@@ -51,7 +51,7 @@ export async function POST(request: Request) {
 
   if (lastLog && !canUpdateWeight(Date.now(), lastLog.recorded_on)) {
     return apiError(
-      "ยังไม่ครบ 15 วันนับจากบันทึกน้ำหนักล่าสุด",
+      "ยังไม่ครบ 7 วันนับจากบันทึกน้ำหนักล่าสุด",
       409,
       "WEIGHT_UPDATE_LOCKED"
     );

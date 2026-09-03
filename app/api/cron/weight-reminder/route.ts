@@ -17,13 +17,13 @@ export const runtime = "nodejs";
 // Called periodically (supabase pg_cron → pg_net HTTP POST, see
 // supabase/scheduled_weight_reminder.sql). For every user with LINE
 // notifications enabled it checks whether they are due to record a new weight
-// (15 days since the last weight_logs entry) and — if they have not been
+// (7 days since the last weight_logs entry) and — if they have not been
 // reminded recently — pushes a LINE message to their OA.
 //
 // Reminder cadence (`lib/weight-reminder.ts`):
-//   * first reminder fires once 15 calendar days have passed since the last
+//   * first reminder fires once 7 calendar days have passed since the last
 //     recorded weight.
-//   * if the user still has not logged, it repeats every 15 days (measured
+//   * if the user still has not logged, it repeats every 7 days (measured
 //     from the last successful push).
 //   * logging a new weight resets the clock.
 //
