@@ -72,22 +72,51 @@ export const weightLogSchema = z.object({
 
 /**
  * Record new body measurements (from the "อัปเดตสัดส่วน" modal).
+ *
+ * Each measurement is optional so the user may update only the fields they
+ * want (e.g. just the waist). At least one measurement must be provided.
  * Measurements are captured in inches.
+ *
+ * Note on coercion: an empty string from the client must NOT be treated as a
+ * valid number. Using `.optional()` directly on a coerced field would coerce
+ * "" to a number, which we do not want. Instead we coerce to `number`, then
+ * `.optional()` — but since the client sends omitted fields as `undefined`,
+ * we preprocess empty strings to `undefined` before validation.
  */
-export const measurementLogSchema = z.object({
-  waistIn: z.coerce
-    .number()
-    .min(12, "รอบเอวต้องอยู่ระหว่าง 12-98 นิ้ว")
-    .max(98, "รอบเอวต้องอยู่ระหว่าง 12-98 นิ้ว"),
-  hipIn: z.coerce
-    .number()
-    .min(12, "รอบสะโพกต้องอยู่ระหว่าง 12-98 นิ้ว")
-    .max(98, "รอบสะโพกต้องอยู่ระหว่าง 12-98 นิ้ว"),
-  chestIn: z.coerce
-    .number()
-    .min(12, "รอบอกต้องอยู่ระหว่าง 12-98 นิ้ว")
-    .max(98, "รอบอกต้องอยู่ระหว่าง 12-98 นิ้ว"),
-});
+export const measurementLogSchema = z
+  .object({
+    waistIn: z.preprocess(
+      (v) => (v === "" ? undefined : v),
+      z.coerce
+        .number()
+        .min(12, "รอบเอวต้องอยู่ระหว่าง 12-98 นิ้ว")
+        .max(98, "รอบเอวต้องอยู่ระหว่าง 12-98 นิ้ว")
+        .optional()
+    ),
+    hipIn: z.preprocess(
+      (v) => (v === "" ? undefined : v),
+      z.coerce
+        .number()
+        .min(12, "รอบสะโพกต้องอยู่ระหว่าง 12-98 นิ้ว")
+        .max(98, "รอบสะโพกต้องอยู่ระหว่าง 12-98 นิ้ว")
+        .optional()
+    ),
+    chestIn: z.preprocess(
+      (v) => (v === "" ? undefined : v),
+      z.coerce
+        .number()
+        .min(12, "รอบอกต้องอยู่ระหว่าง 12-98 นิ้ว")
+        .max(98, "รอบอกต้องอยู่ระหว่าง 12-98 นิ้ว")
+        .optional()
+    ),
+  })
+  .refine(
+    (data) =>
+      data.waistIn !== undefined ||
+      data.hipIn !== undefined ||
+      data.chestIn !== undefined,
+    { message: "กรุณากรอกสัดส่วนอย่างน้อย 1 ค่า", path: ["waistIn"] }
+  );
 
 // ---- Google Health ----
 

@@ -23,10 +23,12 @@ function Row({ label, value }: { label: string; value: string }) {
 /**
  * Shows waist / hip / chest measurements and the "อัปเดตสัดส่วน" button.
  *
+ * The user may update only the fields they want (e.g. just the waist):
+ * one or more inputs are left blank to keep the current value, and only the
+ * filled fields are submitted. At least one must be filled.
+ *
  * The button (and the API behind it) is locked until 14 days have passed since
  * the last recorded measurements; until then a countdown is shown instead.
- * Uses a small modal for input so recording new measurements does not touch
- * the bigger profile form.
  */
 export default function MeasurementUpdateCard({
   waistIn,
@@ -37,44 +39,53 @@ export default function MeasurementUpdateCard({
 }: MeasurementUpdateCardProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [waist, setWaist] = useState(waistIn?.toString() ?? "");
-  const [hip, setHip] = useState(hipIn?.toString() ?? "");
-  const [chest, setChest] = useState(chestIn?.toString() ?? "");
+  const [waist, setWaist] = useState("");
+  const [hip, setHip] = useState("");
+  const [chest, setChest] = useState("");
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function openModal() {
-    setWaist(waistIn?.toString() ?? "");
-    setHip(hipIn?.toString() ?? "");
-    setChest(chestIn?.toString() ?? "");
+    // Start with blank inputs: the user only fills in the fields to change.
+    // An untouched field stays blank and is not sent (keeps its current value).
+    setWaist("");
+    setHip("");
+    setChest("");
     setError(null);
     setOpen(true);
   }
 
   async function handleSave() {
-    const waistVal = Number(waist);
-    const hipVal = Number(hip);
-    const chestVal = Number(chest);
-    if (
-      !Number.isFinite(waistVal) || waistVal < 12 || waistVal > 98 ||
-      !Number.isFinite(hipVal) || hipVal < 12 || hipVal > 98 ||
-      !Number.isFinite(chestVal) || chestVal < 12 || chestVal > 98
-    ) {
+    // Only parse fields the user actually filled in.
+    const waistVal = waist === "" ? undefined : Number(waist);
+    const hipVal = hip === "" ? undefined : Number(hip);
+    const chestVal = chest === "" ? undefined : Number(chest);
+
+    const valid = (v: number | undefined) =>
+      v === undefined || (Number.isFinite(v) && v >= 12 && v <= 98);
+
+    if (!valid(waistVal) || !valid(hipVal) || !valid(chestVal)) {
       setError("กรุณากรอกสัดส่วนระหว่าง 12-98 นิ้ว");
+      return;
+    }
+
+    if (waistVal === undefined && hipVal === undefined && chestVal === undefined) {
+      setError("กรุณากรอกสัดส่วนอย่างน้อย 1 ค่า");
       return;
     }
 
     setSaving(true);
     setError(null);
     try {
+      const body: Record<string, number> = {};
+      if (waistVal !== undefined) body.waistIn = waistVal;
+      if (hipVal !== undefined) body.hipIn = hipVal;
+      if (chestVal !== undefined) body.chestIn = chestVal;
+
       const res = await fetch("/api/v1/measurement-logs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          waistIn: waistVal,
-          hipIn: hipVal,
-          chestIn: chestVal,
-        }),
+        body: JSON.stringify(body),
       });
       const json = (await res.json().catch(() => null)) as {
         error?: { message?: string };
@@ -129,7 +140,7 @@ export default function MeasurementUpdateCard({
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
             <h3 className="text-lg font-bold text-zinc-900">อัปเดตสัดส่วน</h3>
             <p className="mt-1 text-sm text-zinc-500">
-              บันทึกสัดส่วนวันนี้เพื่อติดตามผล
+              กรอกเฉพาะช่องที่ต้องการแก้ ช่องที่เว้นไว้คงค่าเดิม
             </p>
 
             <div className="mt-4 flex flex-col gap-4">
@@ -138,7 +149,7 @@ export default function MeasurementUpdateCard({
                   htmlFor="measurement-waist"
                   className="mb-1 block text-sm font-medium text-zinc-700"
                 >
-                  รอบเอว (นิ้ว)
+                  รอบเอว (นิ้ว){waistIn != null ? ` — ปัจจุบัน ${waistIn}` : ""}
                 </label>
                 <input
                   id="measurement-waist"
@@ -158,7 +169,7 @@ export default function MeasurementUpdateCard({
                   htmlFor="measurement-hip"
                   className="mb-1 block text-sm font-medium text-zinc-700"
                 >
-                  รอบสะโพก (นิ้ว)
+                  รอบสะโพก (นิ้ว){hipIn != null ? ` — ปัจจุบัน ${hipIn}` : ""}
                 </label>
                 <input
                   id="measurement-hip"
@@ -178,7 +189,7 @@ export default function MeasurementUpdateCard({
                   htmlFor="measurement-chest"
                   className="mb-1 block text-sm font-medium text-zinc-700"
                 >
-                  รอบอก (นิ้ว)
+                  รอบอก (นิ้ว){chestIn != null ? ` — ปัจจุบัน ${chestIn}` : ""}
                 </label>
                 <input
                   id="measurement-chest"
