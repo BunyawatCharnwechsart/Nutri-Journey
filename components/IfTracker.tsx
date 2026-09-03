@@ -226,7 +226,12 @@ function Modal({ ariaLabel, onClose, children }: ModalProps) {
   );
 }
 
-export default function IfTracker() {
+export default function IfTracker({
+  allowEditTime = true,
+}: {
+  /** Whether the "แก้ไขช่วงเวลา" (edit time) button is shown. Defaults to true. */
+  allowEditTime?: boolean;
+}) {
   const [view, setView] = useState<View>("select");
   const [mode, setMode] = useState<Phase>("eating");
   const [selectedPattern, setSelectedPattern] = useState<string | null>(null);
@@ -624,14 +629,16 @@ export default function IfTracker() {
                 สิ้นสุดการกิน
               </button>
             )}
-            <button
-              type="button"
-              onClick={openEditTimeModal}
-              disabled={loading}
-              className="w-full rounded-2xl border border-zinc-300 px-6 py-4 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50"
-            >
-              แก้ไขช่วงเวลา
-            </button>
+            {allowEditTime && (
+              <button
+                type="button"
+                onClick={openEditTimeModal}
+                disabled={loading}
+                className="w-full rounded-2xl border border-zinc-300 px-6 py-4 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50"
+              >
+                แก้ไขช่วงเวลา
+              </button>
+            )}
             <button
               type="button"
               onClick={() => setConfirmCancel(true)}
