@@ -1,4 +1,3 @@
-import Link from "next/link";
 import { redirect } from "next/navigation";
 import Image from "next/image";
 
@@ -21,8 +20,9 @@ import {
 } from "@/lib/measurement-log";
 import LogoutButton from "@/components/LogoutButton";
 import EggIconLink from "@/components/EggIconLink";
-import WeightUpdateCard from "@/components/WeightUpdateCard";
+import WeightProgress from "@/components/WeightProgress";
 import MeasurementUpdateCard from "@/components/MeasurementUpdateCard";
+import EditProfileModal from "@/components/EditProfileModal";
 
 export const dynamic = "force-dynamic";
 
@@ -91,7 +91,7 @@ export default async function ProfilePage() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "gender, birth_date, height, weight, starting_weight, activity_level, waist_in, hip_in, chest_in, goal, target_weight"
+      "gender, birth_date, height, activity_level, waist_in, hip_in, chest_in, goal, target_weight"
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -105,23 +105,23 @@ export default async function ProfilePage() {
   const activityLevel =
     ACTIVITY_LABELS[profile.activity_level] ?? profile.activity_level;
 
-  const weightKg = profile.weight != null ? Number(profile.weight) : null;
-  const startingWeightKg =
-    profile.starting_weight != null ? Number(profile.starting_weight) : null;
   const heightCm = profile.height != null ? Number(profile.height) : null;
   const targetWeightKg =
     profile.target_weight != null ? Number(profile.target_weight) : null;
 
-  // Latest weight entry — drives the 7-day "อัปเดตน้ำหนัก" lock.
+  // Latest weight entry — drives the 7-day "อัปเดตน้ำหนัก" lock AND is the
+  // single source of "น้ำหนักปัจจุบัน" (weight_logs; profiles.weight is gone).
   const { data: lastLog } = await supabase
     .from("weight_logs")
-    .select("recorded_on")
+    .select("recorded_on, weight_kg")
     .eq("user_id", userId)
     .order("recorded_on", { ascending: false })
     .limit(1)
     .maybeSingle();
 
   const lastRecordedDate = lastLog?.recorded_on ?? null;
+  const currentWeightKg =
+    lastLog?.weight_kg != null ? Number(lastLog.weight_kg) : null;
   const nowMs = new Date().getTime();
   const canUpdateWeightNow = canUpdateWeight(nowMs, lastRecordedDate);
   const daysUntilNext = daysUntilNextUpdate(nowMs, lastRecordedDate);
@@ -145,7 +145,7 @@ export default async function ProfilePage() {
     lastMeasurementDate
   );
 
-  const bmi = calculateBmi(weightKg, heightCm);
+  const bmi = calculateBmi(currentWeightKg, heightCm);
   const bmiCategory = getBmiCategory(bmi);
   const bmiColor = BMI_COLORS[bmiCategory] ?? "#18A659";
 
@@ -204,22 +204,25 @@ export default async function ProfilePage() {
           <InfoRow
             icon="/icon/weightIcon.png"
             label="น้ำหนัก"
-            value={startingWeightKg != null ? `${startingWeightKg} กก.` : "—"}
+            value={currentWeightKg != null ? `${currentWeightKg} กก.` : "—"}
           />
           <InfoRow
             icon="/icon/activityLevelIcon.png"
             label="ระดับกิจกรรม"
             value={activityLevel}
           />
+          <InfoRow
+            icon="/icon/targetIcon.svg"
+            label="น้ำหนักเป้าหมาย"
+            value={targetWeightKg != null ? `${targetWeightKg} กก.` : "—"}
+          />
+          <WeightProgress
+            currentWeightKg={currentWeightKg}
+            targetWeightKg={targetWeightKg}
+            canUpdate={canUpdateWeightNow}
+            daysUntilNext={daysUntilNext}
+          />
         </Card>
-
-        <WeightUpdateCard
-          startingWeightKg={startingWeightKg}
-          currentWeightKg={weightKg}
-          targetWeightKg={targetWeightKg}
-          canUpdate={canUpdateWeightNow}
-          daysUntilNext={daysUntilNext}
-        />
 
         <MeasurementUpdateCard
           waistIn={profile.waist_in != null ? Number(profile.waist_in) : null}
@@ -232,12 +235,14 @@ export default async function ProfilePage() {
         />
 
         <div className="flex flex-col gap-3">
-          <Link
-            href="/health-profile?edit=1"
-            className="rounded-full border border-zinc-300 px-4 py-2 text-center text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100"
-          >
-            แก้ไขข้อมูล
-          </Link>
+          <EditProfileModal
+            gender={profile.gender}
+            birthDate={profile.birth_date}
+            heightCm={heightCm}
+            activityLevel={profile.activity_level}
+            goal={profile.goal}
+            targetWeightKg={targetWeightKg}
+          />
           <LogoutButton />
         </div>
       </div>

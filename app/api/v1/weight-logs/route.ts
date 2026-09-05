@@ -59,9 +59,9 @@ export async function GET(request: Request) {
 /**
  * POST /api/v1/weight-logs
  *
- * Records the user's weight for today (one entry per calendar day) and syncs
- * it onto profiles.weight (current weight). Seeds profiles.starting_weight on
- * the very first entry.
+ * Records the user's weight for today (one entry per calendar day).
+ * weight_logs is the single source of truth — profiles.weight is not synced
+ * anymore.
  *
  * Guarded server-side by the 7-day rule: the user may only log a new weight
  * once at least 7 days have passed since their latest entry. The client hides
@@ -125,26 +125,6 @@ export async function POST(request: Request) {
     .single();
 
   if (logError) {
-    return apiError("บันทึกน้ำหนักไม่สำเร็จ", 500, "INTERNAL_ERROR");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("starting_weight")
-    .eq("user_id", auth.userId)
-    .maybeSingle();
-
-  const { data: updatedProfile, error: profileError } = await supabase
-    .from("profiles")
-    .update({
-      weight: weightKg,
-      starting_weight: profile?.starting_weight ?? weightKg,
-    })
-    .eq("user_id", auth.userId)
-    .select("user_id")
-    .maybeSingle();
-
-  if (profileError || !updatedProfile) {
     return apiError("บันทึกน้ำหนักไม่สำเร็จ", 500, "INTERNAL_ERROR");
   }
 

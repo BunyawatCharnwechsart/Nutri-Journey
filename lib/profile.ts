@@ -48,7 +48,6 @@ export function isProfileComplete(
     "gender",
     "birth_date",
     "height",
-    "weight",
     "activity_level",
     "waist_in",
     "hip_in",

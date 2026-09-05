@@ -37,7 +37,7 @@ export default async function HealthProfilePage({
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "gender, birth_date, height, weight, activity_level, waist_in, hip_in, chest_in, goal, target_weight"
+      "gender, birth_date, height, activity_level, waist_in, hip_in, chest_in, goal, target_weight"
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -46,6 +46,16 @@ export default async function HealthProfilePage({
   if (!editMode && isProfileComplete(profile)) {
     redirect("/dashboard");
   }
+
+  // weight_logs is the single source of truth for weight — the wizard field is
+  // seeded from the latest log instead of profiles.weight.
+  const { data: latestLog } = await supabase
+    .from("weight_logs")
+    .select("weight_kg")
+    .eq("user_id", userId)
+    .order("recorded_on", { ascending: false })
+    .limit(1)
+    .maybeSingle();
 
   const { data: user } = await supabase
     .from("users")
@@ -60,7 +70,8 @@ export default async function HealthProfilePage({
     gender: typeof profile?.gender === "string" ? profile.gender : "",
     birthDate: typeof profile?.birth_date === "string" ? profile.birth_date : "",
     heightCm: profile?.height != null ? Number(profile.height) : null,
-    weightKg: profile?.weight != null ? Number(profile.weight) : null,
+    weightKg:
+      latestLog?.weight_kg != null ? Number(latestLog.weight_kg) : null,
     activityLevel:
       typeof profile?.activity_level === "string" ? profile.activity_level : "",
     waistIn: profile?.waist_in != null ? Number(profile.waist_in) : null,

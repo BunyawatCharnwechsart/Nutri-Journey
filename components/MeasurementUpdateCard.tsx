@@ -224,7 +224,7 @@ export default function MeasurementUpdateCard({
                 type="button"
                 onClick={() => setOpen(false)}
                 disabled={saving}
-                className="flex h-12 flex-1 items-center justify-center rounded-full border border-zinc-300 text-base font-semibold text-zinc-700 transition-colors hover:bg-zinc-100"
+                className="flex h-14 flex-1 items-center justify-center rounded-full border border-zinc-300 text-base font-semibold text-zinc-700 transition-colors hover:bg-zinc-100"
               >
                 ยกเลิก
               </button>
@@ -232,7 +232,7 @@ export default function MeasurementUpdateCard({
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="flex h-12 flex-1 items-center justify-center rounded-full bg-[#18A659] px-5 text-base font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex h-14 flex-1 items-center justify-center rounded-full bg-[#18A659] px-5 text-base font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving ? "กำลังบันทึก..." : "บันทึก"}
               </button>

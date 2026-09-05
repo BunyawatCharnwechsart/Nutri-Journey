@@ -3,38 +3,27 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-interface WeightUpdateCardProps {
-  startingWeightKg: number | null;
+interface WeightProgressProps {
   currentWeightKg: number | null;
   targetWeightKg: number | null;
   canUpdate: boolean;
   daysUntilNext: number;
 }
 
-function Row({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="flex items-center justify-between gap-3 rounded-xl border border-zinc-200 bg-white px-4 py-3">
-      <span className="text-sm text-zinc-500">{label}</span>
-      <span className="text-sm font-medium text-zinc-900">{value}</span>
-    </div>
-  );
-}
-
 /**
- * Shows starting / current / target weight and the "อัปเดตน้ำหนัก" button.
+ * ส่วนแสดงผล "การจัดการน้ำหนัก" ที่ฝังอยู่ในข้อมูลส่วนตัว:
+ * - ช่อง "อีก X กก. จะถึงเป้าหมาย"
+ * - ปุ่ม "อัปเดตน้ำหนัก" หรือ countdown "อัปเดตได้อีกใน X วัน"
+ * - modal รับน้ำหนักใหม่ (POST /api/v1/weight-logs)
  *
- * The button (and the API behind it) is locked until 7 days have passed since
- * the last recorded weight; until then a countdown is shown instead. Uses a
- * small modal for input so recording a new weight does not touch the bigger
- * profile form.
+ * ใช้ปุ่ม/API แบบเดียวกับเดิม: ระบบล็อก 7 วัน ตาม record ล่าสุดใน weight_logs.
  */
-export default function WeightUpdateCard({
-  startingWeightKg,
+export default function WeightProgress({
   currentWeightKg,
   targetWeightKg,
   canUpdate,
   daysUntilNext,
-}: WeightUpdateCardProps) {
+}: WeightProgressProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [inputValue, setInputValue] = useState(
@@ -83,26 +72,10 @@ export default function WeightUpdateCard({
   }
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5">
-      <h2 className="text-base font-semibold text-zinc-900">
-        การจัดการน้ำหนัก
-      </h2>
-
-      <Row
-        label="น้ำหนักเริ่มต้น"
-        value={startingWeightKg != null ? `${startingWeightKg} กก.` : "—"}
-      />
-      <Row
-        label="น้ำหนักปัจจุบัน"
-        value={currentWeightKg != null ? `${currentWeightKg} กก.` : "—"}
-      />
-      <Row
-        label="น้ำหนักเป้าหมาย"
-        value={targetWeightKg != null ? `${targetWeightKg} กก.` : "—"}
-      />
-
+    <div className="flex flex-col gap-3">
       {currentWeightKg != null && targetWeightKg != null && (() => {
-        const remaining = Math.round(Math.abs(currentWeightKg - targetWeightKg) * 10) / 10;
+        const remaining =
+          Math.round(Math.abs(currentWeightKg - targetWeightKg) * 10) / 10;
         const message =
           currentWeightKg === targetWeightKg
             ? "น้ำหนักถึงเป้าหมายแล้ว"
@@ -182,7 +155,7 @@ export default function WeightUpdateCard({
                 type="button"
                 onClick={() => setOpen(false)}
                 disabled={saving}
-                className="flex h-12 flex-1 items-center justify-center rounded-full border border-zinc-300 text-base font-semibold text-zinc-700 transition-colors hover:bg-zinc-100"
+                className="flex h-14 flex-1 items-center justify-center rounded-full border border-zinc-300 text-base font-semibold text-zinc-700 transition-colors hover:bg-zinc-100"
               >
                 ยกเลิก
               </button>
@@ -190,7 +163,7 @@ export default function WeightUpdateCard({
                 type="button"
                 onClick={handleSave}
                 disabled={saving}
-                className="flex h-12 flex-1 items-center justify-center rounded-full bg-[#18A659] px-5 text-base font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:cursor-not-allowed disabled:opacity-60"
+                className="flex h-14 flex-1 items-center justify-center rounded-full bg-[#18A659] px-5 text-base font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving ? "กำลังบันทึก..." : "บันทึก"}
               </button>
@@ -198,6 +171,6 @@ export default function WeightUpdateCard({
           </div>
         </div>
       )}
-    </section>
+    </div>
   );
 }
