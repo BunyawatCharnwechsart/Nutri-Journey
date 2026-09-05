@@ -61,6 +61,42 @@ export const healthProfileSchema = z.object({
 });
 
 /**
+ * Basic profile edit (from the "แก้ไขข้อมูล" modal on the profile page).
+ * Only static info may change here: gender, birth date, height, activity
+ * level, goal and target weight. Weight is deliberately absent — weight_logs
+ * owns it (see /api/v1/weight-logs), and measurements have their own flow.
+ */
+export const editProfileSchema = z.object({
+  gender: z.enum(["male", "female", "other"]),
+  birthDate: z
+    .string()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, "รูปแบบวันเกิดไม่ถูกต้อง")
+    .refine(
+      (value) => !Number.isNaN(new Date(value).getTime()),
+      "วันเดือนปีเกิดไม่ถูกต้อง"
+    )
+    .refine(
+      (value) => new Date(value) <= new Date(),
+      "วันเดือนปีเกิดต้องไม่เป็นวันที่ในอนาคต"
+    ),
+  heightCm: z.coerce.number().int().min(50).max(250),
+  activityLevel: z.enum([
+    "sedentary",
+    "light",
+    "moderate",
+    "active",
+    "very_active",
+  ]),
+  goal: z.enum([
+    "weight_loss",
+    "eating_behavior",
+    "maintain_muscle",
+    "endurance_mindset",
+  ]),
+  targetWeightKg: z.coerce.number().min(20).max(300),
+});
+
+/**
  * Record a new weight (from the "อัปเดตน้ำหนัก" modal on the health profile).
  */
 export const weightLogSchema = z.object({

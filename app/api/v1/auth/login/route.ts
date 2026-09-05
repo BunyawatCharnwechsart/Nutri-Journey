@@ -74,7 +74,7 @@ export async function POST(request: Request) {
       ),
     supabase
       .from("profiles")
-      .select("gender, birth_date, height, weight, activity_level")
+      .select("gender, birth_date, height, activity_level")
       .eq("user_id", user.user_id)
       .maybeSingle(),
   ]);

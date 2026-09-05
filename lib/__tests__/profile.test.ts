@@ -7,7 +7,6 @@ describe("isProfileComplete", () => {
     gender: "male",
     birth_date: "2000-01-01",
     height: 175,
-    weight: 70,
     activity_level: "moderate",
     waist_in: 29.5,
     hip_in: 37,
@@ -23,6 +22,12 @@ describe("isProfileComplete", () => {
 
   it("returns true when every field is filled", () => {
     expect(isProfileComplete(fullProfile)).toBe(true);
+  });
+
+  it("returns true without a weight field (weight lives in weight_logs)", () => {
+    expect(
+      isProfileComplete({ ...fullProfile, weight: null })
+    ).toBe(true);
   });
 
   it("returns false when a measurement is missing", () => {
