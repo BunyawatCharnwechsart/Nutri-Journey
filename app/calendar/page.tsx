@@ -1,27 +1,38 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
-import {
-  addMonths,
-  endOfMonth,
-  format,
-  getDay,
-  isAfter,
-  isSameMonth,
-  isToday,
-  startOfMonth,
-  subMonths,
-} from "date-fns";
-import { th } from "date-fns/locale/th";
 
 import { getSessionUserId } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getEatingMinutes, getFastingMinutes } from "@/lib/if";
-import { toICT, getICTDay } from "@/lib/timezone";
+import {
+  getICTMonthBounds,
+  toICT,
+  toICTDateKey,
+  toICTMonthKey,
+} from "@/lib/timezone";
 import EggIconLink from "@/components/EggIconLink";
 
 export const dynamic = "force-dynamic";
 
 const WEEKDAYS = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
+const THAI_MONTHS = [
+  "มกราคม",
+  "กุมภาพันธ์",
+  "มีนาคม",
+  "เมษายน",
+  "พฤษภาคม",
+  "มิถุนายน",
+  "กรกฎาคม",
+  "สิงหาคม",
+  "กันยายน",
+  "ตุลาคม",
+  "พฤศจิกายน",
+  "ธันวาคม",
+];
+
+// ไทยใช้ ICT แบบคงที่ UTC+7 ไม่มี DST → การเลื่อนวันละ 24 ชม. ปลอดภัยเสมอ.
+const DAY_MS = 86_400_000;
+const GRID_CELLS = 42;
 
 interface DayStatus {
   date: Date;
@@ -41,27 +52,34 @@ export default async function CalendarPage({
   }
 
   const { month } = await searchParams;
-  const today = new Date();
+  const ictNow = toICT(new Date());
+  const todayKey = toICTDateKey(new Date());
 
-  // Default to the current month; only allow months in the past (or now).
+  // `currentMonth` คือ Date ที่สร้างด้วย Date.UTC → ค่า UTC components
+  // คือวัน/เดือนตามผนังแบบไทยพอดี หน้าเพจจึงอ่านด้วย getUTC* เสมอ
+  // (ไม่พึ่ง timezone ของเครื่อง server ซึ่งต่างกันระหว่าง dev กับ Vercel)
+  const currentNowMonthStart = new Date(
+    Date.UTC(ictNow.getUTCFullYear(), ictNow.getUTCMonth(), 1)
+  );
+
   let currentMonth: Date;
   if (typeof month === "string" && /^\d{4}-\d{2}$/.test(month)) {
     const [year, monthIndex] = month.split("-").map(Number);
-    currentMonth = new Date(year, monthIndex - 1, 1);
-    if (isAfter(currentMonth, startOfMonth(today))) {
-      currentMonth = startOfMonth(today);
+    currentMonth = new Date(Date.UTC(year, monthIndex - 1, 1));
+    if (currentMonth.getTime() > currentNowMonthStart.getTime()) {
+      currentMonth = currentNowMonthStart;
     }
   } else {
-    currentMonth = startOfMonth(today);
+    currentMonth = currentNowMonthStart;
   }
 
+  const currentMonthKey = toICTMonthKey(currentMonth);
+
   const supabase = createServiceClient();
-  const monthStartICT = startOfMonth(currentMonth);
-  const monthEndICT = endOfMonth(currentMonth);
-  // แปลงเป็น UTC boundaries สำหรับ query (ICT midnight → UTC = -7h)
-  const ICT_OFFSET = 7 * 60 * 60 * 1000;
-  const monthStart = new Date(monthStartICT.getTime() - ICT_OFFSET);
-  const monthEnd = new Date(monthEndICT.getTime() - ICT_OFFSET);
+  const bounds = getICTMonthBounds(
+    currentMonth.getUTCFullYear(),
+    currentMonth.getUTCMonth() + 1
+  );
 
   const { data: sessions } = await supabase
     .from("if_sessions")
@@ -69,20 +87,17 @@ export default async function CalendarPage({
       "fasting_start_time, fasting_end_time, status, fasting_duration_minutes, eating_duration_minutes, if_pattern"
     )
     .eq("user_id", userId)
-    .gte("fasting_start_time", monthStart.toISOString())
-    .lte("fasting_start_time", monthEnd.toISOString())
+    .gte("fasting_start_time", bounds.startIso)
+    .lt("fasting_start_time", bounds.endIso)
     .order("fasting_start_time", { ascending: true });
 
-  // Group completed sessions by their local calendar day.
+  // จัดกลุ่ม session ตามวัน (แบบไทย) ที่การอดเริ่มต้น.
   const byDay = new Map<string, DayStatus>();
   for (const session of sessions ?? []) {
-    const utcDate = new Date(session.fasting_start_time);
-    const ictDate = toICT(utcDate);
-    const key = format(ictDate, "yyyy-MM-dd");
+    const key = toICTDateKey(new Date(session.fasting_start_time));
 
-    // Success requires BOTH planned targets: the fasting phase reached its
-    // pattern goal (e.g. 16h for 16:8) AND the eating phase reached its goal
-    // (e.g. 8h for 16:8). Missing either one counts as "fail".
+    // Success ต้องทำได้ครบทั้ง 2 เป้า: ทั้งช่วงอดถึงเป้า (เช่น 16 ชม. สำหรับ 16:8)
+    // และช่วงกินถึงเป้า (เช่น 8 ชม.); ได้ไม่ครบอย่างใดอย่างหนึ่งถือเป็น "fail".
     const plannedFasting = getFastingMinutes(session.if_pattern);
     const plannedEating = getEatingMinutes(session.if_pattern);
     const fastingDuration = session.fasting_duration_minutes ?? 0;
@@ -90,9 +105,9 @@ export default async function CalendarPage({
 
     const existing = byDay.get(key);
     const candidate: DayStatus = {
-      date: ictDate,
-      // "abandoned" = auto-closed because the user started a new session
-      // without ending this one — never counts as a success.
+      date: new Date(session.fasting_start_time),
+      // "abandoned" = ถูกปิดอัตโนมัติเพราะผู้ใช้เริ่ม session ใหม่โดยไม่จบ session
+      // นี้ — ไม่นับเป็นความสำเร็จ.
       status:
         session.status === "active"
           ? "active"
@@ -105,10 +120,10 @@ export default async function CalendarPage({
         fastingDuration,
         existing?.durationMinutes ?? 0
       ),
-      isToday: isToday(ictDate),
+      isToday: key === todayKey,
     };
 
-    // An active session takes priority over any completed one that day.
+    // session ที่กำลังอดอยู่ชนะ session ที่จบไปแล้วในวันเดียวกัน.
     if (
       !existing ||
       candidate.status === "active" ||
@@ -118,26 +133,37 @@ export default async function CalendarPage({
     }
   }
 
-  // Build the calendar grid (42 cells, starts on the weekday of day 1).
-  const firstDayOffset = getDay(monthStartICT);
-  const gridStart = new Date(monthStartICT);
-  gridStart.setDate(1 - firstDayOffset);
-
+  // สร้าง grid 42 ช่อง เริ่มจากวันในสัปดาห์ของวันที่ 1 (แบบไทย).
+  const firstDayOffset = currentMonth.getUTCDay();
+  const gridStart = currentMonth.getTime();
   const cells: DayStatus[] = [];
-  for (let i = 0; i < 42; i++) {
-    const date = new Date(gridStart);
-    date.setDate(gridStart.getDate() + i);
-    const key = format(date, "yyyy-MM-dd");
+  for (let i = 0; i < GRID_CELLS; i++) {
+    const cellDate = new Date(gridStart + (i - firstDayOffset) * DAY_MS);
+    const key = toICTDateKey(cellDate);
     const day =
       byDay.get(key) ??
-      ({ date, status: "none", durationMinutes: 0, isToday: isToday(date) } satisfies DayStatus);
+      ({
+        date: cellDate,
+        status: "none",
+        durationMinutes: 0,
+        isToday: key === todayKey,
+      } satisfies DayStatus);
     cells.push(day);
   }
 
-  const prevMonth = subMonths(currentMonth, 1);
-  const canGoBack = isAfter(monthStart, addMonths(startOfMonth(today), -12));
-  const nextMonth = addMonths(currentMonth, 1);
-  const isCurrentMonth = isSameMonth(currentMonth, today);
+  const prevMonth = new Date(
+    Date.UTC(currentMonth.getUTCFullYear(), currentMonth.getUTCMonth() - 1, 1)
+  );
+  const nextMonth = new Date(
+    Date.UTC(currentMonth.getUTCFullYear(), currentMonth.getUTCMonth() + 1, 1)
+  );
+  const canGoBack =
+    currentMonth.getTime() >
+    new Date(
+      Date.UTC(ictNow.getUTCFullYear(), ictNow.getUTCMonth() - 11, 1)
+    ).getTime();
+  const isCurrentMonth =
+    currentMonthKey === toICTMonthKey(currentNowMonthStart);
 
   return (
     <main className="flex flex-1 flex-col px-6 pt-6 pb-10">
@@ -158,7 +184,7 @@ export default async function CalendarPage({
           <div className="mb-4 flex items-center justify-between">
             {canGoBack ? (
               <Link
-                href={`/calendar?month=${format(prevMonth, "yyyy-MM")}`}
+                href={`/calendar?month=${toICTMonthKey(prevMonth)}`}
                 className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:bg-zinc-100"
                 aria-label="เดือนก่อนหน้า"
               >
@@ -168,11 +194,12 @@ export default async function CalendarPage({
               <span className="h-9 w-9" />
             )}
             <h2 className="text-base font-semibold text-zinc-900">
-              {format(currentMonth, "LLLL yyyy", { locale: th })}
+              {THAI_MONTHS[currentMonth.getUTCMonth()]}{" "}
+              {currentMonth.getUTCFullYear()}
             </h2>
             {!isCurrentMonth ? (
               <Link
-                href={`/calendar?month=${format(nextMonth, "yyyy-MM")}`}
+                href={`/calendar?month=${toICTMonthKey(nextMonth)}`}
                 className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:bg-zinc-100"
                 aria-label="เดือนถัดไป"
               >
@@ -193,7 +220,9 @@ export default async function CalendarPage({
               </span>
             ))}
             {cells.map((cell, index) => {
-              const inMonth = isSameMonth(cell.date, currentMonth);
+              const inMonth = toICTDateKey(cell.date).startsWith(
+                currentMonthKey
+              );
               return (
                 <div
                   key={index}
@@ -214,7 +243,7 @@ export default async function CalendarPage({
                         : "text-zinc-900"
                     }`}
                   >
-                    {getICTDay(cell.date)}
+                    {cell.date.getUTCDate()}
                   </span>
                 </div>
               );
