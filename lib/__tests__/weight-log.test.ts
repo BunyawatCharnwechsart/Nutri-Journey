@@ -5,6 +5,7 @@ import {
   daysUntilNextUpdate,
   diffCalendarDays,
   getICTDateKey,
+  getRecentWeightLogWindow,
 } from "@/lib/weight-log";
 
 const DAY = 86_400_000;
@@ -61,5 +62,39 @@ describe("date-key helpers", () => {
     expect(diffCalendarDays("2026-08-18", "2026-09-02")).toBe(15);
     expect(diffCalendarDays("2026-09-02", "2026-08-18")).toBe(-15);
     expect(diffCalendarDays(null, "2026-09-02")).toBe(0);
+  });
+});
+
+describe("getRecentWeightLogWindow", () => {
+  it("uses today (ICT) as the inclusive `to` bound", () => {
+    const window = getRecentWeightLogWindow(Date.UTC(2026, 8, 5), 3);
+    expect(window.toKey).toBe("2026-09-05");
+  });
+
+  it("shifts `from` back by the requested number of months", () => {
+    expect(getRecentWeightLogWindow(Date.UTC(2026, 8, 5), 3).fromKey).toBe(
+      "2026-06-05"
+    );
+    expect(getRecentWeightLogWindow(Date.UTC(2026, 8, 5), 1).fromKey).toBe(
+      "2026-08-05"
+    );
+  });
+
+  it("crosses year boundaries", () => {
+    expect(getRecentWeightLogWindow(Date.UTC(2026, 0, 15), 3).fromKey).toBe(
+      "2025-10-15"
+    );
+  });
+
+  it("clamps to the last day of a shorter target month", () => {
+    // 2026-05-31 minus 3 months = February 2026 (28 days, not a leap year).
+    expect(getRecentWeightLogWindow(Date.UTC(2026, 4, 31), 3).fromKey).toBe(
+      "2026-02-28"
+    );
+  });
+
+  it("treats invalid input as a single-day window", () => {
+    const window = getRecentWeightLogWindow(Date.UTC(2026, 8, 5), 0);
+    expect(window).toEqual({ fromKey: "2026-09-05", toKey: "2026-09-05" });
   });
 });

@@ -71,6 +71,21 @@ export const weightLogSchema = z.object({
 });
 
 /**
+ * Query params for GET /api/v1/weight-logs. `months` controls how far back in
+ * time the history window reaches (default 3). Coerced from a string so a
+ * non-numeric value is rejected with a 400 before it reaches the database.
+ */
+export const weightLogQuerySchema = z.object({
+  months: z.coerce
+    .number()
+    .int("months ต้องเป็นจำนวนเต็ม")
+    .min(1, "months ต้องไม่น้อยกว่า 1")
+    .max(12, "months ต้องไม่เกิน 12")
+    .optional()
+    .default(3),
+});
+
+/**
  * Record new body measurements (from the "อัปเดตสัดส่วน" modal).
  *
  * Each measurement is optional so the user may update only the fields they
