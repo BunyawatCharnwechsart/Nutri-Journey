@@ -82,3 +82,46 @@ export function daysUntilNextUpdate(
   const elapsed = diffCalendarDays(lastRecordedDate, getICTDateKey(nowMs));
   return Math.max(0, days - elapsed);
 }
+
+/**
+ * Inclusive ICT date-key window covering the last `months` calendar months up
+ * to today. Used by the weight history API to bound a line-chart query.
+ *
+ * Both bounds are inclusive. When the target month is shorter than the current
+ * day (e.g. May 31 → February), the `from` bound clamps to the last day of
+ * that month rather than rolling into the next month.
+ */
+export function getRecentWeightLogWindow(
+  nowMs: number,
+  months: number
+): { fromKey: string; toKey: string } {
+  const toKey = getICTDateKey(nowMs);
+  const toDate = parseDateKey(toKey);
+
+  if (!toDate || !Number.isFinite(months) || months <= 0) {
+    return { fromKey: toKey, toKey };
+  }
+
+  const monthCount = Math.floor(months);
+  const fromMonthDate = new Date(
+    Date.UTC(toDate.getUTCFullYear(), toDate.getUTCMonth() - monthCount, 1)
+  );
+  const lastDay = new Date(
+    Date.UTC(
+      fromMonthDate.getUTCFullYear(),
+      fromMonthDate.getUTCMonth() + 1,
+      0
+    )
+  ).getUTCDate();
+
+  const fromDay = Math.min(toDate.getUTCDate(), lastDay);
+  const fromKey = getICTDateKey(
+    Date.UTC(
+      fromMonthDate.getUTCFullYear(),
+      fromMonthDate.getUTCMonth(),
+      fromDay
+    )
+  );
+
+  return { fromKey, toKey };
+}
