@@ -85,13 +85,25 @@ function fullLabel(date: string): string {
  * Renders the logs passed from the server (already normalized to
  * `WeightPoint`s) with the project's green brand color. Responsive by using a
  * fixed-height wrapper + `maintainAspectRatio: false`, so it scales cleanly on
- * mobile.
+ * mobile. `range` and `periodLabel` only tune the copy/tick density — the
+ * data itself always comes from the server.
  */
-export default function WeightChart({ logs }: { logs: WeightPoint[] }) {
+export default function WeightChart({
+  logs,
+  range = "3m",
+  periodLabel,
+}: {
+  logs: WeightPoint[];
+  range?: "3m" | "1y";
+  periodLabel?: string;
+}) {
+  const displayLabel =
+    periodLabel ?? (range === "1y" ? "1 ปี" : "3 เดือน");
+
   if (logs.length === 0) {
     return (
       <p className="py-10 text-center text-sm text-zinc-500">
-        ยังไม่มีบันทึกน้ำหนักใน 3 เดือนที่ผ่านมา
+        ยังไม่มีบันทึกน้ำหนักในช่วง {displayLabel}
       </p>
     );
   }
@@ -153,7 +165,7 @@ export default function WeightChart({ logs }: { logs: WeightPoint[] }) {
           color: "#71717a",
           maxRotation: 0,
           autoSkip: true,
-          maxTicksLimit: 6,
+          maxTicksLimit: range === "1y" ? 8 : 6,
           font: { size: 11 },
         },
       },
@@ -170,7 +182,7 @@ export default function WeightChart({ logs }: { logs: WeightPoint[] }) {
   return (
     <div
       role="img"
-      aria-label="กราฟน้ำหนักย้อนหลัง 3 เดือน"
+      aria-label={`กราฟน้ำหนักช่วง ${displayLabel}`}
       className="h-64 w-full sm:h-72"
     >
       <Line data={data} options={options} />

@@ -125,3 +125,33 @@ export function getRecentWeightLogWindow(
 
   return { fromKey, toKey };
 }
+
+/**
+ * Inclusive ICT date-key window covering one calendar quarter of `year`
+ * (quarter 1-based: 1 = ม.ค.-มี.ค., 4 = ต.ค.-ธ.ค.). Used by the stats
+ * "3 เดือน" view, which lets the user pick a quarter instead of a rolling
+ * window.
+ */
+export function getQuarterWindow(
+  year: number,
+  quarter: number
+): { fromKey: string; toKey: string } {
+  const startMonth = (quarter - 1) * 3 + 1;
+  const endMonth = startMonth + 2;
+
+  const fromKey = getICTDateKey(Date.UTC(year, startMonth - 1, 1));
+  const lastDay = new Date(Date.UTC(year, endMonth, 0)).getUTCDate();
+  const toKey = getICTDateKey(Date.UTC(year, endMonth - 1, lastDay));
+
+  return { fromKey, toKey };
+}
+
+/** Current calendar quarter (1..4) and year in ICT — default for the tab. */
+export function getICTCurrentQuarter(
+  nowMs: number
+): { year: number; quarter: number } {
+  const key = getICTDateKey(nowMs);
+  const year = Number(key.slice(0, 4));
+  const month = Number(key.slice(5, 7));
+  return { year, quarter: Math.ceil(month / 3) };
+}
