@@ -1,6 +1,7 @@
 import { requireAuth } from "@/lib/auth";
 import { apiError, apiSuccess } from "@/lib/response";
 import { createServiceClient } from "@/lib/supabase/service";
+import { getICTMonthBounds } from "@/lib/timezone";
 import { sessionIdSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
@@ -25,16 +26,17 @@ export async function GET(request: Request) {
   }
 
   const [year, monthIndex] = month.split("-").map(Number);
-  const start = new Date(Date.UTC(year, monthIndex - 1, 1));
-  const end = new Date(Date.UTC(year, monthIndex, 1));
+  // ขอบเดือนคิดตามเวลาไทย (เที่ยงคืนไทย − 7 ชม. → UTC) ให้ตรงกับหน้า calendar:
+  // เดิมใช้ UTC month ตรงๆ ทำให้ session ที่เริ่ม 00:00–06:59 น. ของวันที่ 1 หลุดเดือนเพี้ยน.
+  const bounds = getICTMonthBounds(year, monthIndex);
 
   const supabase = createServiceClient();
   const { data: sessions, error } = await supabase
     .from("if_sessions")
     .select("*")
     .eq("user_id", auth.userId)
-    .gte("fasting_start_time", start.toISOString())
-    .lt("fasting_start_time", end.toISOString())
+    .gte("fasting_start_time", bounds.startIso)
+    .lt("fasting_start_time", bounds.endIso)
     .order("fasting_start_time", { ascending: true });
 
   if (error) {

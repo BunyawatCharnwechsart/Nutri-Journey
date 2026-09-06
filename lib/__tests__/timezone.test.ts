@@ -76,4 +76,19 @@ describe("getICTMonthBounds", () => {
       endIso: "2026-01-31T17:00:00.000Z",
     });
   });
+
+  it("includes sessions that start 00:00–06:59 Thai on the 1st of the month", () => {
+    // เดิมหน้า API เคยใช้ขอบ UTC month → 00:30 น. ไทยของวันที่ 1 (= 17:30Z วันเก่า)
+    // จะหลุดไปอยู่เดือนก่อน; ขอบแบบไทยต้องรวม session นี้ไว้ในเดือนนั้น.
+    const bounds = getICTMonthBounds(2026, 9); // กันยายน 2026
+    const sessionAtThaiMidnightPast = "2026-08-31T17:30:00.000Z"; // 00:30 น. 1 ก.ย. ไทย
+    expect(sessionAtThaiMidnightPast >= bounds.startIso).toBe(true);
+    expect(sessionAtThaiMidnightPast < bounds.endIso).toBe(true);
+  });
+
+  it("excludes sessions that start 00:00–06:59 Thai on the 1st of the next month", () => {
+    const bounds = getICTMonthBounds(2026, 9);
+    const nextMonthBoundary = "2026-09-30T17:30:00.000Z"; // 00:30 น. 1 ต.ค. ไทย
+    expect(nextMonthBoundary < bounds.endIso).toBe(false);
+  });
 });
