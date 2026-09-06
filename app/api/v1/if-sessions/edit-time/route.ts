@@ -100,13 +100,12 @@ export async function PATCH(request: NextRequest) {
       .single();
 
     if (error || !updated) {
-      console.error("[edit-time] update error:", error);
+      console.error("Failed to update IF session time", error);
       return apiError("เกิดข้อผิดพลาดในการอัปเดตเวลา", 500, "INTERNAL_ERROR");
     }
 
     return apiSuccess({ session: updated });
-  } catch (error: unknown) {
-    console.error("[edit-time] catch:", error instanceof Error ? error.message : error);
+  } catch {
     return apiError("Internal server error", 500, "INTERNAL_ERROR");
   }
 }
