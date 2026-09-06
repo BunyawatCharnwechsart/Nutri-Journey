@@ -16,6 +16,32 @@ export const sessionIdSchema = z.object({
   sessionId: z.string().uuid("sessionId ต้องเป็น UUID"),
 });
 
+/** จำกัดให้แก้เวลาได้ไม่เกิน 7 วันย้อนหลัง (จาก API ถูกยิงตรง ข้าม UI ได้). */
+export const MAX_EDIT_TIME_AGE_MS = 7 * 24 * 60 * 60 * 1000;
+
+/**
+ * PATCH /api/v1/if-sessions/edit-time
+ * `newStartTime` ต้องเป็น ISO 8601 ที่ parse ได้ เช่น "2026-09-05T23:50:00.000Z".
+ */
+export const editTimeSchema = z.object({
+  sessionId: z.string().uuid("sessionId ต้องเป็น UUID"),
+  newStartTime: z.string().datetime({
+    offset: true,
+    message: "newStartTime ต้องเป็น ISO 8601",
+  }),
+});
+
+/**
+ * ตรวจว่าค่าเวลาที่แก้ใหม่ใช้ได้: ต้องไม่เป็นอนาคต และไม่ย้อนหลังเกิน
+ * MAX_EDIT_TIME_AGE_MS. แยกเป็น pure function เพื่อให้เทสต์ได้กำหนด nowMs เอง.
+ */
+export function isValidEditTime(newTimeMs: number, nowMs: number): boolean {
+  if (newTimeMs > nowMs) {
+    return false;
+  }
+  return nowMs - newTimeMs <= MAX_EDIT_TIME_AGE_MS;
+}
+
 /**
  * Health profile form (set during first-time setup after LINE login).
  *

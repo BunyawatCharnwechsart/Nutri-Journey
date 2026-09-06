@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { createServiceClient } from "@/lib/supabase/service";
 import { requireAuth } from "@/lib/auth";
 import { apiError, apiSuccess } from "@/lib/response";
+import { editTimeSchema, isValidEditTime } from "@/lib/validation";
 
 export async function PATCH(request: NextRequest) {
   try {
@@ -10,16 +11,27 @@ export async function PATCH(request: NextRequest) {
       return auth.response;
     }
 
-    const body = await request.json();
-    const { sessionId, newStartTime } = body;
-
-    if (!sessionId || !newStartTime) {
-      return apiError("Missing sessionId or newStartTime", 400, "BAD_REQUEST");
+    let body: unknown;
+    try {
+      body = await request.json();
+    } catch {
+      return apiError("Invalid JSON body", 400, "VALIDATION_ERROR");
     }
 
+    const parsed = editTimeSchema.safeParse(body);
+    if (!parsed.success) {
+      const message = parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง";
+      return apiError(message, 400, "VALIDATION_ERROR");
+    }
+
+    const { sessionId, newStartTime } = parsed.data;
     const newTime = new Date(newStartTime);
-    if (isNaN(newTime.getTime())) {
-      return apiError("Invalid time format", 400, "BAD_REQUEST");
+
+    // กัน API ถูกยิงตรงโดยข้าม UI input: เวลาต้องไม่อยู่ในอนาคต และไม่เก่าเกิน
+    // MAX_EDIT_TIME_AGE_MS (7 วัน) — ไม่งั้นจะทำ fasting duration / notification /
+    // calendar เพี้ยนได้.
+    if (!isValidEditTime(newTime.getTime(), Date.now())) {
+      return apiError("เวลาไม่ถูกต้อง (ห้ามเป็นอนาคต หรือย้อนหลังเกิน 7 วัน)", 400, "BAD_REQUEST");
     }
 
     const supabase = createServiceClient();

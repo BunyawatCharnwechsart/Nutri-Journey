@@ -8,10 +8,13 @@ export const runtime = "nodejs";
 /**
  * POST /api/v1/if-sessions/end-eating
  *
- * Marks the eating phase of a session as finished and starts the fasting
- * phase: records eating_end_time + eating_duration_minutes (computed from
- * server time) and moves fasting_start_time to now so the fasting duration is
- * measured from this point. Only the session owner can call this; the
+ * Ends the FASTING phase of a session and starts the eating phase: records
+ * fasting_end_time + fasting_duration_minutes (computed from server time) and
+ * sets eating_start_time to now so the eating window counts from this point.
+ *
+ * NOTE: despite the route name, this endpoint does NOT end the eating phase —
+ * it ends fasting and begins eating. The eating phase is ended afterwards by
+ * POST /api/v1/if-sessions/end. Only the session owner can call this; the
  * userId comes from the verified session cookie.
  */
 export async function POST(request: Request) {
