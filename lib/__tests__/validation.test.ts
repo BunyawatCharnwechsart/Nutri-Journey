@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  editTimeSchema,
   healthProfileSchema,
   ifStartSchema,
+  isValidEditTime,
   loginSchema,
+  MAX_EDIT_TIME_AGE_MS,
   measurementLogSchema,
   sessionIdSchema,
 } from "@/lib/validation";
@@ -41,6 +44,63 @@ describe("sessionIdSchema", () => {
 
   it("rejects a non-UUID string", () => {
     expect(() => sessionIdSchema.parse({ sessionId: "not-a-uuid" })).toThrow();
+  });
+});
+
+describe("editTimeSchema", () => {
+  const uuid = "123e4567-e89b-12d3-a456-426614174000";
+
+  it("accepts sessionId + ISO 8601 datetime", () => {
+    const result = editTimeSchema.parse({
+      sessionId: uuid,
+      newStartTime: "2026-09-05T23:50:00.000Z",
+    });
+    expect(result.newStartTime).toBe("2026-09-05T23:50:00.000Z");
+  });
+
+  it("accepts a datetime with a numeric offset", () => {
+    const result = editTimeSchema.parse({
+      sessionId: uuid,
+      newStartTime: "2026-09-06T06:50:00+07:00",
+    });
+    expect(result.newStartTime).toBe("2026-09-06T06:50:00+07:00");
+  });
+
+  it("rejects a non-ISO datetime string", () => {
+    expect(() =>
+      editTimeSchema.parse({
+        sessionId: uuid,
+        newStartTime: "2026-09-05 23:50",
+      })
+    ).toThrow();
+  });
+
+  it("rejects a missing sessionId", () => {
+    expect(() =>
+      editTimeSchema.parse({ newStartTime: "2026-09-05T23:50:00.000Z" })
+    ).toThrow();
+  });
+});
+
+describe("isValidEditTime", () => {
+  // fixed reference time (2026-09-06 12:00 UTC) so tests are deterministic.
+  const now = Date.UTC(2026, 8, 6, 12);
+  const DAY_MS = 24 * 60 * 60 * 1000;
+
+  it("accepts a time in the past within 7 days", () => {
+    expect(isValidEditTime(now - 2 * DAY_MS, now)).toBe(true);
+  });
+
+  it("accepts exactly now", () => {
+    expect(isValidEditTime(now, now)).toBe(true);
+  });
+
+  it("rejects a future time", () => {
+    expect(isValidEditTime(now + 1000, now)).toBe(false);
+  });
+
+  it("rejects a time older than 7 days", () => {
+    expect(isValidEditTime(now - MAX_EDIT_TIME_AGE_MS - 1000, now)).toBe(false);
   });
 });
 
