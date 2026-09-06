@@ -8,9 +8,10 @@ export const runtime = "nodejs";
 /**
  * POST /api/v1/if-sessions/start
  *
- * Starts a new IF session. Every session begins with the eating phase, so
- * both fasting_start_time and eating_start_time are set to now (the end-eating
- * endpoint later moves fasting_start_time to the actual fasting start).
+ * Starts a new IF session. Every session begins with the FASTING phase:
+ * fasting_start_time is set to now and status = "active". eating_start_time
+ * is left null — it is set when the fasting phase ends (POST /end-eating),
+ * at which point the eating window starts counting.
  *
  * Stale active sessions (user forgot to end them) are marked "abandoned", NOT
  * "completed" — they must not inflate stats or streaks. The userId comes from
