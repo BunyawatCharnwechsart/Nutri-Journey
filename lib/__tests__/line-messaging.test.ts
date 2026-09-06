@@ -1,7 +1,9 @@
 import { createHmac } from "node:crypto";
-import { describe, expect, it, beforeEach } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
+  LineMessagingError,
+  buildMeasurementReminderMessages,
   buildPhaseEndMessages,
   buildWeightReminderMessages,
   verifyLineSignature,
@@ -16,7 +18,11 @@ function sign(rawBody: string): string {
 
 describe("verifyLineSignature", () => {
   beforeEach(() => {
-    process.env.LINE_CHANNEL_SECRET = SECRET;
+    vi.stubEnv("LINE_CHANNEL_SECRET", SECRET);
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
   });
 
   it("accepts a valid signature", () => {
@@ -34,6 +40,11 @@ describe("verifyLineSignature", () => {
     expect(verifyLineSignature(rawBody, "too-short")).toBe(false);
     expect(verifyLineSignature(rawBody, null)).toBe(false);
     expect(verifyLineSignature("", sign(rawBody))).toBe(false);
+  });
+
+  it("throws when LINE_CHANNEL_SECRET is not configured", () => {
+    vi.stubEnv("LINE_CHANNEL_SECRET", "");
+    expect(() => verifyLineSignature("{}", "x")).toThrow(LineMessagingError);
   });
 });
 
@@ -56,6 +67,13 @@ describe("buildPhaseEndMessages", () => {
     const [message] = buildWeightReminderMessages(LIFF_URL);
     expect(message.type).toBe("text");
     expect(message.text).toContain("อัปเดตน้ำหนัก");
+    expect(message.text).toContain(LIFF_URL);
+  });
+
+  it("builds the measurement update reminder with the app link", () => {
+    const [message] = buildMeasurementReminderMessages(LIFF_URL);
+    expect(message.type).toBe("text");
+    expect(message.text).toContain("อัปเดตสัดส่วน");
     expect(message.text).toContain(LIFF_URL);
   });
 });

@@ -169,4 +169,13 @@ describe("buildDayStatusMap", () => {
   it("returns an empty map for no sessions", () => {
     expect(buildDayStatusMap([]).size).toBe(0);
   });
+
+  it("ignores sessions whose start time is invalid", () => {
+    const map = buildDayStatusMap([
+      completedSession({ fasting_start_time: "not-a-date" }),
+      completedSession({ fasting_start_time: "2026-09-05T02:00:00.000Z" }),
+    ]);
+    expect(map.size).toBe(1);
+    expect(map.get("2026-09-05")).toBe("success");
+  });
 });

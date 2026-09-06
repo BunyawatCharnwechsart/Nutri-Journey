@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { isProfileComplete } from "@/lib/profile";
+import { calculateBmi, getBmiCategory, isProfileComplete } from "@/lib/profile";
 
 describe("isProfileComplete", () => {
   const fullProfile = {
@@ -30,6 +30,15 @@ describe("isProfileComplete", () => {
     ).toBe(true);
   });
 
+  it("returns false when a field is an empty string", () => {
+    expect(
+      isProfileComplete({
+        ...fullProfile,
+        height: "",
+      })
+    ).toBe(false);
+  });
+
   it("returns false when a measurement is missing", () => {
     expect(
       isProfileComplete({
@@ -55,5 +64,31 @@ describe("isProfileComplete", () => {
         target_weight: null,
       })
     ).toBe(false);
+  });
+});
+
+describe("calculateBmi", () => {
+  it("computes BMI rounded to one decimal", () => {
+    expect(calculateBmi(70, 175)).toBe(22.9);
+  });
+
+  it("returns null when weight or height is missing", () => {
+    expect(calculateBmi(null, 175)).toBeNull();
+    expect(calculateBmi(70, null)).toBeNull();
+    expect(calculateBmi(null, null)).toBeNull();
+  });
+});
+
+describe("getBmiCategory", () => {
+  it("maps thresholds to Thai BMI categories", () => {
+    expect(getBmiCategory(18.4)).toBe("น้ำหนักน้อย");
+    expect(getBmiCategory(22)).toBe("ปกติ");
+    expect(getBmiCategory(24)).toBe("น้ำหนักเกิน");
+    expect(getBmiCategory(29)).toBe("อ้วน ระดับ 1");
+    expect(getBmiCategory(30)).toBe("อ้วน ระดับ 2 (อันตราย)");
+  });
+
+  it("returns a dash for null", () => {
+    expect(getBmiCategory(null)).toBe("—");
   });
 });
