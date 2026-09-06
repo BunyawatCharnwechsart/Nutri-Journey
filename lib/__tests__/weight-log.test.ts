@@ -24,7 +24,9 @@ describe("canUpdateWeight", () => {
   });
 
   it("blocks before 7 full calendar days have passed", () => {
-    expect(canUpdateWeight(BASE, key(-1))).toBe(false); // 6 days elapsed
+    expect(canUpdateWeight(BASE, key(0))).toBe(false); // same day
+    expect(canUpdateWeight(BASE, key(-1))).toBe(false); // 1 day elapsed
+    expect(canUpdateWeight(BASE, key(-6))).toBe(false); // 6 days elapsed — still blocked
   });
 
   it("unlocks exactly on the 7th calendar day", () => {
@@ -43,6 +45,7 @@ describe("daysUntilNextUpdate", () => {
 
   it("counts down the remaining days", () => {
     expect(daysUntilNextUpdate(BASE, key(-1))).toBe(6);
+    expect(daysUntilNextUpdate(BASE, key(-6))).toBe(1);
     expect(daysUntilNextUpdate(BASE, key(-10))).toBe(0);
   });
 

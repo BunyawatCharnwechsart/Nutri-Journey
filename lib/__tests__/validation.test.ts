@@ -99,6 +99,14 @@ describe("isValidEditTime", () => {
     expect(isValidEditTime(now + 1000, now)).toBe(false);
   });
 
+  it("accepts a time exactly 7 days old (boundary)", () => {
+    expect(isValidEditTime(now - MAX_EDIT_TIME_AGE_MS, now)).toBe(true);
+  });
+
+  it("rejects a time just past the 7-day boundary", () => {
+    expect(isValidEditTime(now - MAX_EDIT_TIME_AGE_MS - 1, now)).toBe(false);
+  });
+
   it("rejects a time older than 7 days", () => {
     expect(isValidEditTime(now - MAX_EDIT_TIME_AGE_MS - 1000, now)).toBe(false);
   });

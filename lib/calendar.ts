@@ -64,7 +64,12 @@ export function buildDayStatusMap(
 ): Map<string, CalendarDayStatus> {
   const map = new Map<string, CalendarDayStatus>();
   for (const session of sessions) {
-    const key = toICTDateKey(new Date(session.fasting_start_time));
+    const startTime = new Date(session.fasting_start_time);
+    if (Number.isNaN(startTime.getTime())) {
+      // เวลาเริ่มต้นเสีย (เช่น DB มีค่า invalid) → ข้ามไป ไม่ควรสร้าง key "NaN-NaN-NaN".
+      continue;
+    }
+    const key = toICTDateKey(startTime);
     const status = dayStatusForSession(session);
     const existing = map.get(key);
     if (!existing || STATUS_RANK[status] > STATUS_RANK[existing]) {

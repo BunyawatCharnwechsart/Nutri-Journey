@@ -22,7 +22,9 @@ describe("canUpdateMeasurement", () => {
   });
 
   it("blocks before 14 full calendar days have passed", () => {
-    expect(canUpdateMeasurement(BASE, key(-1))).toBe(false); // 13 days elapsed
+    expect(canUpdateMeasurement(BASE, key(0))).toBe(false); // same day
+    expect(canUpdateMeasurement(BASE, key(-1))).toBe(false); // 1 day elapsed
+    expect(canUpdateMeasurement(BASE, key(-13))).toBe(false); // 13 days elapsed — still blocked
   });
 
   it("unlocks exactly on the 14th calendar day", () => {
@@ -41,6 +43,7 @@ describe("daysUntilNextMeasurementUpdate", () => {
 
   it("counts down the remaining days", () => {
     expect(daysUntilNextMeasurementUpdate(BASE, key(-1))).toBe(13);
+    expect(daysUntilNextMeasurementUpdate(BASE, key(-13))).toBe(1);
     expect(daysUntilNextMeasurementUpdate(BASE, key(-10))).toBe(4);
   });
 
