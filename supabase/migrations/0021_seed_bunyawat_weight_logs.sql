@@ -1,9 +1,16 @@
 -- ============================================================================
 -- 0021_seed_bunyawat_weight_logs.sql
 --
--- Dev seed: mockup of Bunyawat's weekly weight logs (June 2026 -> latest) so
--- the monthly line chart has data to render. One entry per ~7 days, trend
--- ~0.5 kg/week down. The real entry on 2026-09-02 (88.0) is kept as-is.
+-- Dev seed: mockup of Bunyawat's weekly weight logs covering a full year
+-- (Sep 2025 -> latest) so both the 3-month quarter chart and the 1-year chart
+-- have data to render. One entry per week (Wednesdays, every ~7 days).
+--
+-- The series uses a gentle downward trend (~94 kg -> 88 kg across 52 weeks,
+-- about -0.12 kg/week) with a small deterministic wobble (+/-0.1-0.2 kg) so
+-- the line looks realistic instead of perfectly straight.
+--
+-- The real entry on 2026-09-02 (88.0) is kept as-is via its own explicit
+-- upsert AFTER the generated series, so the formula never touches it.
 --
 -- Idempotent: upsert keyed on (user_id, recorded_on) -> safe to re-run.
 --
@@ -32,25 +39,26 @@ begin
     raise exception 'Bunyawat user not found in public.users';
   end if;
 
+  -- 52 weekly points (weeks 0..51): 2025-09-03 -> 2026-08-26.
+  -- Weight = linear fall 94.0 -> 88.0, plus a deterministic wobble so the
+  -- curve has gentle ups and downs instead of a straight descending line.
   for rows_payload in
-    values
-      ('2026-06-03'::date, 94.0),
-      ('2026-06-10'::date, 93.5),
-      ('2026-06-17'::date, 93.0),
-      ('2026-06-24'::date, 92.5),
-      ('2026-07-01'::date, 92.0),
-      ('2026-07-08'::date, 91.5),
-      ('2026-07-15'::date, 91.0),
-      ('2026-07-22'::date, 90.5),
-      ('2026-07-29'::date, 90.0),
-      ('2026-08-05'::date, 89.6),
-      ('2026-08-12'::date, 89.2),
-      ('2026-08-19'::date, 88.8),
-      ('2026-08-26'::date, 88.4),
-      ('2026-09-02'::date, 88.0)
+    select
+      (date '2025-09-03' + (w * interval '7 days'))::date as recorded_on,
+      round(
+        (94.0 - 6.0 * w::numeric / 51.0
+         + case w % 4
+             when 0 then 0.0
+             when 1 then -0.1
+             when 2 then 0.1
+             else 0.2
+           end)::numeric,
+        1
+      ) as weight_kg
+    from generate_series(0, 51) as w
   loop
-    row_recorded_on := rows_payload.column1;
-    row_weight_kg   := rows_payload.column2;
+    row_recorded_on := rows_payload.recorded_on;
+    row_weight_kg   := rows_payload.weight_kg;
 
     insert into public.weight_logs (user_id, recorded_on, weight_kg, logged_at, updated_at)
     values (
@@ -64,6 +72,20 @@ begin
       set weight_kg = excluded.weight_kg,
           updated_at = excluded.updated_at;
   end loop;
+
+  -- The real entry is kept as-is: not in the generated series, upserted
+  -- explicitly so re-runs always keep it at the user's actual value.
+  insert into public.weight_logs (user_id, recorded_on, weight_kg, logged_at, updated_at)
+  values (
+    bunyawat_user_id,
+    '2026-09-02'::date,
+    88.0,
+    ('2026-09-02'::date + time '12:00') at time zone 'Asia/Bangkok',
+    ('2026-09-02'::date + time '12:00') at time zone 'Asia/Bangkok'
+  )
+  on conflict (user_id, recorded_on) do update
+    set weight_kg = excluded.weight_kg,
+        updated_at = excluded.updated_at;
 end $$;
 
 -- ----------------------------------------------------------------------------

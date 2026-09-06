@@ -6,23 +6,16 @@ import { createServiceClient } from "@/lib/supabase/service";
 import {
   getICTCurrentQuarter,
   getQuarterWindow,
-  getRecentWeightLogWindow,
+  getYearToDateWindow,
 } from "@/lib/weight-log";
 import EggIconLink from "@/components/EggIconLink";
+import QuarterSelect, { QUARTER_OPTIONS } from "@/components/QuarterSelect";
 import WeightChart, { type WeightPoint } from "@/components/WeightChart";
 
 export const dynamic = "force-dynamic";
 
 /** Chart ranges exposed as URL tabs: 3 เดือน / 1 ปี. */
 type Range = "3m" | "1y";
-
-/** Calendar quarters with Thai month-name labels (ม.ค.–มี.ค. ฯลฯ). */
-const QUARTERS = [
-  { q: 1, label: "ม.ค.–มี.ค." },
-  { q: 2, label: "เม.ย.–มิ.ย." },
-  { q: 3, label: "ก.ค.–ก.ย." },
-  { q: 4, label: "ต.ค.–ธ.ค." },
-] as const;
 
 /** Whitelist-only parse: anything unknown falls back to the 3-month view. */
 function parseRange(value: string | string[] | undefined): Range {
@@ -70,7 +63,7 @@ export default async function StatsPage({
     getICTCurrentQuarter(now.getTime());
   const quarter =
     range === "3m" ? parseQuarter(qParam, currentQuarter) : currentQuarter;
-  const quarterLabel = QUARTERS[quarter - 1]?.label ?? "";
+  const quarterLabel = QUARTER_OPTIONS[quarter - 1]?.label ?? "";
 
   const userId = await getSessionUserId();
   if (!userId) {
@@ -79,7 +72,7 @@ export default async function StatsPage({
 
   const { fromKey, toKey } =
     range === "1y"
-      ? getRecentWeightLogWindow(now.getTime(), 12)
+      ? getYearToDateWindow(now.getTime())
       : getQuarterWindow(currentYear, quarter);
 
   const supabase = createServiceClient();
@@ -95,11 +88,11 @@ export default async function StatsPage({
 
   const subtitle =
     range === "1y"
-      ? "กราฟน้ำหนักย้อนหลัง 1 ปี"
-      : `กราฟน้ำหนัก ไตรมาส ${quarter} (${quarterLabel})`;
+      ? "กราฟน้ำหนักรายปี (ม.ค.–ปัจจุบัน)"
+      : `กราฟน้ำหนัก ${quarterLabel}`;
 
   const periodLabel =
-    range === "3m" ? `ไตรมาส ${quarter} (${quarterLabel})` : undefined;
+    range === "1y" ? "ปีนี้ (ม.ค.–ปัจจุบัน)" : quarterLabel;
 
   return (
     <main className="flex flex-1 flex-col px-6 pt-6 pb-10">
@@ -145,33 +138,17 @@ export default async function StatsPage({
         </nav>
 
         <section className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5">
-          <div>
-            <h2 className="text-base font-semibold text-zinc-900">น้ำหนัก</h2>
-            {logs.length > 0 && (
-              <p className="mt-0.5 text-xs text-zinc-500">
-                {logs.length} จุดบันทึก
-              </p>
-            )}
-          </div>
-
-          {range === "3m" && (
-            <div className="flex flex-wrap justify-end gap-2">
-              {QUARTERS.map(({ q, label }) => (
-                <Link
-                  key={q}
-                  href={`/stats?range=3m&q=${q}`}
-                  aria-current={quarter === q ? "true" : undefined}
-                  className={`rounded-full px-3 py-1.5 text-sm font-semibold transition-colors ${
-                    quarter === q
-                      ? "bg-[#18A659] text-white"
-                      : "border border-zinc-200 bg-zinc-50 text-zinc-500 hover:bg-zinc-100"
-                  }`}
-                >
-                  {label}
-                </Link>
-              ))}
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h2 className="text-base font-semibold text-zinc-900">น้ำหนัก</h2>
+              {logs.length > 0 && (
+                <p className="mt-0.5 text-xs text-zinc-500">
+                  {logs.length} จุดบันทึก
+                </p>
+              )}
             </div>
-          )}
+            {range === "3m" && <QuarterSelect quarter={quarter} />}
+          </div>
 
           {error ? (
             <p className="py-10 text-center text-sm text-red-600">
