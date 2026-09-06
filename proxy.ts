@@ -9,6 +9,12 @@ const LOGIN_LIMIT = 10; // 10 req/min/IP สำหรับ /api/v1/auth/login
 const LOGIN_PATH = "/api/v1/auth/login";
 
 // bucket ที่ใช้ล้างทุกครั้งที่ถึง window ใหม่
+//
+// NOTE (ข้อจำกัด serverless): bucket นี้เป็น in-memory Map ต่อ lambda isolate
+// และ Vercel รันหลาย instance → นี่คือ rate limit แบบ per-instance เท่านั้น
+// ไม่ใช่ global 60 req/min/IP จริง. พอเจอ abuse จริงถึงต้องย้ายไปใช้ store
+// กลาง (Upstash Redis / Vercel KV) + sliding window แทน. ณ ตอนนี้เอาไว้กัน
+// burst + login brute-force พอประมาณ.
 const buckets = new Map<string, { count: number; resetAt: number }>();
 
 let checkCount = 0;

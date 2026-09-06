@@ -12,7 +12,7 @@ import { checkFriendship } from "@/lib/line-friendship";
 export const runtime = "nodejs";
 
 // ============================================================================
-// GET|POST /api/cron/if-notifications?secret=... (or Authorization: Bearer ...)
+// GET|POST /api/cron/if-notifications (Authorization: Bearer <CRON_SECRET>)
 //
 // Called periodically (supabase pg_cron → pg_net sends an HTTP POST every 1
 // minute; a manual GET with the same secret also works for testing). It
@@ -71,11 +71,8 @@ function isAuthorized(request: Request): boolean {
     return false;
   }
 
-  const url = new URL(request.url);
-  if (url.searchParams.get("secret") === secret) {
-    return true;
-  }
-
+  // Secret ผ่าน header อย่างเดียว — ห้ามรับผ่าน query string เพราะจะติด
+  // access log / proxy history (OWASP: secret ห้ามอยู่ใน URL)
   return request.headers.get("authorization") === `Bearer ${secret}`;
 }
 
