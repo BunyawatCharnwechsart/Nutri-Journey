@@ -146,6 +146,20 @@ export function getQuarterWindow(
   return { fromKey, toKey };
 }
 
+/**
+ * Inclusive ICT date-key window covering the current calendar year from
+ * January 1 up to today. Used by the stats "1 ปี" view, which shows the
+ * year-to-date data (ม.ค.–ปัจจุบัน) instead of a rolling 12-month window.
+ */
+export function getYearToDateWindow(
+  nowMs: number
+): { fromKey: string; toKey: string } {
+  const toKey = getICTDateKey(nowMs);
+  const year = Number(toKey.slice(0, 4));
+  const fromKey = getICTDateKey(Date.UTC(year, 0, 1));
+  return { fromKey, toKey };
+}
+
 /** Current calendar quarter (1..4) and year in ICT — default for the tab. */
 export function getICTCurrentQuarter(
   nowMs: number

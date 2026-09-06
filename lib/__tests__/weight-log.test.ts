@@ -6,6 +6,7 @@ import {
   diffCalendarDays,
   getICTDateKey,
   getRecentWeightLogWindow,
+  getYearToDateWindow,
 } from "@/lib/weight-log";
 
 const DAY = 86_400_000;
@@ -96,5 +97,26 @@ describe("getRecentWeightLogWindow", () => {
   it("treats invalid input as a single-day window", () => {
     const window = getRecentWeightLogWindow(Date.UTC(2026, 8, 5), 0);
     expect(window).toEqual({ fromKey: "2026-09-05", toKey: "2026-09-05" });
+  });
+});
+
+describe("getYearToDateWindow", () => {
+  it("starts from January 1 of the current year and ends today (ICT)", () => {
+    const window = getYearToDateWindow(Date.UTC(2026, 8, 6));
+    expect(window).toEqual({ fromKey: "2026-01-01", toKey: "2026-09-06" });
+  });
+
+  it("keeps January 1 when the current day is early January", () => {
+    const window = getYearToDateWindow(Date.UTC(2026, 0, 3));
+    expect(window).toEqual({ fromKey: "2026-01-01", toKey: "2026-01-03" });
+  });
+
+  it("crosses into the new year's calendar window", () => {
+    expect(getYearToDateWindow(Date.UTC(2026, 11, 31)).fromKey).toBe(
+      "2026-01-01"
+    );
+    expect(getYearToDateWindow(Date.UTC(2027, 0, 2)).fromKey).toBe(
+      "2027-01-01"
+    );
   });
 });
