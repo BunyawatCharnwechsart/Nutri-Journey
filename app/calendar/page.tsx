@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { getSessionUserId } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
-import { getEatingMinutes, getFastingMinutes } from "@/lib/if";
+import { buildDayStatusMap, type CalendarDayStatus } from "@/lib/calendar";
 import {
   getICTMonthBounds,
   toICT,
@@ -15,6 +15,7 @@ import EggIconLink from "@/components/EggIconLink";
 export const dynamic = "force-dynamic";
 
 const WEEKDAYS = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
+const WEEKDAY_FULL = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
 const THAI_MONTHS = [
   "มกราคม",
   "กุมภาพันธ์",
@@ -30,14 +31,22 @@ const THAI_MONTHS = [
   "ธันวาคม",
 ];
 
+const STATUS_LABELS: Record<CalendarDayStatus | "none", string> = {
+  success: "ทำ IF สำเร็จ",
+  fail: "ไม่ถึงเป้าหมาย",
+  active: "กำลังอดอาหาร",
+  abandoned: "ไม่จบ (เริ่มใหม่)",
+  none: "ไม่มีการทำ IF",
+};
+
 // ไทยใช้ ICT แบบคงที่ UTC+7 ไม่มี DST → การเลื่อนวันละ 24 ชม. ปลอดภัยเสมอ.
 const DAY_MS = 86_400_000;
 const GRID_CELLS = 42;
+const DAYS_PER_ROW = 7;
 
-interface DayStatus {
+interface DayCell {
   date: Date;
-  status: "success" | "fail" | "none" | "active";
-  durationMinutes: number;
+  status: CalendarDayStatus | "none";
   isToday: boolean;
 }
 
@@ -62,6 +71,11 @@ export default async function CalendarPage({
     Date.UTC(ictNow.getUTCFullYear(), ictNow.getUTCMonth(), 1)
   );
 
+  // เดือนเก่าสุดที่ดูย้อนหลังได้: เดือนเดียวกันของปีที่แล้ว (12 เดือน: เดือนนี้ + 11 เดือนก่อน).
+  const minMonthStart = new Date(
+    Date.UTC(ictNow.getUTCFullYear(), ictNow.getUTCMonth() - 11, 1)
+  );
+
   let currentMonth: Date;
   if (typeof month === "string" && /^\d{4}-\d{2}$/.test(month)) {
     const [year, monthIndex] = month.split("-").map(Number);
@@ -72,6 +86,10 @@ export default async function CalendarPage({
   } else {
     currentMonth = currentNowMonthStart;
   }
+  // URL ต่อตรง (`?month=2020-01`) ก็ไม่ให้เลยวันที่กลับหลังสุด.
+  if (currentMonth.getTime() < minMonthStart.getTime()) {
+    currentMonth = minMonthStart;
+  }
 
   const currentMonthKey = toICTMonthKey(currentMonth);
 
@@ -81,7 +99,7 @@ export default async function CalendarPage({
     currentMonth.getUTCMonth() + 1
   );
 
-  const { data: sessions } = await supabase
+  const { data: sessions, error } = await supabase
     .from("if_sessions")
     .select(
       "fasting_start_time, fasting_end_time, status, fasting_duration_minutes, eating_duration_minutes, if_pattern"
@@ -91,64 +109,26 @@ export default async function CalendarPage({
     .lt("fasting_start_time", bounds.endIso)
     .order("fasting_start_time", { ascending: true });
 
-  // จัดกลุ่ม session ตามวัน (แบบไทย) ที่การอดเริ่มต้น.
-  const byDay = new Map<string, DayStatus>();
-  for (const session of sessions ?? []) {
-    const key = toICTDateKey(new Date(session.fasting_start_time));
-
-    // Success ต้องทำได้ครบทั้ง 2 เป้า: ทั้งช่วงอดถึงเป้า (เช่น 16 ชม. สำหรับ 16:8)
-    // และช่วงกินถึงเป้า (เช่น 8 ชม.); ได้ไม่ครบอย่างใดอย่างหนึ่งถือเป็น "fail".
-    const plannedFasting = getFastingMinutes(session.if_pattern);
-    const plannedEating = getEatingMinutes(session.if_pattern);
-    const fastingDuration = session.fasting_duration_minutes ?? 0;
-    const eatingDuration = session.eating_duration_minutes ?? 0;
-
-    const existing = byDay.get(key);
-    const candidate: DayStatus = {
-      date: new Date(session.fasting_start_time),
-      // "abandoned" = ถูกปิดอัตโนมัติเพราะผู้ใช้เริ่ม session ใหม่โดยไม่จบ session
-      // นี้ — ไม่นับเป็นความสำเร็จ.
-      status:
-        session.status === "active"
-          ? "active"
-          : session.status === "completed" &&
-              fastingDuration >= plannedFasting &&
-              eatingDuration >= plannedEating
-            ? "success"
-            : "fail",
-      durationMinutes: Math.max(
-        fastingDuration,
-        existing?.durationMinutes ?? 0
-      ),
-      isToday: key === todayKey,
-    };
-
-    // session ที่กำลังอดอยู่ชนะ session ที่จบไปแล้วในวันเดียวกัน.
-    if (
-      !existing ||
-      candidate.status === "active" ||
-      (candidate.status === "success" && existing.status === "fail")
-    ) {
-      byDay.set(key, candidate);
-    }
-  }
+  // จัดกลุ่ม session ตามวัน (แบบไทย) ที่การอดเริ่มต้น; คำนวณสถานะของวันใน lib/calendar.
+  const statusByDay = buildDayStatusMap(sessions ?? []);
 
   // สร้าง grid 42 ช่อง เริ่มจากวันในสัปดาห์ของวันที่ 1 (แบบไทย).
   const firstDayOffset = currentMonth.getUTCDay();
   const gridStart = currentMonth.getTime();
-  const cells: DayStatus[] = [];
+  const cells: DayCell[] = [];
   for (let i = 0; i < GRID_CELLS; i++) {
     const cellDate = new Date(gridStart + (i - firstDayOffset) * DAY_MS);
     const key = toICTDateKey(cellDate);
-    const day =
-      byDay.get(key) ??
-      ({
-        date: cellDate,
-        status: "none",
-        durationMinutes: 0,
-        isToday: key === todayKey,
-      } satisfies DayStatus);
-    cells.push(day);
+    cells.push({
+      date: cellDate,
+      status: statusByDay.get(key) ?? "none",
+      isToday: key === todayKey,
+    });
+  }
+
+  const rows: DayCell[][] = [];
+  for (let r = 0; r < GRID_CELLS / DAYS_PER_ROW; r++) {
+    rows.push(cells.slice(r * DAYS_PER_ROW, (r + 1) * DAYS_PER_ROW));
   }
 
   const prevMonth = new Date(
@@ -157,13 +137,11 @@ export default async function CalendarPage({
   const nextMonth = new Date(
     Date.UTC(currentMonth.getUTCFullYear(), currentMonth.getUTCMonth() + 1, 1)
   );
-  const canGoBack =
-    currentMonth.getTime() >
-    new Date(
-      Date.UTC(ictNow.getUTCFullYear(), ictNow.getUTCMonth() - 11, 1)
-    ).getTime();
+  const canGoBack = currentMonth.getTime() > minMonthStart.getTime();
   const isCurrentMonth =
     currentMonthKey === toICTMonthKey(currentNowMonthStart);
+
+  const monthLabel = `${THAI_MONTHS[currentMonth.getUTCMonth()]} ${currentMonth.getUTCFullYear()}`;
 
   return (
     <main className="flex flex-1 flex-col px-6 pt-6 pb-10">
@@ -194,8 +172,7 @@ export default async function CalendarPage({
               <span className="h-9 w-9" />
             )}
             <h2 className="text-base font-semibold text-zinc-900">
-              {THAI_MONTHS[currentMonth.getUTCMonth()]}{" "}
-              {currentMonth.getUTCFullYear()}
+              {monthLabel}
             </h2>
             {!isCurrentMonth ? (
               <Link
@@ -210,62 +187,97 @@ export default async function CalendarPage({
             )}
           </div>
 
-          <div className="grid grid-cols-7 gap-1 text-center">
-            {WEEKDAYS.map((day) => (
-              <span
-                key={day}
-                className="py-1 text-xs font-medium text-zinc-400"
+          {error ? (
+            <p className="py-10 text-center text-sm text-red-600">
+              ไม่สามารถโหลดข้อมูลปฏิทินได้ โปรดลองใหม่ภายหลัง
+            </p>
+          ) : (
+            <>
+              <div
+                role="grid"
+                aria-label={`ปฏิทิน ${monthLabel}`}
+                className="flex flex-col gap-1"
               >
-                {day}
-              </span>
-            ))}
-            {cells.map((cell, index) => {
-              const inMonth = toICTDateKey(cell.date).startsWith(
-                currentMonthKey
-              );
-              return (
-                <div
-                  key={index}
-                  className={`flex aspect-square flex-col items-center justify-center rounded-lg border ${
-                    cell.status === "success"
-                      ? "border-[#18A659] bg-[#18A659]/10"
-                      : cell.status === "fail"
-                        ? "border-[#FFAE00] bg-[#FFAE00]/10"
-                        : cell.status === "active"
-                          ? "border-[#62D4F0] bg-[#62D4F0]/10"
-                          : "border-transparent"
-                  } ${!inMonth ? "opacity-30" : ""}`}
-                >
-                  <span
-                    className={`text-sm font-semibold ${
-                      cell.isToday
-                        ? "flex h-6 w-6 items-center justify-center rounded-full bg-[#18A659] text-white"
-                        : "text-zinc-900"
-                    }`}
-                  >
-                    {cell.date.getUTCDate()}
-                  </span>
+                <div role="row" className="grid grid-cols-7 gap-1 text-center">
+                  {WEEKDAYS.map((day, index) => (
+                    <span
+                      key={day}
+                      role="columnheader"
+                      aria-label={WEEKDAY_FULL[index]}
+                      className="py-1 text-xs font-medium text-zinc-400"
+                    >
+                      {day}
+                    </span>
+                  ))}
                 </div>
-              );
-            })}
-          </div>
+                {rows.map((row, rowIndex) => (
+                  <div
+                    key={rowIndex}
+                    role="row"
+                    className="grid grid-cols-7 gap-1"
+                  >
+                    {row.map((cell, colIndex) => {
+                      const inMonth = toICTDateKey(cell.date).startsWith(
+                        currentMonthKey
+                      );
+                      const dateLabel = `${cell.date.getUTCDate()} ${
+                        THAI_MONTHS[cell.date.getUTCMonth()]
+                      } ${cell.date.getUTCFullYear()}`;
+                      return (
+                        <div
+                          key={colIndex}
+                          role="gridcell"
+                          aria-label={`${cell.isToday ? "วันนี้, " : ""}${dateLabel}, ${
+                            STATUS_LABELS[cell.status]
+                          }`}
+                          className={`flex aspect-square flex-col items-center justify-center rounded-lg border ${
+                            cell.status === "success"
+                              ? "border-[#18A659] bg-[#18A659]/10"
+                              : cell.status === "fail"
+                                ? "border-[#FFAE00] bg-[#FFAE00]/10"
+                                : cell.status === "active"
+                                  ? "border-[#62D4F0] bg-[#62D4F0]/10"
+                                  : "border-transparent"
+                          } ${!inMonth ? "opacity-30" : ""}`}
+                        >
+                          <span
+                            className={`text-sm font-semibold ${
+                              cell.isToday
+                                ? "flex h-6 w-6 items-center justify-center rounded-full bg-[#18A659] text-white"
+                                : "text-zinc-900"
+                            }`}
+                          >
+                            {cell.date.getUTCDate()}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ))}
+              </div>
 
-          <div className="mt-4 border-t border-zinc-200 pt-4">
-            <div className="flex flex-col items-start gap-2 text-sm text-zinc-500 sm:flex-row sm:items-center sm:gap-6">
-              <div className="flex items-center gap-2">
-                <span className="h-3 w-3 rounded bg-[#18A659]/40" />
-                สำเร็จ (อดครบ + กินครบ)
+              <div className="mt-4 border-t border-zinc-200 pt-4">
+                <div className="flex flex-col items-start gap-2 text-sm text-zinc-500 sm:flex-row sm:items-center sm:gap-6">
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded bg-[#18A659]/40" aria-hidden="true" />
+                    สำเร็จ (อดครบ + กินครบ)
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded bg-[#FFAE00]/40" aria-hidden="true" />
+                    ไม่ถึงเป้าหมาย
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded bg-[#62D4F0]/40" aria-hidden="true" />
+                    กำลังอดอาหาร
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <span className="h-3 w-3 rounded bg-zinc-300" aria-hidden="true" />
+                    ไม่จบ (เริ่มใหม่)
+                  </div>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="h-3 w-3 rounded bg-[#FFAE00]/40" />
-                ไม่ถึงเป้าหมาย
-              </div>
-              <div className="flex items-center gap-2">
-                <span className="h-3 w-3 rounded bg-[#62D4F0]/40" />
-                กำลังอดอาหาร
-              </div>
-            </div>
-          </div>
+            </>
+          )}
         </section>
       </div>
     </main>
