@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useMemo } from "react";
 import Image from "next/image";
 import {
   buildDayMoodMap,
@@ -49,8 +49,16 @@ interface CalendarCell {
 }
 
 interface IfCalendarProps {
-  initialMonthKey: string;
+  /** "yyyy-MM" — เดือนที่เลือก (controlled by CalendarTab). */
+  monthKey: string;
+  /** "yyyy-MM-dd" (ICT) ของวันนี้ — ใช้ highlight วันที่เป็นวันนี้. */
   todayKey: string;
+  /** sessions ของเดือนที่เลือก (fetch โดย CalendarTab). */
+  sessions: CalendarSessionInput[];
+  /** true ขณะกำลังโหลด session ของเดือนใหม่. */
+  loading: boolean;
+  /** เลื่อนเดือน ±1 (CalendarTab เป็นคนถือ state). */
+  onMonthChange: (delta: number) => void;
 }
 
 function toICT(date: Date): Date {
@@ -73,49 +81,13 @@ function toICTMonthKey(date: Date): string {
 }
 
 export default function IfCalendar({
-  initialMonthKey,
+  monthKey,
   todayKey,
+  sessions,
+  loading,
+  onMonthChange,
 }: IfCalendarProps) {
-  const [monthKey, setMonthKey] = useState(initialMonthKey);
-  const [sessions, setSessions] = useState<CalendarSessionInput[]>([]);
-  const [loading, setLoading] = useState(true);
-
   const [year, month] = monthKey.split("-").map(Number);
-
-  useEffect(() => {
-    const controller = new AbortController();
-
-    async function loadSessions() {
-      try {
-        const res = await fetch(`/api/v1/if-sessions?month=${monthKey}`, {
-          signal: controller.signal,
-        });
-        const json = await res.json();
-        if (json.success && Array.isArray(json.data?.sessions)) {
-          setSessions(json.data.sessions);
-        } else {
-          setSessions([]);
-        }
-      } catch {
-        if (!controller.signal.aborted) {
-          setSessions([]);
-        }
-      }
-      setLoading(false);
-    }
-
-    loadSessions();
-    return () => controller.abort();
-  }, [monthKey]);
-
-  const goMonth = useCallback(
-    (delta: number) => {
-      setLoading(true);
-      const d = new Date(Date.UTC(year, month - 1 + delta, 1));
-      setMonthKey(toICTMonthKey(d));
-    },
-    [year, month]
-  );
 
   const statusByDay = useMemo(() => buildDayStatusMap(sessions), [sessions]);
   const moodByDay = useMemo(() => buildDayMoodMap(sessions), [sessions]);
@@ -163,7 +135,7 @@ export default function IfCalendar({
         {canGoBack ? (
           <button
             type="button"
-            onClick={() => goMonth(-1)}
+            onClick={() => onMonthChange(-1)}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:bg-zinc-100"
             aria-label="เดือนก่อนหน้า"
           >
@@ -176,7 +148,7 @@ export default function IfCalendar({
         {!isCurrentMonth ? (
           <button
             type="button"
-            onClick={() => goMonth(1)}
+            onClick={() => onMonthChange(1)}
             className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:bg-zinc-100"
             aria-label="เดือนถัดไป"
           >
@@ -287,10 +259,6 @@ export default function IfCalendar({
           <div className="flex items-center gap-2">
             <span className="h-3 w-3 rounded bg-[#62D4F0]/40" aria-hidden="true" />
             กำลังอดอาหาร
-          </div>
-          <div className="flex items-center gap-2">
-            <span className="h-3 w-3 rounded bg-zinc-300" aria-hidden="true" />
-            ไม่จบ (เริ่มใหม่)
           </div>
         </div>
       </div>

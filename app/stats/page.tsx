@@ -10,7 +10,7 @@ import {
 } from "@/lib/weight-log";
 import { toICTDateKey, toICTMonthKey } from "@/lib/timezone";
 import EggIconLink from "@/components/EggIconLink";
-import IfCalendar from "@/components/IfCalendar";
+import CalendarTab from "@/components/CalendarTab";
 import QuarterSelect, { QUARTER_OPTIONS } from "@/components/QuarterSelect";
 import WeightChart, { type WeightPoint } from "@/components/WeightChart";
 
@@ -169,7 +169,7 @@ export default async function StatsPage({
         </nav>
 
         {range === "calendar" ? (
-          <IfCalendar initialMonthKey={initialMonthKey} todayKey={todayKey} />
+          <CalendarTab initialMonthKey={initialMonthKey} todayKey={todayKey} />
         ) : (
           <section className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5">
             <div className="flex items-start justify-between gap-4">
