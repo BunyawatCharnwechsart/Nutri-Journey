@@ -103,14 +103,14 @@ export default async function StatsPage({
 
     subtitle =
       range === "1y"
-        ? "กราฟน้ำหนักรายปี (ม.ค.–ปัจจุบัน)"
+        ? `กราฟน้ำหนักรายปี (ปี ${currentYear})`
         : `กราฟน้ำหนัก ${quarterLabel}`;
   }
 
   const periodLabel =
     range === "3m" || range === "1y"
       ? range === "1y"
-        ? "ปีนี้ (ม.ค.–ปัจจุบัน)"
+        ? `ปี ${currentYear}`
         : quarterLabel
       : "";
 
