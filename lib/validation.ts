@@ -171,6 +171,21 @@ export const weightLogQuerySchema = z.object({
  * `.optional()` — but since the client sends omitted fields as `undefined`,
  * we preprocess empty strings to `undefined` before validation.
  */
+/**
+ * Query params for GET /api/v1/progress-photos. `months` bounds how far back
+ * the compare view reaches (default 12, max 24). Only `months` is
+ * client-controlled and it is whitelisted/rescaled before hitting the DB.
+ */
+export const progressPhotoQuerySchema = z.object({
+  months: z.coerce
+    .number()
+    .int("months ต้องเป็นจำนวนเต็ม")
+    .min(1, "months ต้องไม่น้อยกว่า 1")
+    .max(24, "months ต้องไม่เกิน 24")
+    .optional()
+    .default(12),
+});
+
 export const measurementLogSchema = z
   .object({
     waistIn: z.preprocess(
