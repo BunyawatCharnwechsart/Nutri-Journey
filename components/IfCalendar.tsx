@@ -1,0 +1,282 @@
+"use client";
+
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { buildDayStatusMap, type CalendarDayStatus } from "@/lib/calendar";
+
+const DAYS_PER_ROW = 7;
+const GRID_CELLS = 42;
+const DAY_MS = 86_400_000;
+
+const ICT_OFFSET_MS = 7 * 60 * 60 * 1000;
+
+const WEEKDAYS = ["อา", "จ", "อ", "พ", "พฤ", "ศ", "ส"];
+const WEEKDAY_FULL = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัสบดี", "ศุกร์", "เสาร์"];
+
+const THAI_MONTHS = [
+  "มกราคม",
+  "กุมภาพันธ์",
+  "มีนาคม",
+  "เมษายน",
+  "พฤษภาคม",
+  "มิถุนายน",
+  "กรกฎาคม",
+  "สิงหาคม",
+  "กันยายน",
+  "ตุลาคม",
+  "พฤศจิกายน",
+  "ธันวาคม",
+];
+
+const STATUS_LABELS: Record<CalendarDayStatus | "none", string> = {
+  success: "ทำ IF สำเร็จ",
+  fail: "ไม่ถึงเป้าหมาย",
+  active: "กำลังอดอาหาร",
+  abandoned: "ไม่จบ (เริ่มใหม่)",
+  none: "ไม่มีการทำ IF",
+};
+
+interface CalendarSessionInput {
+  fasting_start_time: string;
+  status: string | null;
+  if_pattern: string | null;
+  fasting_duration_minutes: number | null;
+  eating_duration_minutes: number | null;
+}
+
+interface CalendarCell {
+  date: Date;
+  status: CalendarDayStatus | "none";
+  isToday: boolean;
+}
+
+interface IfCalendarProps {
+  initialMonthKey: string;
+  todayKey: string;
+}
+
+function toICT(date: Date): Date {
+  return new Date(date.getTime() + ICT_OFFSET_MS);
+}
+
+function toICTDateKey(date: Date): string {
+  const ict = toICT(date);
+  const y = ict.getUTCFullYear();
+  const m = String(ict.getUTCMonth() + 1).padStart(2, "0");
+  const d = String(ict.getUTCDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
+
+function toICTMonthKey(date: Date): string {
+  const ict = toICT(date);
+  const y = ict.getUTCFullYear();
+  const m = String(ict.getUTCMonth() + 1).padStart(2, "0");
+  return `${y}-${m}`;
+}
+
+export default function IfCalendar({
+  initialMonthKey,
+  todayKey,
+}: IfCalendarProps) {
+  const [monthKey, setMonthKey] = useState(initialMonthKey);
+  const [sessions, setSessions] = useState<CalendarSessionInput[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  const [year, month] = monthKey.split("-").map(Number);
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadSessions() {
+      try {
+        const res = await fetch(`/api/v1/if-sessions?month=${monthKey}`, {
+          signal: controller.signal,
+        });
+        const json = await res.json();
+        if (json.success && Array.isArray(json.data?.sessions)) {
+          setSessions(json.data.sessions);
+        } else {
+          setSessions([]);
+        }
+      } catch {
+        if (!controller.signal.aborted) {
+          setSessions([]);
+        }
+      }
+      setLoading(false);
+    }
+
+    loadSessions();
+    return () => controller.abort();
+  }, [monthKey]);
+
+  const goMonth = useCallback(
+    (delta: number) => {
+      setLoading(true);
+      const d = new Date(Date.UTC(year, month - 1 + delta, 1));
+      setMonthKey(toICTMonthKey(d));
+    },
+    [year, month]
+  );
+
+  const statusByDay = useMemo(() => buildDayStatusMap(sessions), [sessions]);
+
+  const rows = useMemo(() => {
+    const monthStart = new Date(Date.UTC(year, month - 1, 1));
+    const firstDayOffset = monthStart.getUTCDay();
+    const cells: CalendarCell[] = [];
+
+    for (let i = 0; i < GRID_CELLS; i++) {
+      const cellDate = new Date(
+        monthStart.getTime() + (i - firstDayOffset) * DAY_MS
+      );
+      const key = toICTDateKey(cellDate);
+      cells.push({
+        date: cellDate,
+        status: statusByDay.get(key) ?? "none",
+        isToday: key === todayKey,
+      });
+    }
+
+    const gridRows: CalendarCell[][] = [];
+    for (let r = 0; r < GRID_CELLS / DAYS_PER_ROW; r++) {
+      gridRows.push(cells.slice(r * DAYS_PER_ROW, (r + 1) * DAYS_PER_ROW));
+    }
+    return gridRows;
+  }, [year, month, statusByDay, todayKey]);
+
+  const ictNow = toICT(new Date());
+  const minMonthKey = toICTMonthKey(
+    new Date(Date.UTC(ictNow.getUTCFullYear(), ictNow.getUTCMonth() - 11, 1))
+  );
+  const currentMonthKey = toICTMonthKey(new Date());
+  const isCurrentMonth = monthKey === currentMonthKey;
+  const canGoBack = monthKey > minMonthKey;
+  const monthLabel = `${THAI_MONTHS[month - 1]} ${year}`;
+
+  return (
+    <section className="rounded-2xl border border-zinc-200 bg-white p-5">
+      <h2 className="mb-4 text-base font-semibold text-zinc-900">
+        ปฏิทิน IF
+      </h2>
+
+      <div className="mb-4 flex items-center justify-between">
+        {canGoBack ? (
+          <button
+            type="button"
+            onClick={() => goMonth(-1)}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:bg-zinc-100"
+            aria-label="เดือนก่อนหน้า"
+          >
+            ‹
+          </button>
+        ) : (
+          <span className="h-9 w-9" />
+        )}
+        <h3 className="text-base font-semibold text-zinc-900">{monthLabel}</h3>
+        {!isCurrentMonth ? (
+          <button
+            type="button"
+            onClick={() => goMonth(1)}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-zinc-300 text-zinc-700 transition-colors hover:bg-zinc-100"
+            aria-label="เดือนถัดไป"
+          >
+            ›
+          </button>
+        ) : (
+          <span className="h-9 w-9" />
+        )}
+      </div>
+
+      {loading ? (
+        <div className="grid grid-cols-7 gap-1" aria-busy="true">
+          {Array.from({ length: GRID_CELLS }).map((_, index) => (
+            <div
+              key={index}
+              className="aspect-square animate-pulse rounded-lg bg-zinc-100"
+            />
+          ))}
+        </div>
+      ) : (
+        <div
+          role="grid"
+          aria-label={`ปฏิทิน ${monthLabel}`}
+          className="flex flex-col gap-1"
+        >
+          <div role="row" className="grid grid-cols-7 gap-1 text-center">
+            {WEEKDAYS.map((day, index) => (
+              <span
+                key={day}
+                role="columnheader"
+                aria-label={WEEKDAY_FULL[index]}
+                className="py-1 text-xs font-medium text-zinc-400"
+              >
+                {day}
+              </span>
+            ))}
+          </div>
+          {rows.map((row, rowIndex) => (
+            <div key={rowIndex} role="row" className="grid grid-cols-7 gap-1">
+              {row.map((cell, colIndex) => {
+                const key = toICTDateKey(cell.date);
+                const inMonth = key.startsWith(String(monthKey));
+                const dateLabel = `${cell.date.getUTCDate()} ${
+                  THAI_MONTHS[cell.date.getUTCMonth()]
+                } ${cell.date.getUTCFullYear()}`;
+
+                return (
+                  <div
+                    key={colIndex}
+                    role="gridcell"
+                    aria-label={`${cell.isToday ? "วันนี้, " : ""}${dateLabel}, ${
+                      STATUS_LABELS[cell.status]
+                    }`}
+                    className={`flex aspect-square flex-col items-center justify-center rounded-lg border ${
+                      cell.status === "success"
+                        ? "border-[#18A659] bg-[#18A659]/10"
+                        : cell.status === "fail"
+                          ? "border-[#FFAE00] bg-[#FFAE00]/10"
+                          : cell.status === "active"
+                            ? "border-[#62D4F0] bg-[#62D4F0]/10"
+                            : "border-transparent"
+                    } ${!inMonth ? "opacity-30" : ""}`}
+                  >
+                    <span
+                      className={`text-sm font-semibold ${
+                        cell.isToday
+                          ? "flex h-6 w-6 items-center justify-center rounded-full bg-[#18A659] text-white"
+                          : "text-zinc-900"
+                      }`}
+                    >
+                      {cell.date.getUTCDate()}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div className="mt-4 border-t border-zinc-200 pt-4">
+        <div className="flex flex-col items-start gap-2 text-sm text-zinc-500 sm:flex-row sm:items-center sm:gap-6">
+          <div className="flex items-center gap-2">
+            <span className="h-3 w-3 rounded bg-[#18A659]/40" aria-hidden="true" />
+            สำเร็จ (อดครบ + กินครบ)
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="h-3 w-3 rounded bg-[#FFAE00]/40" aria-hidden="true" />
+            ไม่ถึงเป้าหมาย
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="h-3 w-3 rounded bg-[#62D4F0]/40" aria-hidden="true" />
+            กำลังอดอาหาร
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="h-3 w-3 rounded bg-zinc-300" aria-hidden="true" />
+            ไม่จบ (เริ่มใหม่)
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
