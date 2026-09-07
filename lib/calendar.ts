@@ -111,6 +111,43 @@ export function buildDayStatusMap(
  * success แต่ไม่ได้บันทึกอารมณ์ ยังโชว์ mood ล่าสุดได้อยู่ ถ้ามี. วันไหนไม่มี
  * mood เลย จะไม่มี key ในผลลัพธ์.
  */
+/** จำนวนวันตามจริงของเดือน (28/29/30/31). month นับเริ่ม 1. */
+export function daysInMonth(year: number, month: number): number {
+  return new Date(Date.UTC(year, month, 0)).getUTCDate();
+}
+
+/**
+ * นับจำนวนวันที่ทำ IF สำเร็จ (distinct day) ภายในเดือนที่เดือนkey.
+ * ใช้ buildDayStatusMap ชุดเดียวกับปฏิทิน → ตัวเลขสอดคล้องกับสีที่แสดงใน grid.
+ * monthKey รูปแบบ "yyyy-MM" เช่น "2026-09".
+ */
+export function countMonthSuccess(
+  sessions: CalendarSessionInput[],
+  monthKey: string
+): number {
+  return countMonthStatus(sessions, monthKey, "success");
+}
+
+/**
+ * นับจำนวนวัน (distinct day) ที่มีสถานะที่กำหนดภายในเดือน (ดูได้ทั้ง
+ * "success" / "fail" / "active" / "abandoned") — ใช้กับ summary card เพื่อแยก
+ * วันที่สำเร็จ/ไม่สำเร็จ/ไม่ได้ทำ ออกจากกัน.
+ * monthKey รูปแบบ "yyyy-MM" เช่น "2026-09".
+ */
+export function countMonthStatus(
+  sessions: CalendarSessionInput[],
+  monthKey: string,
+  lookup: CalendarDayStatus
+): number {
+  let count = 0;
+  for (const [key, status] of buildDayStatusMap(sessions)) {
+    if (status === lookup && key.startsWith(monthKey)) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
 export function buildDayMoodMap(
   sessions: CalendarSessionInput[]
 ): Map<string, string> {

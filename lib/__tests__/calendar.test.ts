@@ -3,6 +3,9 @@ import { describe, expect, it } from "vitest";
 import {
   buildDayMoodMap,
   buildDayStatusMap,
+  countMonthStatus,
+  countMonthSuccess,
+  daysInMonth,
   dayStatusForSession,
   type CalendarSessionInput,
 } from "@/lib/calendar";
@@ -238,5 +241,74 @@ describe("buildDayMoodMap", () => {
 
   it("returns an empty map for no sessions", () => {
     expect(buildDayMoodMap([]).size).toBe(0);
+  });
+});
+
+describe("daysInMonth", () => {
+  it("handles 28, 29, 30 and 31-day months", () => {
+    expect(daysInMonth(2026, 2)).toBe(28);
+    expect(daysInMonth(2024, 2)).toBe(29); // leap year
+    expect(daysInMonth(2026, 9)).toBe(30);
+    expect(daysInMonth(2026, 1)).toBe(31);
+  });
+});
+
+describe("countMonthSuccess", () => {
+  it("counts distinct success days in the month", () => {
+    const sessions = [
+      completedSession({ fasting_start_time: "2026-09-05T02:00:00.000Z" }),
+      completedSession({ fasting_start_time: "2026-09-07T02:00:00.000Z" }),
+    ];
+    expect(countMonthSuccess(sessions, "2026-09")).toBe(2);
+  });
+
+  it("counts a day once even with multiple sessions that day", () => {
+    const sessions = [
+      completedSession({ fasting_start_time: "2026-09-05T02:00:00.000Z" }),
+      completedSession({ fasting_start_time: "2026-09-05T10:00:00.000Z" }),
+    ];
+    expect(countMonthSuccess(sessions, "2026-09")).toBe(1);
+  });
+
+  it("ignores fail, active and abandoned days", () => {
+    const sessions = [
+      completedSession({ fasting_start_time: "2026-09-05T02:00:00.000Z", result: "fail" }),
+      completedSession({ fasting_start_time: "2026-09-06T02:00:00.000Z", status: "active" }),
+      completedSession({ fasting_start_time: "2026-09-07T02:00:00.000Z", status: "abandoned" }),
+      completedSession({ fasting_start_time: "2026-09-08T02:00:00.000Z" }),
+    ];
+    expect(countMonthSuccess(sessions, "2026-09")).toBe(1);
+  });
+
+  it("ignores sessions in other months (Thai wall-clock day)", () => {
+    const sessions = [
+      completedSession({ fasting_start_time: "2026-08-29T02:00:00.000Z" }), // ส.ค. 29 (ไทย)
+      completedSession({ fasting_start_time: "2026-09-05T02:00:00.000Z" }), // ก.ย. 5 (ไทย)
+      completedSession({ fasting_start_time: "2026-10-01T02:00:00.000Z" }), // ต.ค. 1 (ไทย)
+    ];
+    expect(countMonthSuccess(sessions, "2026-09")).toBe(1);
+  });
+
+  it("returns 0 when there are no sessions", () => {
+    expect(countMonthSuccess([], "2026-09")).toBe(0);
+  });
+});
+
+describe("countMonthStatus", () => {
+  it("counts distinct days of a given status in the month", () => {
+    const sessions = [
+      completedSession({ fasting_start_time: "2026-09-05T02:00:00.000Z", result: "fail" }),
+      completedSession({ fasting_start_time: "2026-09-06T02:00:00.000Z" }),
+      completedSession({ fasting_start_time: "2026-09-07T02:00:00.000Z", status: "active" }),
+      completedSession({ fasting_start_time: "2026-09-07T10:00:00.000Z", result: "fail" }),
+    ];
+    expect(countMonthStatus(sessions, "2026-09", "success")).toBe(1);
+    expect(countMonthStatus(sessions, "2026-09", "fail")).toBe(1);
+    expect(countMonthStatus(sessions, "2026-09", "active")).toBe(1);
+  });
+
+  it("returns 0 for a status that does not exist in the month", () => {
+    const sessions = [completedSession({ fasting_start_time: "2026-09-05T02:00:00.000Z" })];
+    expect(countMonthStatus(sessions, "2026-09", "abandoned")).toBe(0);
   });
 });
