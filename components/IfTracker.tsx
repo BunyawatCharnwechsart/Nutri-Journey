@@ -2,15 +2,20 @@
 
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import Link from "next/link";
+import Image from "next/image";
 
 import {
   formatMinutes,
   getEatingMinutes,
   getFastingMinutes,
   getIfPattern,
+  getMoodLevel,
   IfSession,
   IF_PATTERNS,
+  MOOD_LEVELS,
+  type MoodValue,
 } from "@/lib/if";
+import { dayStatusForSession } from "@/lib/calendar";
 
 type View = "select" | "timer" | "success";
 type Phase = "eating" | "fasting";
@@ -246,6 +251,8 @@ export default function IfTracker({
   const [patternModalOpen, setPatternModalOpen] = useState(false);
   const [pendingPattern, setPendingPattern] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  /** อารมณ์ที่เลือกก่อนกด "สิ้นสุดการกิน" — ส่งไปกับ POST /end. */
+  const [selectedMood, setSelectedMood] = useState<MoodValue | null>(null);
   const startedRef = useRef(false);
 
   useEffect(() => {
@@ -345,12 +352,16 @@ export default function IfTracker({
     if (!session) {
       return;
     }
+    if (selectedMood === null) {
+      setError("กรุณาเลือกอารมณ์ก่อนสิ้นสุด");
+      return;
+    }
     setLoading(true);
     setError(null);
     const result = await requestApi<{ session: IfSession }>(
       "/api/v1/if-sessions/end",
       "POST",
-      { sessionId: session.id }
+      { sessionId: session.id, mood: selectedMood }
     );
     setLoading(false);
 
@@ -430,6 +441,7 @@ export default function IfTracker({
     setConfirmCancel(false);
     setSession(null);
     setSelectedPattern(null);
+    setSelectedMood(null);
     setMode("eating");
     setView("select");
   }
@@ -437,11 +449,18 @@ export default function IfTracker({
   function resetToSelect() {
     setSession(null);
     setSelectedPattern(null);
+    setSelectedMood(null);
     setMode("eating");
     setView("select");
   }
 
   const activePattern = session ? getIfPattern(session.if_pattern) : null;
+  const sessionMood = session ? getMoodLevel(session.mood) : null;
+  // ใช้ logic เดียวกับปฏิทิน (dayStatusForSession) เพื่อให้ success screen บอกผล
+  // ตรงกับสี/สถานะที่แสดงบนปฏิทินเสมอ: success = อดครบ + กินครบตาม pattern.
+  const isSuccess = session
+    ? dayStatusForSession(session) === "success"
+    : false;
   const plannedMinutes = activePattern ? getFastingMinutes(activePattern.value) : 0;
   const eatingMinutes = activePattern ? getEatingMinutes(activePattern.value) : 0;
   const selectedMinutes = selectedPattern
@@ -653,48 +672,91 @@ export default function IfTracker({
 
       {!initializing && view === "success" && session && (
         <section className="flex flex-col items-center gap-6 text-center">
-          <div className="flex h-16 w-16 items-center justify-center rounded-full bg-[#18A659]/10">
+          <div
+            className={`flex h-16 w-16 items-center justify-center rounded-full ${
+              isSuccess ? "bg-[#18A659]/10" : "bg-[#FFAE00]/10"
+            }`}
+          >
             <svg
               viewBox="0 0 24 24"
               fill="none"
-              stroke="#18A659"
+              stroke={isSuccess ? "#18A659" : "#FFAE00"}
               strokeWidth="2.5"
               strokeLinecap="round"
               strokeLinejoin="round"
               aria-hidden="true"
               className="h-8 w-8"
             >
-              <path d="M20 6L9 17l-5-5" />
+              {isSuccess ? (
+                <path d="M20 6L9 17l-5-5" />
+              ) : (
+                <>
+                  <path d="M12 9v4" />
+                  <path d="M12 17h.01" />
+                </>
+              )}
             </svg>
           </div>
           <div>
-            <h2 className="text-xl font-bold text-zinc-900">
-              ทำ IF สำเร็จ!
+            <h2
+              className={`text-xl font-bold ${
+                isSuccess ? "text-zinc-900" : "text-[#B45309]"
+              }`}
+            >
+              {isSuccess ? "ทำ IF สำเร็จ!" : "ไม่ถึงเป้าหมาย"}
             </h2>
             <p className="mt-1 text-sm text-zinc-500">
-              รูปแบบ {activePattern?.label ?? "IF"} · อด{" "}
-              {formatMinutes(session.fasting_duration_minutes)} · กิน{" "}
-              {formatMinutes(session.eating_duration_minutes)} · รวม{" "}
-              {formatMinutes(
-                (session.fasting_duration_minutes ?? 0) +
-                  (session.eating_duration_minutes ?? 0)
-              )}
+              {isSuccess
+                ? "อดครบและกินครบตามแผนที่เลือก"
+                : "อดได้ไม่ถึงเป้าหมายของรูปแบบที่เลือก"}
             </p>
+            <div className="mt-1 flex flex-col items-center gap-1 text-sm text-zinc-500">
+              <span>รูปแบบ {activePattern?.label ?? "IF"}</span>
+              <span>อด {formatMinutes(session.fasting_duration_minutes)}</span>
+              <span>กิน {formatMinutes(session.eating_duration_minutes)}</span>
+              <span className="font-medium text-zinc-700">
+                รวม{" "}
+                {formatMinutes(
+                  (session.fasting_duration_minutes ?? 0) +
+                    (session.eating_duration_minutes ?? 0)
+                )}
+              </span>
+            </div>
           </div>
+          {sessionMood && (
+            <div className="flex items-center gap-2 rounded-full border border-zinc-200 bg-white px-4 py-2">
+              <span
+                aria-hidden="true"
+                className="flex h-5 w-5 items-center justify-center overflow-hidden rounded-full"
+              >
+                <Image
+                  src={sessionMood.icon}
+                  alt=""
+                  width={20}
+                  height={20}
+                  className="h-full w-full"
+                />
+              </span>
+              <span className="text-sm font-medium text-zinc-700">
+                อารมณ์วันนี้: {sessionMood.labelThai}
+              </span>
+            </div>
+          )}
           <div className="flex w-full flex-col gap-3">
-            <Link
-              href="/dashboard"
-              className="rounded-full bg-[#18A659] px-6 py-3 text-center text-sm font-semibold text-white transition-colors hover:bg-[#148D4C]"
-            >
-              ไปหน้า Dashboard
-            </Link>
             <button
               type="button"
               onClick={resetToSelect}
-              className="rounded-full border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100"
+              style={PRIMARY_GRADIENT}
+              className="w-full rounded-full px-6 py-3 text-sm font-semibold text-white transition-[filter] hover:brightness-105"
             >
-              เริ่ม Fasting ใหม่
+              เริ่ม IF ใหม่
             </button>
+            <Link
+              href="/stats?range=calendar"
+              className="rounded-full border border-zinc-300 px-6 py-3 text-center text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100"
+            >
+              ไปหน้าสถิติ
+            </Link>
           </div>
         </section>
       )}
@@ -760,6 +822,55 @@ export default function IfTracker({
               {formatClock(eatingElapsedMs)}{" "}
               ต้องการบันทึกและสิ้นสุดหรือไม่?
             </p>
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-zinc-900">
+              วันนี้รู้สึกอย่างไร?
+            </h3>
+            <p className="mt-1 text-xs text-zinc-500">
+              อารมณ์นี้จะถูกบันทึกไว้บนปฏิทิน (เลือกก่อนสิ้นสุด)
+            </p>
+            <div className="mt-3 grid grid-cols-5 gap-2">
+              {MOOD_LEVELS.map((mood) => {
+                const isSelected = selectedMood === mood.value;
+                return (
+                  <button
+                    key={mood.value}
+                    type="button"
+                    onClick={() => setSelectedMood(mood.value)}
+                    aria-pressed={isSelected}
+                    aria-label={mood.labelThai}
+                    className={`flex flex-col items-center gap-1.5 rounded-xl border px-1 py-2.5 transition-colors ${
+                      isSelected
+                        ? "border-[#18A659] bg-[#18A659]/10"
+                        : "border-zinc-200 bg-white hover:bg-zinc-50"
+                    }`}
+                  >
+                    <span
+                      aria-hidden="true"
+                      className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full"
+                    >
+                      <Image
+                        src={mood.icon}
+                        alt=""
+                        width={24}
+                        height={24}
+                        className="h-full w-full"
+                      />
+                    </span>
+                    <span
+                      className={`text-xs leading-tight ${
+                        isSelected
+                          ? "font-semibold text-[#18A659]"
+                          : "font-medium text-zinc-600"
+                      }`}
+                    >
+                      {mood.labelThai}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
           {error && (
             <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">

@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-import { IF_PATTERN_VALUES } from "@/lib/if";
+import { IF_PATTERN_VALUES, MOOD_VALUES } from "@/lib/if";
 
 export const loginSchema = z.object({
   idToken: z.string().min(1, "idToken is required"),
@@ -14,6 +14,17 @@ export const ifStartSchema = z.object({
 
 export const sessionIdSchema = z.object({
   sessionId: z.string().uuid("sessionId ต้องเป็น UUID"),
+});
+
+/**
+ * POST /api/v1/if-sessions/end
+ * จบเซสชัน + บันทึกอารมณ์ (mood) ที่เลือกตอนสิ้นสุด IF — ค่าเป็น text 1 ใน 5
+ * ระดับ ("Very bad" / "Bad" / "Medium" / "Good" / "Very good") ตาม MOOD_VALUES
+ * ใน lib/if.ts ตรงกับ CHECK constraint ใน migration 0024.
+ * บังคับให้ส่ง เพราะ UI มี Mood picker ก่อนกด "สิ้นสุดการกิน".
+ */
+export const endSessionSchema = sessionIdSchema.extend({
+  mood: z.enum(MOOD_VALUES, { message: "อารมณ์ไม่ถูกต้อง" }),
 });
 
 /** จำกัดให้แก้เวลาได้ไม่เกิน 7 วันย้อนหลัง (จาก API ถูกยิงตรง ข้าม UI ได้). */

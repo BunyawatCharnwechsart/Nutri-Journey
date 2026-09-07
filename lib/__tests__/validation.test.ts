@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   editTimeSchema,
+  endSessionSchema,
   healthProfileSchema,
   ifStartSchema,
   isValidEditTime,
@@ -44,6 +45,37 @@ describe("sessionIdSchema", () => {
 
   it("rejects a non-UUID string", () => {
     expect(() => sessionIdSchema.parse({ sessionId: "not-a-uuid" })).toThrow();
+  });
+});
+
+describe("endSessionSchema", () => {
+  const uuid = "123e4567-e89b-12d3-a456-426614174000";
+  const moods = ["Very bad", "Bad", "Medium", "Good", "Very good"];
+
+  it("accepts a valid sessionId with one of the 5 mood labels", () => {
+    for (const mood of moods) {
+      const result = endSessionSchema.parse({ sessionId: uuid, mood });
+      expect(result.mood).toBe(mood);
+    }
+  });
+
+  it("rejects a missing mood", () => {
+    expect(() => endSessionSchema.parse({ sessionId: uuid })).toThrow();
+  });
+
+  it("rejects an unknown mood label", () => {
+    expect(() =>
+      endSessionSchema.parse({ sessionId: uuid, mood: "awesome" })
+    ).toThrow();
+    expect(() =>
+      endSessionSchema.parse({ sessionId: uuid, mood: "good " })
+    ).toThrow();
+  });
+
+  it("rejects a non-string mood (e.g. a number)", () => {
+    expect(() =>
+      endSessionSchema.parse({ sessionId: uuid, mood: 5 })
+    ).toThrow();
   });
 });
 

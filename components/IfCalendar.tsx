@@ -1,7 +1,14 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { buildDayStatusMap, type CalendarDayStatus } from "@/lib/calendar";
+import Image from "next/image";
+import {
+  buildDayMoodMap,
+  buildDayStatusMap,
+  type CalendarDayStatus,
+  type CalendarSessionInput,
+} from "@/lib/calendar";
+import { getMoodLevel } from "@/lib/if";
 
 const DAYS_PER_ROW = 7;
 const GRID_CELLS = 42;
@@ -34,14 +41,6 @@ const STATUS_LABELS: Record<CalendarDayStatus | "none", string> = {
   abandoned: "ไม่จบ (เริ่มใหม่)",
   none: "ไม่มีการทำ IF",
 };
-
-interface CalendarSessionInput {
-  fasting_start_time: string;
-  status: string | null;
-  if_pattern: string | null;
-  fasting_duration_minutes: number | null;
-  eating_duration_minutes: number | null;
-}
 
 interface CalendarCell {
   date: Date;
@@ -119,6 +118,7 @@ export default function IfCalendar({
   );
 
   const statusByDay = useMemo(() => buildDayStatusMap(sessions), [sessions]);
+  const moodByDay = useMemo(() => buildDayMoodMap(sessions), [sessions]);
 
   const rows = useMemo(() => {
     const monthStart = new Date(Date.UTC(year, month - 1, 1));
@@ -222,6 +222,8 @@ export default function IfCalendar({
                 const dateLabel = `${cell.date.getUTCDate()} ${
                   THAI_MONTHS[cell.date.getUTCMonth()]
                 } ${cell.date.getUTCFullYear()}`;
+                const mood = moodByDay.get(key);
+                const moodLevel = getMoodLevel(mood ?? null);
 
                 return (
                   <div
@@ -229,8 +231,8 @@ export default function IfCalendar({
                     role="gridcell"
                     aria-label={`${cell.isToday ? "วันนี้, " : ""}${dateLabel}, ${
                       STATUS_LABELS[cell.status]
-                    }`}
-                    className={`flex aspect-square flex-col items-center justify-center rounded-lg border ${
+                    }${moodLevel ? `, อารมณ์ ${moodLevel.labelThai}` : ""}`}
+                    className={`relative flex aspect-square flex-col items-center justify-center rounded-lg border ${
                       cell.status === "success"
                         ? "border-[#18A659] bg-[#18A659]/10"
                         : cell.status === "fail"
@@ -240,6 +242,21 @@ export default function IfCalendar({
                             : "border-transparent"
                     } ${!inMonth ? "opacity-30" : ""}`}
                   >
+                    {moodLevel && (
+                      <span
+                        aria-hidden="true"
+                        title={moodLevel.labelThai}
+                        className="absolute top-0.5 right-0.5 flex h-4 w-4 items-center justify-center rounded-full shadow-sm"
+                      >
+                        <Image
+                          src={moodLevel.icon}
+                          alt=""
+                          width={16}
+                          height={16}
+                          className="h-full w-full rounded-full"
+                        />
+                      </span>
+                    )}
                     <span
                       className={`text-sm font-semibold ${
                         cell.isToday
