@@ -31,6 +31,11 @@ export const IF_SESSION_STATUSES = [
 
 export type IfSessionStatus = (typeof IF_SESSION_STATUSES)[number];
 
+/** ผลลัพธ์ของ session ที่จบแล้ว — ค่าเดียวกับคอลัมน์ if_sessions.result. */
+export const IF_RESULT_VALUES = ["success", "fail"] as const;
+
+export type IfResult = (typeof IF_RESULT_VALUES)[number];
+
 /** Shape of a row from the if_sessions table as returned by our API. */
 export interface IfSession {
   id: string;
@@ -38,11 +43,15 @@ export interface IfSession {
   fasting_start_time: string;
   fasting_end_time: string | null;
   status: IfSessionStatus;
+  /** success/fail ของ session แบบ snapshot (ล็อกตอนจบ) — null ถ้ายัง active/abandoned. */
+  result: IfResult | null;
   fasting_duration_minutes: number | null;
   if_pattern: string | null;
   eating_start_time: string | null;
   eating_end_time: string | null;
   eating_duration_minutes: number | null;
+  /** อารมณ์ที่เลือกตอนจบ IF (text เช่น "Good") — null สำหรับเซสชันเก่า. */
+  mood: string | null;
 }
 
 export const IF_PATTERNS: ReadonlyArray<{
@@ -79,6 +88,31 @@ export function getEatingMinutes(value: string | null | undefined): number {
 }
 
 /**
+ * คำนวนผลลัพธ์ (success/fail) ของ session ตอนที่มันจบ — เขียนครั้งเดียวที่
+ * POST /end และเก็บลง if_sessions.result ใช้ rule เดียวกันกับ SQL backfill
+ * ใน migration 0025:
+ * - pattern ที่รู้จัก + อดครบ 2 เป้า (อด + กิน) → success
+ * - pattern ไม่รู้จัก/null หรือขาดเป้าใดเป้าคือไม่พอ → fail
+ *
+ * ตัว reader (calendar, stats) อ่านจากคอลัมน์ result ตรงๆ ไม่คำนวณเองอีก
+ * เพื่อกัน dual source of truth — ถ้าจะเปลี่ยน rule ต้อง migration เก็บผลใหม่.
+ */
+export function computeIfResult(
+  pattern: string | null | undefined,
+  fastingMinutes: number | null | undefined,
+  eatingMinutes: number | null | undefined
+): IfResult {
+  const plannedFasting = getFastingMinutes(pattern);
+  const plannedEating = getEatingMinutes(pattern);
+  if (plannedFasting === 0 || plannedEating === 0) {
+    return "fail";
+  }
+  const fastingOk = (fastingMinutes ?? 0) >= plannedFasting;
+  const eatingOk = (eatingMinutes ?? 0) >= plannedEating;
+  return fastingOk && eatingOk ? "success" : "fail";
+}
+
+/**
  * Formats a duration in minutes into a short, human-readable Thai string:
  * "16 ชม." / "30 นาที" / "16 ชม. 30 นาที" / "—" when null/0.
  */
@@ -97,4 +131,45 @@ export function formatMinutes(minutes: number | null | undefined): string {
     return `${hours} ชม.`;
   }
   return `${hours} ชม. ${mins} นาที`;
+}
+
+/**
+ * Mood levels a user can pick when they finish a fasting session.
+ * Stored as plain text in `if_sessions.mood` — the English labels below ARE
+ * the canonical database values (e.g. "Good", "Very bad"), so they must match
+ * the CHECK constraint in migration 0024 exactly.
+ *
+ * `key` is a stable machine-readable slug; `icon` is the path of the Mood
+ * icon in public/icon/*.svg, rendered with `<Image>` everywhere the mood is
+ * shown (calendar badge, picker, success chip).
+ */
+export const MOOD_VALUES = [
+  "Very bad",
+  "Bad",
+  "Medium",
+  "Good",
+  "Very good",
+] as const;
+
+export type MoodValue = (typeof MOOD_VALUES)[number];
+
+export const MOOD_LEVELS: ReadonlyArray<{
+  value: MoodValue;
+  key: "very_bad" | "bad" | "medium" | "good" | "very_good";
+  labelThai: string;
+  icon: string;
+}> = [
+  { value: "Very bad", key: "very_bad", labelThai: "แย่มาก", icon: "/icon/veryBadIcon.svg" },
+  { value: "Bad", key: "bad", labelThai: "แย่", icon: "/icon/badIcon.svg" },
+  { value: "Medium", key: "medium", labelThai: "ปานกลาง", icon: "/icon/mediumIcon.svg" },
+  { value: "Good", key: "good", labelThai: "ดี", icon: "/icon/goodIcon.svg" },
+  { value: "Very good", key: "very_good", labelThai: "ดีมาก", icon: "/icon/veryGoodIcon.svg" },
+];
+
+/** Returns the mood level object for a stored value, or null when unknown/absent. */
+export function getMoodLevel(value: string | null | undefined) {
+  if (typeof value !== "string") {
+    return null;
+  }
+  return MOOD_LEVELS.find((level) => level.value === value) ?? null;
 }

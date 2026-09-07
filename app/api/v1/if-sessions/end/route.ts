@@ -1,7 +1,8 @@
 import { requireAuth } from "@/lib/auth";
+import { computeIfResult } from "@/lib/if";
 import { apiError, apiSuccess } from "@/lib/response";
 import { createServiceClient } from "@/lib/supabase/service";
-import { sessionIdSchema } from "@/lib/validation";
+import { endSessionSchema } from "@/lib/validation";
 
 export const runtime = "nodejs";
 
@@ -9,8 +10,11 @@ export const runtime = "nodejs";
  * POST /api/v1/if-sessions/end
  *
  * Ends a fasting session: computes the real duration from server time and
- * marks it completed. Only the session owner can end it; the userId comes
- * from the verified session cookie.
+ * marks it completed, records the mood (plain text: "Very bad"…"Very good")
+ * the user picked, and locks in whether the session hit both goals of its
+ * pattern as `result` ("success"/"fail" — the only place this is written).
+ * Only the session owner can end it; the userId comes from the verified
+ * session cookie.
  *
  * The user must finish the eating phase first (POST /end-eating). Until then
  * fasting_start_time still points at the session start, so ending here would
@@ -29,18 +33,20 @@ export async function POST(request: Request) {
     return apiError("Invalid JSON body", 400, "VALIDATION_ERROR");
   }
 
-  const parsed = sessionIdSchema.safeParse(body);
+  const parsed = endSessionSchema.safeParse(body);
   if (!parsed.success) {
     const message = parsed.error.issues[0]?.message ?? "ข้อมูลไม่ถูกต้อง";
     return apiError(message, 400, "VALIDATION_ERROR");
   }
 
-  const { sessionId } = parsed.data;
+  const { sessionId, mood } = parsed.data;
   const supabase = createServiceClient();
 
   const { data: session } = await supabase
     .from("if_sessions")
-    .select("id, eating_start_time, fasting_end_time, status")
+    .select(
+      "id, eating_start_time, fasting_end_time, fasting_duration_minutes, if_pattern, status"
+    )
     .eq("id", sessionId)
     .eq("user_id", auth.userId)
     .maybeSingle();
@@ -82,6 +88,12 @@ export async function POST(request: Request) {
       status: "completed",
       eating_end_time: now.toISOString(),
       eating_duration_minutes: eatingDurationMinutes,
+      mood,
+      result: computeIfResult(
+        session.if_pattern,
+        session.fasting_duration_minutes,
+        eatingDurationMinutes
+      ),
     })
     .eq("id", sessionId)
     .eq("user_id", auth.userId)

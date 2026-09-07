@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  buildDayMoodMap,
   buildDayStatusMap,
   dayStatusForSession,
   type CalendarSessionInput,
@@ -9,41 +10,34 @@ import {
 function completedSession(
   overrides: Partial<CalendarSessionInput> = {}
 ): CalendarSessionInput {
-  // 16:8 ตามแผน: อด 960 นาที (16 ชม.) + กิน 480 นาที (8 ชม.) — ครบเป้า.
+  // completed + result "success" (เหมือนแถวที่ migration 0025 กัน snapshot).
   return {
     fasting_start_time: "2026-09-05T02:00:00.000Z",
     status: "completed",
     if_pattern: "16:8",
     fasting_duration_minutes: 960,
     eating_duration_minutes: 480,
+    result: "success",
+    mood: null,
     ...overrides,
   };
 }
 
 describe("dayStatusForSession", () => {
-  it("marks a completed session that meets both goals as success", () => {
+  it("marks a completed session with result 'success' as success", () => {
     expect(dayStatusForSession(completedSession())).toBe("success");
   });
 
-  it("marks a completed session that misses any goal as fail", () => {
-    // อดครบแล้ว แต่กินไม่ครบ 480 นาที.
+  it("marks a completed session with result 'fail' as fail", () => {
     expect(
-      dayStatusForSession(completedSession({ eating_duration_minutes: 300 }))
-    ).toBe("fail");
-    // กินครบ แต่อดได้แค่ 800 นาที (จากเป้า 960).
-    expect(
-      dayStatusForSession(completedSession({ fasting_duration_minutes: 800 }))
+      dayStatusForSession(completedSession({ result: "fail" }))
     ).toBe("fail");
   });
 
-  it("treats null durations as zero → fail", () => {
+  it("treats a completed session with a null result as fail (legacy guard)", () => {
+    // หลัง migration 0025 ไม่ควรมีแถวแบบนี้ — เป็น fail ปลอดภัย ไม่ auto-success.
     expect(
-      dayStatusForSession(
-        completedSession({
-          fasting_duration_minutes: null,
-          eating_duration_minutes: null,
-        })
-      )
+      dayStatusForSession(completedSession({ result: null }))
     ).toBe("fail");
   });
 
@@ -61,16 +55,6 @@ describe("dayStatusForSession", () => {
         completedSession({ status: "abandoned", fasting_duration_minutes: 120 })
       )
     ).toBe("abandoned");
-  });
-
-  it("marks a completed session with unknown/null pattern as fail", () => {
-    // เดิม: planned = 0 → ผ่านเงื่อนไข >= 0 เสมอ → success อัตโนมัติ.
-    expect(
-      dayStatusForSession(completedSession({ if_pattern: "99:9" }))
-    ).toBe("fail");
-    expect(
-      dayStatusForSession(completedSession({ if_pattern: null }))
-    ).toBe("fail");
   });
 });
 
@@ -100,7 +84,7 @@ describe("buildDayStatusMap", () => {
     const map = buildDayStatusMap([
       completedSession({
         fasting_start_time: "2026-09-05T02:00:00.000Z",
-        fasting_duration_minutes: 500,
+        result: "fail",
       }),
       completedSession({ fasting_start_time: "2026-09-05T10:00:00.000Z" }),
     ]);
@@ -112,7 +96,7 @@ describe("buildDayStatusMap", () => {
       completedSession({ fasting_start_time: "2026-09-05T02:00:00.000Z" }),
       completedSession({
         fasting_start_time: "2026-09-05T10:00:00.000Z",
-        eating_duration_minutes: 100,
+        result: "fail",
       }),
     ]);
     expect(map.get("2026-09-05")).toBe("success");
@@ -126,7 +110,7 @@ describe("buildDayStatusMap", () => {
       }),
       completedSession({
         fasting_start_time: "2026-09-05T10:00:00.000Z",
-        eating_duration_minutes: 100,
+        result: "fail",
       }),
     ]);
     expect(map.get("2026-09-05")).toBe("fail");
@@ -177,5 +161,82 @@ describe("buildDayStatusMap", () => {
     ]);
     expect(map.size).toBe(1);
     expect(map.get("2026-09-05")).toBe("success");
+  });
+});
+
+describe("buildDayMoodMap", () => {
+  it("returns the mood of a session with one", () => {
+    const map = buildDayMoodMap([
+      completedSession({ mood: "Very good" }),
+    ]);
+    expect(map.get("2026-09-05")).toBe("Very good");
+  });
+
+  it("omits days whose session has no mood", () => {
+    const map = buildDayMoodMap([completedSession({ mood: null })]);
+    expect(map.size).toBe(0);
+  });
+
+  it("falls back to the latest mood (fail replaces abandoned)", () => {
+    const map = buildDayMoodMap([
+      completedSession({ status: "abandoned", mood: "Bad" }),
+      completedSession({
+        fasting_start_time: "2026-09-05T10:00:00.000Z",
+        result: "fail",
+        mood: "Medium",
+      }),
+    ]);
+    expect(map.get("2026-09-05")).toBe("Medium");
+  });
+
+  it("falls back to the latest mood when the success session has no mood", () => {
+    // success 02:00 ไม่มีอารมณ์; fail 12:00 มี → โชว์ mood ล่าสุด (fail).
+    const map = buildDayMoodMap([
+      completedSession({ mood: null }),
+      completedSession({
+        fasting_start_time: "2026-09-05T12:00:00.000Z",
+        result: "fail",
+        mood: "Good",
+      }),
+    ]);
+    expect(map.get("2026-09-05")).toBe("Good");
+  });
+
+  it("prefers the latest mood among equal-status sessions", () => {
+    const map = buildDayMoodMap([
+      completedSession({ mood: "Very good" }),
+      completedSession({
+        fasting_start_time: "2026-09-05T12:00:00.000Z",
+        mood: "Very bad",
+      }),
+    ]);
+    expect(map.get("2026-09-05")).toBe("Very bad");
+  });
+
+  it("prefers a success mood over a later non-success mood", () => {
+    const map = buildDayMoodMap([
+      completedSession({
+        fasting_start_time: "2026-09-05T08:00:00.000Z",
+        result: "fail",
+        mood: "Bad",
+      }),
+      completedSession({
+        fasting_start_time: "2026-09-05T09:00:00.000Z",
+        mood: "Good",
+      }),
+    ]);
+    expect(map.get("2026-09-05")).toBe("Good");
+  });
+
+  it("picks the latest among multiple success moods", () => {
+    const map = buildDayMoodMap([
+      completedSession({ fasting_start_time: "2026-09-05T09:00:00.000Z", mood: "Very good" }),
+      completedSession({ fasting_start_time: "2026-09-05T10:00:00.000Z", mood: "Good" }),
+    ]);
+    expect(map.get("2026-09-05")).toBe("Good");
+  });
+
+  it("returns an empty map for no sessions", () => {
+    expect(buildDayMoodMap([]).size).toBe(0);
   });
 });
