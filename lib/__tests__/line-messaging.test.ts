@@ -63,6 +63,23 @@ describe("buildPhaseEndMessages", () => {
     expect(message.text).toContain(LIFF_URL);
   });
 
+  it("prepends userName when provided for fasting", () => {
+    const [message] = buildPhaseEndMessages("fasting", LIFF_URL, "นนท์");
+    expect(message.text).toMatch(/^นนท์ /);
+    expect(message.text).toContain("หมดเวลาการอดแล้ว");
+  });
+
+  it("prepends userName when provided for eating", () => {
+    const [message] = buildPhaseEndMessages("eating", LIFF_URL, "นนท์");
+    expect(message.text).toMatch(/^นนท์ /);
+    expect(message.text).toContain("หมดเวลาการกินแล้ว");
+  });
+
+  it("omits userName prefix when null", () => {
+    const [message] = buildPhaseEndMessages("fasting", LIFF_URL, null);
+    expect(message.text.startsWith("⏰")).toBe(true);
+  });
+
   it("builds the weight update reminder with the app link", () => {
     const [message] = buildWeightReminderMessages(LIFF_URL);
     expect(message.type).toBe("text");
@@ -70,10 +87,22 @@ describe("buildPhaseEndMessages", () => {
     expect(message.text).toContain(LIFF_URL);
   });
 
+  it("prepends userName when provided for weight reminder", () => {
+    const [message] = buildWeightReminderMessages(LIFF_URL, "นนท์");
+    expect(message.text).toMatch(/^นนท์ /);
+    expect(message.text).toContain("อัปเดตน้ำหนัก");
+  });
+
   it("builds the measurement update reminder with the app link", () => {
     const [message] = buildMeasurementReminderMessages(LIFF_URL);
     expect(message.type).toBe("text");
     expect(message.text).toContain("อัปเดตสัดส่วน");
     expect(message.text).toContain(LIFF_URL);
+  });
+
+  it("prepends userName when provided for measurement reminder", () => {
+    const [message] = buildMeasurementReminderMessages(LIFF_URL, "นนท์");
+    expect(message.text).toMatch(/^นนท์ /);
+    expect(message.text).toContain("อัปเดตสัดส่วน");
   });
 });

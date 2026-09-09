@@ -119,14 +119,17 @@ export function getLineLiffUrl(): string {
  */
 export function buildPhaseEndMessages(
   phase: "fasting" | "eating",
-  liffUrl: string
+  liffUrl: string,
+  userName?: string | null
 ): LineSendMessage[] {
+  const prefix = userName ? `${userName} ` : "";
+
   if (phase === "fasting") {
     return [
       {
         type: "text",
         text:
-          "⏰ หมดเวลาการอดแล้วค่าาา✨ \n" +
+          `${prefix}⏰ หมดเวลาการอดแล้ว! ✨\n` +
           "กดหยุดการอด แล้วเริ่มช่วงกินได้เลย:\n" +
           liffUrl,
       },
@@ -137,7 +140,7 @@ export function buildPhaseEndMessages(
     {
       type: "text",
       text:
-        "⏰ หมดเวลาการกินแล้วค่าาา✨ \n" +
+        `${prefix}⏰ หมดเวลาการกินแล้ว! ✨\n` +
         "กดจบรอบนี้ แล้วเริ่มรอบอดถัดไปได้เลย:\n" +
         liffUrl,
     },
@@ -149,13 +152,16 @@ export function buildPhaseEndMessages(
  * Kept pure so it is easy to unit test.
  */
 export function buildWeightReminderMessages(
-  liffUrl: string
+  liffUrl: string,
+  userName?: string | null
 ): LineSendMessage[] {
+  const prefix = userName ? `${userName} ` : "";
+
   return [
     {
       type: "text",
       text:
-        "⚖️ ครบ 7 วันแล้ว อย่าลืมอัปเดตน้ำหนักนะ 🎯\n" +
+        `${prefix}⚖️ ครบ 7 วันแล้ว อย่าลืมอัปเดตน้ำหนักนะ 🎯\n` +
         "กดบันทึกน้ำหนักวันนี้ได้เลย:\n" +
         liffUrl,
     },
@@ -167,13 +173,16 @@ export function buildWeightReminderMessages(
  * measurement cron. Kept pure so it is easy to unit test.
  */
 export function buildMeasurementReminderMessages(
-  liffUrl: string
+  liffUrl: string,
+  userName?: string | null
 ): LineSendMessage[] {
+  const prefix = userName ? `${userName} ` : "";
+
   return [
     {
       type: "text",
       text:
-        "📏 ครบ 14 วันแล้ว อย่าลืมอัปเดตสัดส่วนนะ 🎯\n" +
+        `${prefix}📏 ครบ 14 วันแล้ว อย่าลืมอัปเดตสัดส่วนนะ 🎯\n` +
         "กดบันทึกสัดส่วนวันนี้ได้เลย:\n" +
         liffUrl,
     },
