@@ -80,6 +80,28 @@ describe("buildPhaseEndMessages", () => {
     expect(message.text.startsWith("⏰")).toBe(true);
   });
 
+  it("omits userName prefix when undefined (not passed)", () => {
+    const [message] = buildPhaseEndMessages("fasting", LIFF_URL);
+    expect(message.text.startsWith("⏰")).toBe(true);
+  });
+
+  it("omits userName prefix for whitespace-only and empty names", () => {
+    expect(buildPhaseEndMessages("fasting", LIFF_URL, "   ")[0].text.startsWith("⏰")).toBe(true);
+    expect(buildPhaseEndMessages("fasting", LIFF_URL, "")[0].text.startsWith("⏰")).toBe(true);
+  });
+
+  it("trims surrounding whitespace from userName", () => {
+    const [message] = buildPhaseEndMessages("fasting", LIFF_URL, "  นนท์  ");
+    expect(message.text).toMatch(/^นนท์ /);
+  });
+
+  it("handles a very long userName within LINE 2000-char limit", () => {
+    const longName = "น".repeat(500);
+    const [message] = buildPhaseEndMessages("fasting", LIFF_URL, longName);
+    expect(message.text.length).toBeLessThanOrEqual(2000);
+    expect(message.text).toMatch(/^น{500} /);
+  });
+
   it("builds the weight update reminder with the app link", () => {
     const [message] = buildWeightReminderMessages(LIFF_URL);
     expect(message.type).toBe("text");
