@@ -114,6 +114,15 @@ export function getLineLiffUrl(): string {
 }
 
 /**
+ * Builds a "Name " prefix from a user name. Trims whitespace so a whitespace-only
+ * name (or null/undefined) produces an empty prefix instead of a stray space.
+ */
+function userNamePrefix(userName?: string | null): string {
+  const trimmed = userName?.trim();
+  return trimmed ? `${trimmed} ` : "";
+}
+
+/**
  * Builds the push message that is sent when a phase finishes.
  * Kept pure (liffUrl passed in) so it is easy to unit test.
  */
@@ -122,16 +131,13 @@ export function buildPhaseEndMessages(
   liffUrl: string,
   userName?: string | null
 ): LineSendMessage[] {
-  const prefix = userName ? `${userName} ` : "";
+  const prefix = userNamePrefix(userName);
 
   if (phase === "fasting") {
     return [
       {
         type: "text",
-        text:
-          `${prefix}⏰ หมดเวลาการอดแล้ว! ✨\n` +
-          "กดหยุดการอด แล้วเริ่มช่วงกินได้เลย:\n" +
-          liffUrl,
+        text: `${prefix}⏰ หมดเวลาการอดแล้ว! ✨\nกดหยุดการอด แล้วเริ่มช่วงกินได้เลย:\n${liffUrl}`,
       },
     ];
   }
@@ -139,10 +145,7 @@ export function buildPhaseEndMessages(
   return [
     {
       type: "text",
-      text:
-        `${prefix}⏰ หมดเวลาการกินแล้ว! ✨\n` +
-        "กดจบรอบนี้ แล้วเริ่มรอบอดถัดไปได้เลย:\n" +
-        liffUrl,
+      text: `${prefix}⏰ หมดเวลาการกินแล้ว! ✨\nกดจบรอบนี้ แล้วเริ่มรอบอดถัดไปได้เลย:\n${liffUrl}`,
     },
   ];
 }
@@ -155,15 +158,12 @@ export function buildWeightReminderMessages(
   liffUrl: string,
   userName?: string | null
 ): LineSendMessage[] {
-  const prefix = userName ? `${userName} ` : "";
+  const prefix = userNamePrefix(userName);
 
   return [
     {
       type: "text",
-      text:
-        `${prefix}⚖️ ครบ 7 วันแล้ว อย่าลืมอัปเดตน้ำหนักนะ 🎯\n` +
-        "กดบันทึกน้ำหนักวันนี้ได้เลย:\n" +
-        liffUrl,
+      text: `${prefix}⚖️ ครบ 7 วันแล้ว อย่าลืมอัปเดตน้ำหนักนะ 🎯\nกดบันทึกน้ำหนักวันนี้ได้เลย:\n${liffUrl}`,
     },
   ];
 }
@@ -176,15 +176,12 @@ export function buildMeasurementReminderMessages(
   liffUrl: string,
   userName?: string | null
 ): LineSendMessage[] {
-  const prefix = userName ? `${userName} ` : "";
+  const prefix = userNamePrefix(userName);
 
   return [
     {
       type: "text",
-      text:
-        `${prefix}📏 ครบ 14 วันแล้ว อย่าลืมอัปเดตสัดส่วนนะ 🎯\n` +
-        "กดบันทึกสัดส่วนวันนี้ได้เลย:\n" +
-        liffUrl,
+      text: `${prefix}📏 ครบ 14 วันแล้ว อย่าลืมอัปเดตสัดส่วนนะ 🎯\nกดบันทึกสัดส่วนวันนี้ได้เลย:\n${liffUrl}`,
     },
   ];
 }

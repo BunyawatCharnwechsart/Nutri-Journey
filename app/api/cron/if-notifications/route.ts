@@ -96,7 +96,8 @@ async function handleCron(request: Request) {
   const { data: sessions, error } = await supabase
     .from("if_sessions")
     .select(
-      `id, fasting_start_time, fasting_end_time, fasting_end_notified_at,
+      `id,
+       fasting_start_time, fasting_end_time, fasting_end_notified_at,
        eating_start_time, eating_end_time, eating_end_notified_at, if_pattern,
        users ( line_user_id, oa_user_id, line_notifications_enabled, line_unreachable, display_name )`
     )
