@@ -43,6 +43,7 @@ interface CronUser {
   oa_user_id: string;
   line_unreachable: boolean | null;
   last_weight_reminder_at: string | null;
+  display_name: string | null;
 }
 
 function isAuthorized(request: Request): boolean {
@@ -75,7 +76,7 @@ async function handleCron(request: Request) {
   const { data: users, error } = await supabase
     .from("users")
     .select(
-      "user_id, line_user_id, oa_user_id, line_unreachable, last_weight_reminder_at"
+      "user_id, line_user_id, oa_user_id, line_unreachable, last_weight_reminder_at, display_name"
     )
     .eq("line_notifications_enabled", true)
     .eq("line_unreachable", false)
@@ -156,7 +157,7 @@ async function handleCron(request: Request) {
     try {
       await sendPushMessage(
         user.oa_user_id,
-        buildWeightReminderMessages(liffUrl)
+        buildWeightReminderMessages(liffUrl, user.display_name)
       );
 
       const { error: markError } = await supabase
