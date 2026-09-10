@@ -205,3 +205,15 @@ export const measurementLogSchema = z
       data.chestIn !== undefined,
     { message: "กรุณากรอกสัดส่วนอย่างน้อย 1 ค่า", path: ["waistIn"] }
   );
+
+/**
+ * PATCH /api/v1/healthy-journey
+ * เปลี่ยนชื่อไข่ (avatar) — trim แล้ว ไม่เกิน 20 ตัวอักษร.
+ */
+export const avatarNameSchema = z.object({
+  avatarName: z
+    .string()
+    .trim()
+    .min(1, "กรุณากรอกชื่อไข่")
+    .max(20, "ชื่อไข่ต้องไม่เกิน 20 ตัวอักษร"),
+});

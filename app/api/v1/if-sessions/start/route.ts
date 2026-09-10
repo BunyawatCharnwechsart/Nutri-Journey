@@ -1,4 +1,5 @@
 import { requireAuth } from "@/lib/auth";
+import { awardMission } from "@/lib/healthy-journey-service";
 import { apiError, apiSuccess } from "@/lib/response";
 import { createServiceClient } from "@/lib/supabase/service";
 import { ifStartSchema } from "@/lib/validation";
@@ -111,6 +112,10 @@ export async function POST(request: Request) {
   if (error || !session) {
     return apiError("Failed to start IF session", 500, "INTERNAL_ERROR");
   }
+
+  // Daily mission: starting an IF session. Idempotent per ICT day; never
+  // blocks the response if the award has already been granted today.
+  await awardMission(auth.userId, "start_if");
 
   return apiSuccess({ session }, { status: 201 });
 }

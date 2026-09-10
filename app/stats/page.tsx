@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 
 import { getSessionUserId } from "@/lib/auth";
+import { awardMission } from "@/lib/healthy-journey-service";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getYearToDateWindow } from "@/lib/weight-log";
 import { getICTYear, toICTDateKey, toICTMonthKey } from "@/lib/timezone";
@@ -55,6 +56,10 @@ export default async function StatsPage({
   if (!userId) {
     redirect("/");
   }
+
+  // Daily mission: visiting the stats page. Idempotent per ICT day so
+  // re-refreshing or switching tabs can never farm extra XP.
+  await awardMission(userId, "view_stats");
 
   let subtitle: string;
   let logs: WeightPoint[] = [];

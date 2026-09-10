@@ -1,4 +1,5 @@
 import { requireAuth } from "@/lib/auth";
+import { awardMission } from "@/lib/healthy-journey-service";
 import { computeIfResult } from "@/lib/if";
 import { apiError, apiSuccess } from "@/lib/response";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -102,6 +103,15 @@ export async function POST(request: Request) {
 
   if (error || !updated) {
     return apiError("Failed to end IF session", 500, "INTERNAL_ERROR");
+  }
+
+  // Daily missions, awarded only from the real ending behaviour and only
+  // once per ICT day (idempotent by design; they never block the response).
+  if (updated.result === "success") {
+    await awardMission(auth.userId, "fasting_complete");
+  }
+  if (updated.mood) {
+    await awardMission(auth.userId, "record_mood");
   }
 
   return apiSuccess({ session: updated }, { status: 200 });
