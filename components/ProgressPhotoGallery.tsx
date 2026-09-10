@@ -5,11 +5,21 @@ import { useRouter } from "next/navigation";
 
 import PhotoIcon from "@/components/PhotoIcon";
 
+export interface ProgressPhotoMeasurements {
+  waistIn: number | null;
+  hipIn: number | null;
+  chestIn: number | null;
+}
+
 export interface ProgressPhotoSet {
   month: string; // "yyyy-MM"
   front: { url: string } | null;
   side: { url: string } | null;
   back: { url: string } | null;
+  /** น้ำหนัก (กก.) ที่บันทึกในเดือนนั้น — null เมื่อยังไม่มี. */
+  weightKg: number | null;
+  /** สัดส่วนที่บันทึกในเดือนนั้น — null เมื่อยังไม่มี. */
+  measurements: ProgressPhotoMeasurements | null;
 }
 
 interface ProgressPhotoGalleryProps {
@@ -39,6 +49,11 @@ const THAI_MONTHS = [
 function monthLabel(key: string): string {
   const [year, month] = key.split("-").map(Number);
   return `${THAI_MONTHS[month - 1]} ${year}`;
+}
+
+/** แสดงจำนวนแบบสั้น 1 ตำแหน่งทศนิยม ไม่มีทศนิยมถ้าเป็นจำนวนเต็ม. */
+function trimNumber(value: number): string {
+  return Number.isInteger(value) ? String(value) : `${Math.round(value * 10) / 10}`;
 }
 
 type PhotoViewKey = "front" | "side" | "back";
@@ -262,6 +277,8 @@ function ProgressGrid({
               </div>
             ))}
           </div>
+
+          <PhotoMonthStats set={set} />
         </section>
       ))}
 
@@ -345,11 +362,14 @@ function ComparePanel({
   }
 
   return (
-    <section className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5">
-      <h2 className="text-base font-semibold text-zinc-900">เปรียบเทียบรายเดือน</h2>
+    <>
+      <section className="flex flex-col gap-4 rounded-2xl border border-zinc-200 bg-white p-5">
+        <h2 className="text-base font-semibold text-zinc-900">
+          เปรียบเทียบรายเดือน
+        </h2>
 
-      <div className="flex flex-col gap-3 sm:flex-row">
-        <label className="flex flex-1 flex-col gap-1">
+      <div className="flex flex-row flex-wrap gap-3">
+        <label className="flex min-w-[10rem] flex-1 flex-col gap-1">
           <span className="text-xs font-medium text-zinc-500">เดือนที่ 1</span>
           <select
             value={compareA}
@@ -363,7 +383,7 @@ function ComparePanel({
             ))}
           </select>
         </label>
-        <label className="flex flex-1 flex-col gap-1">
+        <label className="flex min-w-[10rem] flex-1 flex-col gap-1">
           <span className="text-xs font-medium text-zinc-500">เดือนที่ 2</span>
           <select
             value={compareB}
@@ -380,28 +400,119 @@ function ComparePanel({
       </div>
 
       {setA && setB && (
-        <div className="flex flex-col gap-5">
+        <div className="flex flex-col gap-4">
           {VIEW_LABELS.map(({ view, label }) => (
-            <div key={view}>
-              <div className="mb-2 flex items-center justify-between gap-2 text-xs font-semibold text-zinc-500">
+            <section
+              key={view}
+              className="flex flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-4"
+            >
+              <h3 className="text-base font-semibold text-zinc-900">{label}</h3>
+              <div className="flex items-center justify-between gap-2 text-xs font-semibold text-zinc-500">
                 <span className="flex-1 text-center">{monthLabel(setA.month)}</span>
-                <span className="w-14 text-center">{label}</span>
+                <span
+                  aria-hidden="true"
+                  className="w-14 text-center text-sm font-bold text-[#18A659]"
+                >
+                  vs
+                </span>
                 <span className="flex-1 text-center">{monthLabel(setB.month)}</span>
               </div>
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
                 <PhotoFrame photo={setA[view]} />
                 <span
                   aria-hidden="true"
-                  className="text-sm font-bold text-[#18A659]"
+                  className="w-10 text-center text-sm font-bold text-[#18A659]"
                 >
                   vs
                 </span>
                 <PhotoFrame photo={setB[view]} />
               </div>
-            </div>
+            </section>
           ))}
         </div>
       )}
+      </section>
+
+      {setA && setB && <BodyCompareCard setA={setA} setB={setB} />}
+    </>
+  );
+}
+
+/**
+ * Card เปรียบเทียบน้ำหนัก + สัดส่วนของ 2 เดือนที่เลือกในแท็บเปรียบเทียบ.
+ * แสดงค่าทั้ง 2 เดือน + ผลต่าง (เดือน 2 − เดือน 1). ถ้าเดือนไหนไม่มีข้อมูล
+ * ตัวชี้วัดนั้น จะโชว์ "—". ไม่มีข้อมูลทั้ง 2 เดือนเลย → ไม่แสดง card.
+ */
+function BodyCompareCard({
+  setA,
+  setB,
+}: {
+  setA: ProgressPhotoSet;
+  setB: ProgressPhotoSet;
+}) {
+  const m1 = setA.measurements;
+  const m2 = setB.measurements;
+
+  const rows: { label: string; a: number | null; b: number | null }[] = [
+    { label: "น้ำหนัก (กก.)", a: setA.weightKg, b: setB.weightKg },
+    { label: "รอบเอว (นิ้ว)", a: m1?.waistIn ?? null, b: m2?.waistIn ?? null },
+    { label: "รอบสะโพก (นิ้ว)", a: m1?.hipIn ?? null, b: m2?.hipIn ?? null },
+    { label: "รอบอก (นิ้ว)", a: m1?.chestIn ?? null, b: m2?.chestIn ?? null },
+  ];
+
+  const hasData = rows.some((row) => row.a != null || row.b != null);
+  if (!hasData) {
+    return null;
+  }
+
+  return (
+    <section className="rounded-2xl border border-zinc-200 bg-white p-5">
+      <h2 className="text-base font-semibold text-zinc-900">
+        เปรียบเทียบน้ำหนักและสัดส่วน
+      </h2>
+
+      <div className="mt-3 grid grid-cols-[1fr_auto_1fr] items-center gap-2 text-xs font-semibold text-zinc-500">
+        <span className="text-center">{monthLabel(setA.month)}</span>
+        <span aria-hidden="true" className="w-24" />
+        <span className="text-center">{monthLabel(setB.month)}</span>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        {rows.map(({ label, a, b }) => {
+          const diff =
+            a != null && b != null ? Math.round((b - a) * 10) / 10 : null;
+          const delta =
+            diff === null
+              ? null
+              : diff === 0
+                ? "±0"
+                : (diff > 0 ? "+" : "−") + trimNumber(Math.abs(diff));
+
+          return (
+            <div
+              key={label}
+              className="grid grid-cols-[1fr_auto_1fr] items-center gap-2 rounded-xl bg-zinc-50 px-3 py-2.5 text-sm"
+            >
+              <span className="text-center font-medium text-zinc-900">
+                {a != null ? trimNumber(a) : "—"}
+              </span>
+              <div className="flex w-24 flex-col items-center gap-0.5">
+                <span className="text-xs font-semibold text-zinc-500">
+                  {label}
+                </span>
+                {delta && (
+                  <span className="text-xs font-bold text-zinc-400">
+                    {delta}
+                  </span>
+                )}
+              </div>
+              <span className="text-center font-medium text-zinc-900">
+                {b != null ? trimNumber(b) : "—"}
+              </span>
+            </div>
+          );
+        })}
+      </div>
     </section>
   );
 }
@@ -422,6 +533,52 @@ function PhotoFrame({ photo }: { photo: { url: string } | null }) {
         alt="ภาพถ่ายความคืบหน้า"
         className="h-full w-full object-cover"
       />
+    </div>
+  );
+}
+
+/**
+ * แถบสรุปน้ำหนัก + สัดส่วนของเดือนที่ตรงกับ card รูป (recorded เดือนเดียวกัน).
+ * ยังไม่มีข้อมูลเลย → บอกตรงๆ ว่าไม่มีการบันทึก เพื่อไม่ให้ "—" ดูเหมือนค่า 0.
+ */
+function PhotoMonthStats({ set }: { set: ProgressPhotoSet }) {
+  const m = set.measurements;
+  const hasNoData = set.weightKg === null && m === null;
+
+  if (hasNoData) {
+    return (
+      <div className="flex h-10 items-center justify-center rounded-xl bg-zinc-50 text-xs text-zinc-400">
+        ยังไม่มีการบันทึกน้ำหนัก/สัดส่วน
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5 rounded-xl bg-zinc-50 px-3 py-2.5 text-sm">
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-zinc-500">น้ำหนัก</span>
+        <span className="font-medium text-zinc-900">
+          {set.weightKg != null ? `${trimNumber(set.weightKg)} กก.` : "—"}
+        </span>
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-zinc-500">เอว</span>
+        <span className="font-medium text-zinc-900">
+          {m?.waistIn != null ? `${trimNumber(m.waistIn)} นิ้ว` : "—"}
+        </span>
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-zinc-500">สะโพก</span>
+        <span className="font-medium text-zinc-900">
+          {m?.hipIn != null ? `${trimNumber(m.hipIn)} นิ้ว` : "—"}
+        </span>
+      </div>
+      <div className="flex items-center justify-between gap-2">
+        <span className="text-zinc-500">อก</span>
+        <span className="font-medium text-zinc-900">
+          {m?.chestIn != null ? `${trimNumber(m.chestIn)} นิ้ว` : "—"}
+        </span>
+      </div>
     </div>
   );
 }

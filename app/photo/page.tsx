@@ -49,6 +49,47 @@ export default async function PhotoPage() {
     return month <= currentMonth;
   });
 
+  // Weight + body measurements per month (same monthly cadence as photos) so
+  // each photo card can show the values recorded in the matching month.
+  // Fetch only when the user actually has photos — otherwise skip 2 queries.
+  const weightKgByMonth = new Map<string, number>();
+  const measurementsByMonth = new Map<
+    string,
+    { waistIn: number | null; hipIn: number | null; chestIn: number | null }
+  >();
+
+  if ((rows ?? []).length > 0) {
+    const { data: weightRows } = await supabase
+      .from("weight_logs")
+      .select("recorded_on, weight_kg")
+      .eq("user_id", userId)
+      .order("recorded_on", { ascending: true });
+
+    const { data: measurementRows } = await supabase
+      .from("measurement_logs")
+      .select("recorded_on, waist_in, hip_in, chest_in")
+      .eq("user_id", userId)
+      .order("recorded_on", { ascending: true });
+
+    for (const row of weightRows ?? []) {
+      const month = monthKeyFromRecordDate(row.recorded_on);
+      if (!weightKgByMonth.has(month)) {
+        weightKgByMonth.set(month, Number(row.weight_kg));
+      }
+    }
+
+    for (const row of measurementRows ?? []) {
+      const month = monthKeyFromRecordDate(row.recorded_on);
+      if (!measurementsByMonth.has(month)) {
+        measurementsByMonth.set(month, {
+          waistIn: row.waist_in == null ? null : Number(row.waist_in),
+          hipIn: row.hip_in == null ? null : Number(row.hip_in),
+          chestIn: row.chest_in == null ? null : Number(row.chest_in),
+        });
+      }
+    }
+  }
+
   // Resolve all signed URLs in parallel (one round-trip each).
   const resolved = await Promise.all(
     visibleRows.map(async (row) => ({
@@ -66,7 +107,14 @@ export default async function PhotoPage() {
     for (const { month, view, url } of resolved) {
       let set = setsByMonth.get(month);
       if (!set) {
-        set = { month, front: null, side: null, back: null };
+        set = {
+          month,
+          front: null,
+          side: null,
+          back: null,
+          weightKg: weightKgByMonth.get(month) ?? null,
+          measurements: measurementsByMonth.get(month) ?? null,
+        };
         setsByMonth.set(month, set);
         sets.push(set);
       }
