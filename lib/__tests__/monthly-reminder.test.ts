@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 
+import type { MonthlyReminderItem } from "@/lib/monthly-reminder";
 import {
   dueMonthlyReminder,
   getMonthlyReminderDateKeys,
@@ -12,8 +13,12 @@ function iso(ms: number): string {
   return new Date(ms).toISOString();
 }
 
-const ALL_MISSING = ["weight", "measurements", "photo"];
-const NOTHING_MISSING: string[] = [];
+const ALL_MISSING = [
+  "weight",
+  "measurements",
+  "photo",
+] satisfies MonthlyReminderItem[];
+const NOTHING_MISSING: MonthlyReminderItem[] = [];
 
 describe("getMonthlyReminderDateKeys", () => {
   it("returns inclusive day bounds of the current ICT month", () => {
