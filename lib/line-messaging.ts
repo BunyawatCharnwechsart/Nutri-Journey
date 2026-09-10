@@ -151,10 +151,11 @@ export function buildPhaseEndMessages(
 }
 
 /**
- * Builds the "time to update your weight" reminder sent by the weight cron.
+ * Builds the monthly "check-in" reminder sent by the monthly cron on the 1st
+ * of every month. A single message covers both weight and measurements.
  * Kept pure so it is easy to unit test.
  */
-export function buildWeightReminderMessages(
+export function buildMonthlyReminderMessages(
   liffUrl: string,
   userName?: string | null
 ): LineSendMessage[] {
@@ -163,25 +164,7 @@ export function buildWeightReminderMessages(
   return [
     {
       type: "text",
-      text: `${prefix}⚖️ ครบ 7 วันแล้ว อย่าลืมอัปเดตน้ำหนักนะ 🎯\nกดบันทึกน้ำหนักวันนี้ได้เลย:\n${liffUrl}`,
-    },
-  ];
-}
-
-/**
- * Builds the "time to update your measurements" reminder sent by the
- * measurement cron. Kept pure so it is easy to unit test.
- */
-export function buildMeasurementReminderMessages(
-  liffUrl: string,
-  userName?: string | null
-): LineSendMessage[] {
-  const prefix = userNamePrefix(userName);
-
-  return [
-    {
-      type: "text",
-      text: `${prefix}📏 ครบ 14 วันแล้ว อย่าลืมอัปเดตสัดส่วนนะ 🎯\nกดบันทึกสัดส่วนวันนี้ได้เลย:\n${liffUrl}`,
+      text: `${prefix}📅 เริ่มเดือนใหม่แล้ว อย่าลืมอัปเดตผลลัพธ์นะ 🎯\n⚖️ อัปเดตน้ำหนักของคุณวันนี้\n📏 อัปเดตสัดส่วนของคุณวันนี้\nกดบันทึกได้เลย:\n${liffUrl}`,
     },
   ];
 }

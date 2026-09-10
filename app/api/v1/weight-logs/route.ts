@@ -63,9 +63,10 @@ export async function GET(request: Request) {
  * weight_logs is the single source of truth — profiles.weight is not synced
  * anymore.
  *
- * Guarded server-side by the 7-day rule: the user may only log a new weight
- * once at least 7 days have passed since their latest entry. The client hides
- * the button, but the API re-checks so the rule cannot be bypassed.
+ * Guarded server-side by the once-per-ICT-month rule: the user may only log a
+ * new weight when their latest entry falls in an earlier month (or when they
+ * have no history yet). The client hides the button, but the API re-checks so
+ * the rule cannot be bypassed.
  */
 export async function POST(request: Request) {
   const auth = await requireAuth();
@@ -101,7 +102,7 @@ export async function POST(request: Request) {
 
   if (lastLog && !canUpdateWeight(Date.now(), lastLog.recorded_on)) {
     return apiError(
-      "ยังไม่ครบ 7 วันนับจากบันทึกน้ำหนักล่าสุด",
+      "บันทึกน้ำหนักเดือนนี้แล้ว อัปเดตได้อีกครั้งวันที่ 1 เดือนถัดไป",
       409,
       "WEIGHT_UPDATE_LOCKED"
     );

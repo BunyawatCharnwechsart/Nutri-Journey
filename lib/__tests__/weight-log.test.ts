@@ -7,34 +7,36 @@ import {
   getICTDateKey,
   getRecentWeightLogWindow,
   getYearToDateWindow,
+  nextMonthlyUpdateLabel,
 } from "@/lib/weight-log";
-
-const DAY = 86_400_000;
 
 // 2026-09-02 00:00 UTC = 2026-09-02 07:00 ICT (same calendar day).
 const BASE = Date.UTC(2026, 8, 2);
 
-function key(daysOffset: number): string {
-  return getICTDateKey(BASE + daysOffset * DAY);
-}
-
-describe("canUpdateWeight", () => {
+describe("canUpdateWeight (once per ICT month)", () => {
   it("allows a brand-new user with no history", () => {
     expect(canUpdateWeight(BASE, null)).toBe(true);
   });
 
-  it("blocks before 7 full calendar days have passed", () => {
-    expect(canUpdateWeight(BASE, key(0))).toBe(false); // same day
-    expect(canUpdateWeight(BASE, key(-1))).toBe(false); // 1 day elapsed
-    expect(canUpdateWeight(BASE, key(-6))).toBe(false); // 6 days elapsed — still blocked
+  it("blocks a second entry in the same ICT month", () => {
+    expect(canUpdateWeight(BASE, "2026-09-01")).toBe(false);
+    expect(canUpdateWeight(BASE, "2026-09-15")).toBe(false);
+    expect(canUpdateWeight(BASE, "2026-09-30")).toBe(false);
   });
 
-  it("unlocks exactly on the 7th calendar day", () => {
-    expect(canUpdateWeight(BASE, key(-7))).toBe(true);
+  it("unlocks once the last entry is in an earlier month", () => {
+    expect(canUpdateWeight(BASE, "2026-08-31")).toBe(true);
+    expect(canUpdateWeight(BASE, "2026-08-01")).toBe(true);
+    expect(canUpdateWeight(BASE, "2025-12-31")).toBe(true);
   });
 
-  it("stays unlocked past 7 days", () => {
-    expect(canUpdateWeight(BASE, key(-20))).toBe(true);
+  it("respects the ICT month boundary (17:00 UTC = next day)", () => {
+    // 2026-08-31 16:59:59Z is still August ICT → same month as the entry.
+    const augEnd = Date.UTC(2026, 7, 31, 16, 59, 59);
+    expect(canUpdateWeight(augEnd, "2026-08-31")).toBe(false);
+    // 2026-08-31 17:00:00Z is already September ICT → month rolled over.
+    const sepStart = Date.UTC(2026, 7, 31, 17, 0, 0);
+    expect(canUpdateWeight(sepStart, "2026-08-31")).toBe(true);
   });
 });
 
@@ -43,15 +45,38 @@ describe("daysUntilNextUpdate", () => {
     expect(daysUntilNextUpdate(BASE, null)).toBe(0);
   });
 
-  it("counts down the remaining days", () => {
-    expect(daysUntilNextUpdate(BASE, key(-1))).toBe(6);
-    expect(daysUntilNextUpdate(BASE, key(-6))).toBe(1);
-    expect(daysUntilNextUpdate(BASE, key(-10))).toBe(0);
+  it("counts calendar days until the next month's 1st when locked", () => {
+    // BASE = Sep 2 ICT; next allowed day is Oct 1 ICT → 29 days.
+    expect(daysUntilNextUpdate(BASE, "2026-09-01")).toBe(29);
+    expect(daysUntilNextUpdate(BASE, "2026-09-15")).toBe(29);
   });
 
-  it("floors at 0 once due", () => {
-    expect(daysUntilNextUpdate(BASE, key(-7))).toBe(0);
-    expect(daysUntilNextUpdate(BASE, key(-30))).toBe(0);
+  it("returns 0 as soon as the month has rolled over", () => {
+    expect(daysUntilNextUpdate(BASE, "2026-08-31")).toBe(0);
+    expect(daysUntilNextUpdate(BASE, "2026-07-01")).toBe(0);
+  });
+
+  it("rounds a near-midnight boundary up to a single day", () => {
+    // Sep 30 23:30 ICT (Sep 30 16:30Z), locked this month → Oct 1 is tomorrow.
+    const sep30Late = Date.UTC(2026, 8, 30, 16, 30, 0);
+    expect(daysUntilNextUpdate(sep30Late, "2026-09-01")).toBe(1);
+  });
+});
+
+describe("nextMonthlyUpdateLabel", () => {
+  it("returns null when the user may update now", () => {
+    expect(nextMonthlyUpdateLabel(BASE, null)).toBe(null);
+    expect(nextMonthlyUpdateLabel(BASE, "2026-08-31")).toBe(null);
+  });
+
+  it("labels the next month's 1st when locked", () => {
+    expect(nextMonthlyUpdateLabel(BASE, "2026-09-01")).toBe("1 ต.ค.");
+    expect(nextMonthlyUpdateLabel(BASE, "2026-09-30")).toBe("1 ต.ค.");
+  });
+
+  it("rolls to January after December", () => {
+    const dec = Date.UTC(2026, 11, 10);
+    expect(nextMonthlyUpdateLabel(dec, "2026-12-01")).toBe("1 ม.ค.");
   });
 });
 
