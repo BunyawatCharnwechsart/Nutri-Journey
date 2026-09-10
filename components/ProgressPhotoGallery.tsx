@@ -368,8 +368,8 @@ function ComparePanel({
           เปรียบเทียบรายเดือน
         </h2>
 
-      <div className="flex flex-row flex-wrap gap-3">
-        <label className="flex min-w-[10rem] flex-1 flex-col gap-1">
+      <div className="flex flex-row gap-3">
+        <label className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="text-xs font-medium text-zinc-500">เดือนที่ 1</span>
           <select
             value={compareA}
@@ -383,7 +383,7 @@ function ComparePanel({
             ))}
           </select>
         </label>
-        <label className="flex min-w-[10rem] flex-1 flex-col gap-1">
+        <label className="flex min-w-0 flex-1 flex-col gap-1">
           <span className="text-xs font-medium text-zinc-500">เดือนที่ 2</span>
           <select
             value={compareB}
