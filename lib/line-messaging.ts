@@ -2,6 +2,8 @@ import "server-only";
 
 import { createHmac, timingSafeEqual } from "node:crypto";
 
+import type { MonthlyReminderItem } from "@/lib/monthly-reminder";
+
 // ============================================================================
 // LINE Messaging API helpers (the LINE OA / bot channel).
 //
@@ -151,20 +153,50 @@ export function buildPhaseEndMessages(
 }
 
 /**
- * Builds the monthly "check-in" reminder sent by the monthly cron on the 1st
- * of every month. A single message covers both weight and measurements.
- * Kept pure so it is easy to unit test.
+ * Builds the monthly "check-in" reminder pushed by the monthly cron.
+ *
+ * `missingItems` lists the items the user still has to record this month:
+ *   * non-empty → the message enumerates exactly which of weight /
+ *     measurements / body photo are missing.
+ *   * empty     → everything is recorded; the message congratulates instead of
+ *     nagging (this is the branch delivered on the 1st for users who are
+ *     already up to date).
+ *
+ * Kept pure (liffUrl + items passed in) so it is easy to unit test.
  */
 export function buildMonthlyReminderMessages(
   liffUrl: string,
-  userName?: string | null
+  userName?: string | null,
+  missingItems: MonthlyReminderItem[] = []
 ): LineSendMessage[] {
   const prefix = userNamePrefix(userName);
+
+  if (missingItems.length > 0) {
+    const lines = missingItems
+      .map((item) => {
+        switch (item) {
+          case "weight":
+            return "⚖️ อัปเดตน้ำหนักของคุณวันนี้";
+          case "measurements":
+            return "📏 อัปเดตสัดส่วนของคุณวันนี้";
+          case "photo":
+            return "📸 อัปเดตภาพถ่ายหุ่นของคุณวันนี้";
+        }
+      })
+      .join("\n");
+
+    return [
+      {
+        type: "text",
+        text: `${prefix}📅 เริ่มเดือนใหม่แล้ว มาอัปเดตผลลัพธ์กันนะ 🎯\n${lines}\nกดบันทึกได้เลย:\n${liffUrl}`,
+      },
+    ];
+  }
 
   return [
     {
       type: "text",
-      text: `${prefix}📅 เริ่มเดือนใหม่แล้ว อย่าลืมอัปเดตผลลัพธ์นะ 🎯\n⚖️ อัปเดตน้ำหนักของคุณวันนี้\n📏 อัปเดตสัดส่วนของคุณวันนี้\nกดบันทึกได้เลย:\n${liffUrl}`,
+      text: `${prefix}📅 อัปเดตผลลัพธ์ครบแล้วเดือนนี้ 🎉\nรอดูความคืบหน้าตอนสิ้นเดือนนะ:\n${liffUrl}`,
     },
   ];
 }
