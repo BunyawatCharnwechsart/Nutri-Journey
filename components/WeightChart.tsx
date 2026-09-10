@@ -80,25 +80,22 @@ function fullLabel(date: string): string {
 }
 
 /**
- * Monthly weight line chart backed by Chart.js.
+ * Year-to-date weight line chart backed by Chart.js (stats "1 ปี" view).
  *
  * Renders the logs passed from the server (already normalized to
  * `WeightPoint`s) with the project's green brand color. Responsive by using a
  * fixed-height wrapper + `maintainAspectRatio: false`, so it scales cleanly on
- * mobile. `range` and `periodLabel` only tune the copy/tick density — the
- * data itself always comes from the server.
+ * mobile. `periodLabel` only tunes the copy — the data itself always comes
+ * from the server.
  */
 export default function WeightChart({
   logs,
-  range = "3m",
   periodLabel,
 }: {
   logs: WeightPoint[];
-  range?: "3m" | "1y";
   periodLabel?: string;
 }) {
-  const displayLabel =
-    periodLabel ?? (range === "1y" ? "1 ปี" : "3 เดือน");
+  const displayLabel = periodLabel ?? "1 ปี";
 
   if (logs.length === 0) {
     return (
@@ -126,8 +123,8 @@ export default function WeightChart({
         borderColor: BRAND_GREEN,
         backgroundColor: "rgba(24, 166, 89, 0.12)",
         pointBackgroundColor: BRAND_GREEN,
-        pointRadius: range === "1y" ? 0 : 4,
-        pointHoverRadius: range === "1y" ? 0 : 6,
+        pointRadius: 0,
+        pointHoverRadius: 0,
         borderWidth: 2,
         tension: 0.3,
         fill: true,
@@ -165,7 +162,7 @@ export default function WeightChart({
           color: "#71717a",
           maxRotation: 0,
           autoSkip: true,
-          maxTicksLimit: range === "1y" ? 8 : 6,
+          maxTicksLimit: 8,
           font: { size: 11 },
         },
       },

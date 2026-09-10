@@ -8,7 +8,8 @@ interface MeasurementUpdateCardProps {
   hipIn: number | null;
   chestIn: number | null;
   canUpdate: boolean;
-  daysUntilNext: number;
+  /** สั้นๆ ของวันที่อัปเดตครั้งถัดไป เช่น "1 ก.ย." (null เมื่ออัปเดตได้แล้ว). */
+  nextUpdateLabel: string | null;
 }
 
 function Row({ label, value }: { label: string; value: string }) {
@@ -27,15 +28,16 @@ function Row({ label, value }: { label: string; value: string }) {
  * one or more inputs are left blank to keep the current value, and only the
  * filled fields are submitted. At least one must be filled.
  *
- * The button (and the API behind it) is locked until 14 days have passed since
- * the last recorded measurements; until then a countdown is shown instead.
+ * The button (and the API behind it) is locked until the next ICT month — the
+ * user may only record measurements once per calendar month; until then a
+ * "อัปเดตได้อีกครั้ง {วันที่ 1 เดือนหน้า}" label is shown instead.
  */
 export default function MeasurementUpdateCard({
   waistIn,
   hipIn,
   chestIn,
   canUpdate,
-  daysUntilNext,
+  nextUpdateLabel,
 }: MeasurementUpdateCardProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -123,7 +125,7 @@ export default function MeasurementUpdateCard({
         </button>
       ) : (
         <div className="flex h-12 items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 px-5 text-base font-semibold text-zinc-400">
-          อัปเดตได้อีกใน {daysUntilNext} วัน
+          อัปเดตได้อีกครั้ง {nextUpdateLabel}
         </div>
       )}
 

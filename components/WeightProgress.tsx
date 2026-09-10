@@ -7,22 +7,24 @@ interface WeightProgressProps {
   currentWeightKg: number | null;
   targetWeightKg: number | null;
   canUpdate: boolean;
-  daysUntilNext: number;
+  /** สั้นๆ ของวันที่อัปเดตครั้งถัดไป เช่น "1 ก.ย." (null เมื่ออัปเดตได้แล้ว). */
+  nextUpdateLabel: string | null;
 }
 
 /**
  * ส่วนแสดงผล "การจัดการน้ำหนัก" ที่ฝังอยู่ในข้อมูลส่วนตัว:
  * - ช่อง "อีก X กก. จะถึงเป้าหมาย"
- * - ปุ่ม "อัปเดตน้ำหนัก" หรือ countdown "อัปเดตได้อีกใน X วัน"
+ * - ปุ่ม "อัปเดตน้ำหนัก" หรือป้าย "อัปเดตได้อีกครั้ง {วันที่ 1 เดือนหน้า}"
  * - modal รับน้ำหนักใหม่ (POST /api/v1/weight-logs)
  *
- * ใช้ปุ่ม/API แบบเดียวกับเดิม: ระบบล็อก 7 วัน ตาม record ล่าสุดใน weight_logs.
+ * ใช้ปุ่ม/API แบบเดียวกับเดิม: ระบบล็อกเดือนละ 1 ครั้ง (ICT calendar month)
+ * ตาม record ล่าสุดใน weight_logs.
  */
 export default function WeightProgress({
   currentWeightKg,
   targetWeightKg,
   canUpdate,
-  daysUntilNext,
+  nextUpdateLabel,
 }: WeightProgressProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -97,7 +99,7 @@ export default function WeightProgress({
         </button>
       ) : (
         <div className="flex h-12 items-center justify-center rounded-full border border-zinc-200 bg-zinc-50 px-5 text-base font-semibold text-zinc-400">
-          อัปเดตได้อีกใน {daysUntilNext} วัน
+          อัปเดตได้อีกครั้ง {nextUpdateLabel}
         </div>
       )}
 

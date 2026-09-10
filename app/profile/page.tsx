@@ -12,11 +12,11 @@ import {
 } from "@/lib/profile";
 import {
   canUpdateWeight,
-  daysUntilNextUpdate,
+  nextMonthlyUpdateLabel,
 } from "@/lib/weight-log";
 import {
   canUpdateMeasurement,
-  daysUntilNextMeasurementUpdate,
+  nextMonthlyUpdateLabel as nextMonthlyMeasurementUpdateLabel,
 } from "@/lib/measurement-log";
 import LogoutButton from "@/components/LogoutButton";
 import EggIconLink from "@/components/EggIconLink";
@@ -109,8 +109,9 @@ export default async function ProfilePage() {
   const targetWeightKg =
     profile.target_weight != null ? Number(profile.target_weight) : null;
 
-  // Latest weight entry — drives the 7-day "อัปเดตน้ำหนัก" lock AND is the
-  // single source of "น้ำหนักปัจจุบัน" (weight_logs; profiles.weight is gone).
+  // Latest weight entry — drives the once-per-month "อัปเดตน้ำหนัก" lock AND
+  // is the single source of "น้ำหนักปัจจุบัน" (weight_logs; profiles.weight is
+  // gone).
   const { data: lastLog } = await supabase
     .from("weight_logs")
     .select("recorded_on, weight_kg")
@@ -124,9 +125,12 @@ export default async function ProfilePage() {
     lastLog?.weight_kg != null ? Number(lastLog.weight_kg) : null;
   const nowMs = new Date().getTime();
   const canUpdateWeightNow = canUpdateWeight(nowMs, lastRecordedDate);
-  const daysUntilNext = daysUntilNextUpdate(nowMs, lastRecordedDate);
+  const nextWeightUpdateLabel = nextMonthlyUpdateLabel(
+    nowMs,
+    lastRecordedDate
+  );
 
-  // Latest measurement entry — drives the 14-day "อัปเดตสัดส่วน" lock.
+  // Latest measurement entry — drives the once-per-month "อัปเดตสัดส่วน" lock.
   const { data: lastMeasurementLog } = await supabase
     .from("measurement_logs")
     .select("recorded_on")
@@ -140,7 +144,7 @@ export default async function ProfilePage() {
     nowMs,
     lastMeasurementDate
   );
-  const daysUntilNextMeasurement = daysUntilNextMeasurementUpdate(
+  const nextMeasurementUpdateLabel = nextMonthlyMeasurementUpdateLabel(
     nowMs,
     lastMeasurementDate
   );
@@ -220,7 +224,7 @@ export default async function ProfilePage() {
             currentWeightKg={currentWeightKg}
             targetWeightKg={targetWeightKg}
             canUpdate={canUpdateWeightNow}
-            daysUntilNext={daysUntilNext}
+            nextUpdateLabel={nextWeightUpdateLabel}
           />
         </Card>
 
@@ -231,7 +235,7 @@ export default async function ProfilePage() {
             profile.chest_in != null ? Number(profile.chest_in) : null
           }
           canUpdate={canUpdateMeasurementNow}
-          daysUntilNext={daysUntilNextMeasurement}
+          nextUpdateLabel={nextMeasurementUpdateLabel}
         />
 
         <div className="flex flex-col gap-3">

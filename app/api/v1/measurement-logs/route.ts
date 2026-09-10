@@ -18,10 +18,11 @@ export const runtime = "nodejs";
  * The user may update only some measurements (e.g. just the waist). Any field
  * not sent falls back to the current value from profiles, so a partial update
  * still results in a complete, valid row. Each successful save creates a NEW
- * row (keeping full history) and resets the 14-day update lock.
+ * row (keeping full history) and syncs onto profiles.
  *
- * Guarded server-side by the 14-day rule: the user may only log new
- * measurements once at least 14 days have passed since their latest entry.
+ * Guarded server-side by the once-per-ICT-month rule: the user may only log
+ * new measurements when their latest entry falls in an earlier month (or when
+ * they have no history yet).
  */
 export async function POST(request: Request) {
   const auth = await requireAuth();
@@ -83,7 +84,7 @@ export async function POST(request: Request) {
     !canUpdateMeasurement(Date.now(), lastLog.recorded_on)
   ) {
     return apiError(
-      "ยังไม่ครบ 14 วันนับจากบันทึกสัดส่วนล่าสุด",
+      "บันทึกสัดส่วนเดือนนี้แล้ว อัปเดตได้อีกครั้งวันที่ 1 เดือนถัดไป",
       409,
       "MEASUREMENT_UPDATE_LOCKED"
     );

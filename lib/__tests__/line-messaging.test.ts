@@ -3,9 +3,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   LineMessagingError,
-  buildMeasurementReminderMessages,
+  buildMonthlyReminderMessages,
   buildPhaseEndMessages,
-  buildWeightReminderMessages,
   verifyLineSignature,
 } from "@/lib/line-messaging";
 
@@ -102,29 +101,23 @@ describe("buildPhaseEndMessages", () => {
     expect(message.text).toMatch(/^น{500} /);
   });
 
-  it("builds the weight update reminder with the app link", () => {
-    const [message] = buildWeightReminderMessages(LIFF_URL);
+  it("builds the monthly update reminder with the app link", () => {
+    const [message] = buildMonthlyReminderMessages(LIFF_URL);
     expect(message.type).toBe("text");
     expect(message.text).toContain("อัปเดตน้ำหนัก");
-    expect(message.text).toContain(LIFF_URL);
-  });
-
-  it("prepends userName when provided for weight reminder", () => {
-    const [message] = buildWeightReminderMessages(LIFF_URL, "นนท์");
-    expect(message.text).toMatch(/^นนท์ /);
-    expect(message.text).toContain("อัปเดตน้ำหนัก");
-  });
-
-  it("builds the measurement update reminder with the app link", () => {
-    const [message] = buildMeasurementReminderMessages(LIFF_URL);
-    expect(message.type).toBe("text");
     expect(message.text).toContain("อัปเดตสัดส่วน");
     expect(message.text).toContain(LIFF_URL);
   });
 
-  it("prepends userName when provided for measurement reminder", () => {
-    const [message] = buildMeasurementReminderMessages(LIFF_URL, "นนท์");
+  it("prepends userName when provided for the monthly reminder", () => {
+    const [message] = buildMonthlyReminderMessages(LIFF_URL, "นนท์");
     expect(message.text).toMatch(/^นนท์ /);
+    expect(message.text).toContain("อัปเดตน้ำหนัก");
     expect(message.text).toContain("อัปเดตสัดส่วน");
+  });
+
+  it("omits userName prefix for the monthly reminder when null", () => {
+    const [message] = buildMonthlyReminderMessages(LIFF_URL, null);
+    expect(message.text.startsWith("📅")).toBe(true);
   });
 });

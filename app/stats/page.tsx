@@ -3,37 +3,20 @@ import Link from "next/link";
 
 import { getSessionUserId } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
-import {
-  getICTCurrentQuarter,
-  getQuarterWindow,
-  getYearToDateWindow,
-} from "@/lib/weight-log";
-import { toICTDateKey, toICTMonthKey } from "@/lib/timezone";
+import { getYearToDateWindow } from "@/lib/weight-log";
+import { getICTYear, toICTDateKey, toICTMonthKey } from "@/lib/timezone";
 import EggIconLink from "@/components/EggIconLink";
 import CalendarTab from "@/components/CalendarTab";
-import QuarterSelect, { QUARTER_OPTIONS } from "@/components/QuarterSelect";
 import WeightChart, { type WeightPoint } from "@/components/WeightChart";
 
 export const dynamic = "force-dynamic";
 
-/** Chart ranges exposed as URL tabs: ปฏิทิน / 3 เดือน / 1 ปี. */
-type Range = "calendar" | "3m" | "1y";
+/** Chart ranges exposed as URL tabs: ปฏิทิน / 1 ปี. */
+type Range = "calendar" | "1y";
 
-/** Whitelist-only parse: anything unknown falls back to the calendar view. */
+/** Whitelist-only parse: anything unknown falls back to the 1-year chart. */
 function parseRange(value: string | string[] | undefined): Range {
-  if (value === "calendar") {
-    return "calendar";
-  }
-  return value === "1y" ? "1y" : "3m";
-}
-
-/** Whitelist-only parse: only 1..4 are valid, otherwise use the fallback. */
-function parseQuarter(
-  value: string | string[] | undefined,
-  fallback: number
-): number {
-  const num = typeof value === "string" ? Number(value) : NaN;
-  return Number.isInteger(num) && num >= 1 && num <= 4 ? num : fallback;
+  return value === "calendar" ? "calendar" : "1y";
 }
 
 /** Normalizes a weight_logs row to the shape the chart expects. */
@@ -60,17 +43,13 @@ export default async function StatsPage({
 }: {
   searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
 }) {
-  const { range: rangeParam, q: qParam } = await searchParams;
+  const { range: rangeParam } = await searchParams;
   const range = parseRange(rangeParam);
 
   const now = new Date();
   const todayKey = toICTDateKey(now);
   const initialMonthKey = toICTMonthKey(now);
-  const { year: currentYear, quarter: currentQuarter } =
-    getICTCurrentQuarter(now.getTime());
-  const quarter =
-    range === "3m" ? parseQuarter(qParam, currentQuarter) : currentQuarter;
-  const quarterLabel = QUARTER_OPTIONS[quarter - 1]?.label ?? "";
+  const currentYear = getICTYear(now);
 
   const userId = await getSessionUserId();
   if (!userId) {
@@ -84,10 +63,7 @@ export default async function StatsPage({
   if (range === "calendar") {
     subtitle = "ประวัติการทำ IF ของคุณ";
   } else {
-    const { fromKey, toKey } =
-      range === "1y"
-        ? getYearToDateWindow(now.getTime())
-        : getQuarterWindow(currentYear, quarter);
+    const { fromKey, toKey } = getYearToDateWindow(now.getTime());
 
     const supabase = createServiceClient();
     const { data: rows, error: weightError } = await supabase
@@ -101,18 +77,10 @@ export default async function StatsPage({
     logs = (rows ?? []).map(toWeightPoint);
     error = weightError;
 
-    subtitle =
-      range === "1y"
-        ? `กราฟน้ำหนักรายปี (ปี ${currentYear})`
-        : `กราฟน้ำหนัก ${quarterLabel}`;
+    subtitle = `กราฟน้ำหนักรายปี (ปี ${currentYear})`;
   }
 
-  const periodLabel =
-    range === "3m" || range === "1y"
-      ? range === "1y"
-        ? `ปี ${currentYear}`
-        : quarterLabel
-      : "";
+  const periodLabel = range === "1y" ? `ปี ${currentYear}` : "";
 
   return (
     <main className="flex flex-1 flex-col px-6 pt-6 pb-10">
@@ -145,17 +113,6 @@ export default async function StatsPage({
             ปฏิทิน
           </Link>
           <Link
-            href="/stats?range=3m"
-            aria-current={range === "3m" ? "true" : undefined}
-            className={`flex-1 border-b-[3px] px-3 pt-3 pb-2.5 text-center text-base font-semibold transition-colors ${
-              range === "3m"
-                ? "border-[#18A659] text-[#18A659]"
-                : "border-transparent text-zinc-400 hover:bg-zinc-50 hover:text-zinc-600"
-            }`}
-          >
-            3 เดือน
-          </Link>
-          <Link
             href="/stats?range=1y"
             aria-current={range === "1y" ? "true" : undefined}
             className={`flex-1 border-b-[3px] px-3 pt-3 pb-2.5 text-center text-base font-semibold transition-colors ${
@@ -183,7 +140,6 @@ export default async function StatsPage({
                   </p>
                 )}
               </div>
-              {range === "3m" && <QuarterSelect quarter={quarter} />}
             </div>
 
             {error ? (
@@ -191,11 +147,7 @@ export default async function StatsPage({
                 ไม่สามารถโหลดข้อมูลน้ำหนักได้ โปรดลองใหม่ภายหลัง
               </p>
             ) : (
-              <WeightChart
-                logs={logs}
-                range={range}
-                periodLabel={periodLabel}
-              />
+              <WeightChart logs={logs} periodLabel={periodLabel} />
             )}
           </section>
         )}

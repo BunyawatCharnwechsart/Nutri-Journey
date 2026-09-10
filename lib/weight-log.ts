@@ -1,18 +1,31 @@
-import { toICT } from "@/lib/timezone";
+import { toICT, toICTMonthKey } from "@/lib/timezone";
 
 // ============================================================================
 // Pure weight-update gate logic.
 //
-// The user may only record a new weight once every 7 days, counted by ICT
-// calendar day since their LAST recorded entry (weight_logs.recorded_on).
-// A brand-new user with no history is always allowed to start.
+// The user may record a new weight ONCE per ICT calendar month — counted by
+// the month of their LAST recorded entry (weight_logs.recorded_on). The gate
+// is date-flexible (any day of the month), which matches the monthly LINE
+// reminder on the 1st. A brand-new user with no history is always allowed.
 //
 // All helpers are pure (no I/O) so they are easy to unit test; the cron and
 // the API routes feed DB values in here and act on the boolean result.
 // ============================================================================
 
-/** How many calendar days must pass before the user may update their weight. */
-export const WEIGHT_UPDATE_INTERVAL_DAYS = 7;
+const THAI_MONTHS_SHORT = [
+  "ม.ค.",
+  "ก.พ.",
+  "มี.ค.",
+  "เม.ย.",
+  "พ.ค.",
+  "มิ.ย.",
+  "ก.ค.",
+  "ส.ค.",
+  "ก.ย.",
+  "ต.ค.",
+  "พ.ย.",
+  "ธ.ค.",
+] as const;
 
 /** Returns the current day as "yyyy-MM-dd" in Asia/Bangkok (ICT). */
 export function getICTDateKey(ms: number): string {
@@ -50,22 +63,28 @@ function parseDateKey(key: string): Date | null {
   return Number.isNaN(date.getTime()) ? null : date;
 }
 
+/** "yyyy-MM" of the ICT month that follows `monthKey`. */
+function nextMonthKey(monthKey: string): string {
+  const year = Number(monthKey.slice(0, 4));
+  const month = Number(monthKey.slice(5, 7));
+  return toICTMonthKey(new Date(Date.UTC(year, month, 1))); // index = month → next month
+}
+
 /**
  * Whether the user may record a new weight right now.
  *
  * Allowed when there is no recorded entry yet (`null` → brand-new user), or
- * when at least `days` calendar days have passed since their last entry.
+ * when their last entry falls in an earlier ICT month than the current one
+ * (at most one entry per ICT calendar month).
  */
 export function canUpdateWeight(
   nowMs: number,
-  lastRecordedDate: string | null,
-  days: number = WEIGHT_UPDATE_INTERVAL_DAYS
+  lastRecordedDate: string | null
 ): boolean {
   if (!lastRecordedDate) {
     return true;
   }
-  const elapsed = diffCalendarDays(lastRecordedDate, getICTDateKey(nowMs));
-  return elapsed >= days;
+  return lastRecordedDate.slice(0, 7) !== toICTMonthKey(new Date(nowMs));
 }
 
 /**
@@ -73,14 +92,31 @@ export function canUpdateWeight(
  */
 export function daysUntilNextUpdate(
   nowMs: number,
-  lastRecordedDate: string | null,
-  days: number = WEIGHT_UPDATE_INTERVAL_DAYS
+  lastRecordedDate: string | null
 ): number {
-  if (!lastRecordedDate) {
+  if (!lastRecordedDate || canUpdateWeight(nowMs, lastRecordedDate)) {
     return 0;
   }
-  const elapsed = diffCalendarDays(lastRecordedDate, getICTDateKey(nowMs));
-  return Math.max(0, days - elapsed);
+  const nextFirstKey = nextMonthKey(toICTMonthKey(new Date(nowMs))) + "-01";
+  const nextFirstMs = parseDateKey(nextFirstKey)?.getTime() ?? 0;
+  return Math.max(1, Math.ceil((nextFirstMs - nowMs) / 86_400_000));
+}
+
+/**
+ * Short label for the NEXT allowed update day, e.g. "1 ก.ย." — used by the
+ * locked state of the "อัปเดตน้ำหนัก" button. Returns null when the user may
+ * update right now (the button should show instead of the label).
+ */
+export function nextMonthlyUpdateLabel(
+  nowMs: number,
+  lastRecordedDate: string | null
+): string | null {
+  if (!lastRecordedDate || canUpdateWeight(nowMs, lastRecordedDate)) {
+    return null;
+  }
+  const nextFirstKey = nextMonthKey(toICTMonthKey(new Date(nowMs))) + "-01";
+  const month = Number(nextFirstKey.slice(5, 7));
+  return `1 ${THAI_MONTHS_SHORT[month - 1] ?? ""}`.trim();
 }
 
 /**
@@ -127,26 +163,6 @@ export function getRecentWeightLogWindow(
 }
 
 /**
- * Inclusive ICT date-key window covering one calendar quarter of `year`
- * (quarter 1-based: 1 = ม.ค.-มี.ค., 4 = ต.ค.-ธ.ค.). Used by the stats
- * "3 เดือน" view, which lets the user pick a quarter instead of a rolling
- * window.
- */
-export function getQuarterWindow(
-  year: number,
-  quarter: number
-): { fromKey: string; toKey: string } {
-  const startMonth = (quarter - 1) * 3 + 1;
-  const endMonth = startMonth + 2;
-
-  const fromKey = getICTDateKey(Date.UTC(year, startMonth - 1, 1));
-  const lastDay = new Date(Date.UTC(year, endMonth, 0)).getUTCDate();
-  const toKey = getICTDateKey(Date.UTC(year, endMonth - 1, lastDay));
-
-  return { fromKey, toKey };
-}
-
-/**
  * Inclusive ICT date-key window covering the current calendar year from
  * January 1 up to today. Used by the stats "1 ปี" view, which shows the
  * year-to-date data (ม.ค.–ปัจจุบัน) instead of a rolling 12-month window.
@@ -158,14 +174,4 @@ export function getYearToDateWindow(
   const year = Number(toKey.slice(0, 4));
   const fromKey = getICTDateKey(Date.UTC(year, 0, 1));
   return { fromKey, toKey };
-}
-
-/** Current calendar quarter (1..4) and year in ICT — default for the tab. */
-export function getICTCurrentQuarter(
-  nowMs: number
-): { year: number; quarter: number } {
-  const key = getICTDateKey(nowMs);
-  const year = Number(key.slice(0, 4));
-  const month = Number(key.slice(5, 7));
-  return { year, quarter: Math.ceil(month / 3) };
 }

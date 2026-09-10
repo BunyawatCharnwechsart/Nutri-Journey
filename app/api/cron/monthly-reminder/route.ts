@@ -2,33 +2,33 @@ import { apiError, apiSuccess } from "@/lib/response";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
   LineMessagingError,
-  buildWeightReminderMessages,
+  buildMonthlyReminderMessages,
   getLineLiffUrl,
   sendPushMessage,
 } from "@/lib/line-messaging";
-import { dueWeightReminder } from "@/lib/weight-reminder";
+import { dueMonthlyReminder } from "@/lib/monthly-reminder";
 import { checkFriendship } from "@/lib/line-friendship";
 
 export const runtime = "nodejs";
 
 // ============================================================================
-// GET|POST /api/cron/weight-reminder (Authorization: Bearer <CRON_SECRET>)
+// GET|POST /api/cron/monthly-reminder (Authorization: Bearer <CRON_SECRET>)
 //
-// Called periodically (supabase pg_cron → pg_net HTTP POST, see
-// supabase/scheduled_weight_reminder.sql). For every user with LINE
-// notifications enabled it checks whether they are due to record a new weight
-// (7 days since the last weight_logs entry) and — if they have not been
-// reminded recently — pushes a LINE message to their OA.
+// Called daily (Supabase pg_cron → pg_net HTTP POST, see
+// supabase/scheduled_monthly_reminder.sql). For every user with LINE
+// notifications enabled it checks whether the current ICT month has rolled
+// over since the last successful push (`users.last_monthly_reminder_at`) and —
+// if it has — pushes a single LINE message reminding them to update both
+// weight and measurements.
 //
-// Reminder cadence (`lib/weight-reminder.ts`):
-//   * first reminder fires once 7 calendar days have passed since the last
-//     recorded weight.
-//   * if the user still has not logged, it repeats every 7 days (measured
-//     from the last successful push).
-//   * logging a new weight resets the clock.
+// This replaces the old weekly weight (7 days) / biweekly measurement
+// (14 days) reminders. Each user receives at most ONE message per ICT month,
+// on the day the month rolls over (the 1st). Running daily (instead of only
+// on the 1st) makes the check self-healing: if the 1st is missed the next
+// day's run catches up, and the month-key gate prevents duplicates.
 //
-// Guards (same as the IF-notifications cron):
-//   * users.last_weight_reminder_at updates only AFTER a successful push —
+// Guards (same pattern as the previous reminder crons):
+//   * users.last_monthly_reminder_at updates only AFTER a successful push —
 //     failures retry on the next run.
 //   * users without oa_user_id or with notifications disabled are skipped.
 //   * unreachable users (unfollowed/blocked) are skipped and friendship is
@@ -42,7 +42,7 @@ interface CronUser {
   // Not null guarantee: the query filters `.not("oa_user_id", "is", null)`.
   oa_user_id: string;
   line_unreachable: boolean | null;
-  last_weight_reminder_at: string | null;
+  last_monthly_reminder_at: string | null;
   display_name: string | null;
 }
 
@@ -76,36 +76,15 @@ async function handleCron(request: Request) {
   const { data: users, error } = await supabase
     .from("users")
     .select(
-      "user_id, line_user_id, oa_user_id, line_unreachable, last_weight_reminder_at, display_name"
+      "user_id, line_user_id, oa_user_id, line_unreachable, last_monthly_reminder_at, display_name"
     )
     .eq("line_notifications_enabled", true)
     .eq("line_unreachable", false)
     .not("oa_user_id", "is", null);
 
   if (error) {
-    console.error("[Weight reminder] query failed", error);
+    console.error("[Monthly reminder] query failed", error);
     return apiError("ไม่สามารถดึงข้อมูลผู้ใช้ได้", 500, "INTERNAL_ERROR");
-  }
-
-  // Latest recorded_on per user, one query (ordered so the first row per user
-  // is their most recent entry). Skip when there are no eligible users.
-  const { data: logs } =
-    users && users.length > 0
-      ? await supabase
-          .from("weight_logs")
-          .select("user_id, recorded_on")
-          .in(
-            "user_id",
-            users.map((user) => user.user_id)
-          )
-          .order("recorded_on", { ascending: false })
-      : { data: null };
-
-  const lastRecordedByUser = new Map<string, string | null>();
-  for (const log of logs ?? []) {
-    if (!lastRecordedByUser.has(log.user_id)) {
-      lastRecordedByUser.set(log.user_id, log.recorded_on);
-    }
   }
 
   let sent = 0;
@@ -113,12 +92,9 @@ async function handleCron(request: Request) {
   const friendshipCheckFailures = new Set<string>();
 
   for (const user of (users ?? []) as CronUser[]) {
-    const lastRecordedDate = lastRecordedByUser.get(user.user_id) ?? null;
-
     if (
-      !dueWeightReminder(nowMs, {
-        lastRecordedDate,
-        lastReminderAt: user.last_weight_reminder_at,
+      !dueMonthlyReminder(nowMs, {
+        lastReminderAt: user.last_monthly_reminder_at,
       })
     ) {
       continue;
@@ -139,7 +115,7 @@ async function handleCron(request: Request) {
         } else {
           // Server-side failure (e.g. 401/403) — try again next run.
           console.warn(
-            `[Weight reminder] friendship check failed for ${user.oa_user_id}`
+            `[Monthly reminder] friendship check failed for ${user.oa_user_id}`
           );
           friendshipCheckFailures.add(user.oa_user_id);
         }
@@ -157,16 +133,16 @@ async function handleCron(request: Request) {
     try {
       await sendPushMessage(
         user.oa_user_id,
-        buildWeightReminderMessages(liffUrl, user.display_name)
+        buildMonthlyReminderMessages(liffUrl, user.display_name)
       );
 
       const { error: markError } = await supabase
         .from("users")
-        .update({ last_weight_reminder_at: new Date().toISOString() })
+        .update({ last_monthly_reminder_at: new Date().toISOString() })
         .eq("user_id", user.user_id);
 
       if (markError) {
-        console.error("[Weight reminder] mark failed", markError);
+        console.error("[Monthly reminder] mark failed", markError);
         continue;
       }
 
@@ -174,7 +150,7 @@ async function handleCron(request: Request) {
     } catch (pushError) {
       // Do not mark as reminded → the next run retries.
       console.error(
-        `[Weight reminder] push to ${user.oa_user_id} failed:`,
+        `[Monthly reminder] push to ${user.oa_user_id} failed:`,
         pushError instanceof LineMessagingError
           ? pushError.message
           : pushError
