@@ -18,7 +18,8 @@ export const runtime = "nodejs";
  * The user may update only some measurements (e.g. just the waist). Any field
  * not sent falls back to the current value from profiles, so a partial update
  * still results in a complete, valid row. Each successful save creates a NEW
- * row (keeping full history) and syncs onto profiles.
+ * row (keeping full history) and syncs the latest values onto profiles
+ * (waist_in, hip_in, chest_in) so profile pages always reflect the newest log.
  *
  * Guarded server-side by the once-per-ICT-month rule: the user may only log
  * new measurements when their latest entry falls in an earlier month (or when
@@ -45,6 +46,28 @@ export async function POST(request: Request) {
 
   const supabase = createServiceClient();
 
+  // Guard first (fail fast): the once-per-ICT-month gate is checked before any
+  // profile reads so a locked user always gets a clean 409, never a confusing
+  // 400 from the merge step below.
+  const { data: lastLog } = await supabase
+    .from("measurement_logs")
+    .select("recorded_on")
+    .eq("user_id", auth.userId)
+    .order("recorded_on", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (
+    lastLog &&
+    !canUpdateMeasurement(Date.now(), lastLog.recorded_on)
+  ) {
+    return apiError(
+      "บันทึกสัดส่วนเดือนนี้แล้ว อัปเดตได้อีกครั้งวันที่ 1 เดือนถัดไป",
+      409,
+      "MEASUREMENT_UPDATE_LOCKED"
+    );
+  }
+
   // Load current values so a partial update can fall back to untouched fields.
   const { data: current } = await supabase
     .from("profiles")
@@ -68,25 +91,6 @@ export async function POST(request: Request) {
       "ไม่พบข้อมูลสัดส่วนเดิม กรุณากรอกให้ครบ",
       400,
       "VALIDATION_ERROR"
-    );
-  }
-
-  const { data: lastLog } = await supabase
-    .from("measurement_logs")
-    .select("recorded_on")
-    .eq("user_id", auth.userId)
-    .order("recorded_on", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  if (
-    lastLog &&
-    !canUpdateMeasurement(Date.now(), lastLog.recorded_on)
-  ) {
-    return apiError(
-      "บันทึกสัดส่วนเดือนนี้แล้ว อัปเดตได้อีกครั้งวันที่ 1 เดือนถัดไป",
-      409,
-      "MEASUREMENT_UPDATE_LOCKED"
     );
   }
 
@@ -123,7 +127,6 @@ export async function POST(request: Request) {
       waist_in: roundedWaist,
       hip_in: roundedHip,
       chest_in: roundedChest,
-      last_measurement_update_at: now.toISOString(),
     })
     .eq("user_id", auth.userId)
     .select("user_id")
