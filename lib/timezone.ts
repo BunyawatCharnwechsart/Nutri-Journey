@@ -43,6 +43,26 @@ export interface ICTMonthBounds {
   endIso: string;
 }
 
+export interface ICTDayBounds {
+  /** 00:00 ของวัน ICT เป็น UTC timestamp. */
+  startIso: string;
+  /** 00:00 ของวัน ICT ถัดไป เป็น UTC timestamp. */
+  endIso: string;
+}
+
+/**
+ * ขอบเขต UTC ของวันตามผนัง (wall-clock) แบบไทยสำหรับ timestamp.
+ * เช่น 2026-09-10 ICT → start "2026-09-09T17:00:00Z", end "2026-09-10T17:00:00Z".
+ */
+export function getICTDayBounds(date: Date): ICTDayBounds {
+  const todayKey = toICTDateKey(date);
+  const start = new Date(`${todayKey}T00:00:00+07:00`);
+  return {
+    startIso: start.toISOString(),
+    endIso: new Date(start.getTime() + 86_400_000).toISOString(),
+  };
+}
+
 /**
  * ขอบเขต UTC สำหรับ query ของเดือนที่เลือก (month เริ่มนับ 1 แบบปกติ).
  * startIso = 00:00 วันที่ 1 ของเดือนแบบไทย; endIso = 00:00 วันที่ 1 เดือนถัดไป.
