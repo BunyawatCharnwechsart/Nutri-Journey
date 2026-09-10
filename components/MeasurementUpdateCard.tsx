@@ -41,6 +41,7 @@ export default function MeasurementUpdateCard({
 }: MeasurementUpdateCardProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [confirmKeep, setConfirmKeep] = useState(false);
   const [waist, setWaist] = useState("");
   const [hip, setHip] = useState("");
   const [chest, setChest] = useState("");
@@ -57,33 +58,10 @@ export default function MeasurementUpdateCard({
     setOpen(true);
   }
 
-  async function handleSave() {
-    // Only parse fields the user actually filled in.
-    const waistVal = waist === "" ? undefined : Number(waist);
-    const hipVal = hip === "" ? undefined : Number(hip);
-    const chestVal = chest === "" ? undefined : Number(chest);
-
-    const valid = (v: number | undefined) =>
-      v === undefined || (Number.isFinite(v) && v >= 12 && v <= 98);
-
-    if (!valid(waistVal) || !valid(hipVal) || !valid(chestVal)) {
-      setError("กรุณากรอกสัดส่วนระหว่าง 12-98 นิ้ว");
-      return;
-    }
-
-    if (waistVal === undefined && hipVal === undefined && chestVal === undefined) {
-      setError("กรุณากรอกสัดส่วนอย่างน้อย 1 ค่า");
-      return;
-    }
-
+  async function submitSaved(body: Record<string, number>) {
     setSaving(true);
     setError(null);
     try {
-      const body: Record<string, number> = {};
-      if (waistVal !== undefined) body.waistIn = waistVal;
-      if (hipVal !== undefined) body.hipIn = hipVal;
-      if (chestVal !== undefined) body.chestIn = chestVal;
-
       const res = await fetch("/api/v1/measurement-logs", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -98,6 +76,7 @@ export default function MeasurementUpdateCard({
       }
 
       setOpen(false);
+      setConfirmKeep(false);
       // Re-fetch server props so current measurements + lock state update.
       router.refresh();
     } catch (e) {
@@ -105,6 +84,42 @@ export default function MeasurementUpdateCard({
     } finally {
       setSaving(false);
     }
+  }
+
+  async function handleSave() {
+    // Only parse fields the user actually filled in.
+    const waistVal = waist === "" ? undefined : Number(waist);
+    const hipVal = hip === "" ? undefined : Number(hip);
+    const chestVal = chest === "" ? undefined : Number(chest);
+
+    const valid = (v: number | undefined) =>
+      v === undefined || (Number.isFinite(v) && v >= 12 && v <= 98);
+
+    if (!valid(waistVal) || !valid(hipVal) || !valid(chestVal)) {
+      setError("กรุณากรอกสัดส่วนระหว่าง 12-98 นิ้ว");
+      return;
+    }
+
+    const allEmpty =
+      waistVal === undefined && hipVal === undefined && chestVal === undefined;
+
+    if (allEmpty) {
+      // No field was touched → ask via a confirm modal before keeping the
+      // current values as this month's check-in row.
+      if (waistIn == null || hipIn == null || chestIn == null) {
+        setError("ไม่พบค่าสัดส่วนเดิม กรุณากรอกค่าใหม่");
+        return;
+      }
+      setConfirmKeep(true);
+      return;
+    }
+
+    const body: Record<string, number> = {};
+    if (waistVal !== undefined) body.waistIn = waistVal;
+    if (hipVal !== undefined) body.hipIn = hipVal;
+    if (chestVal !== undefined) body.chestIn = chestVal;
+
+    await submitSaved(body);
   }
 
   return (
@@ -142,7 +157,8 @@ export default function MeasurementUpdateCard({
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
             <h3 className="text-lg font-bold text-zinc-900">อัปเดตสัดส่วน</h3>
             <p className="mt-1 text-sm text-zinc-500">
-              กรอกเฉพาะช่องที่ต้องการแก้ ช่องที่เว้นไว้คงค่าเดิม
+              กรอกเฉพาะช่องที่ต้องการแก้ ช่องที่เว้นไว้คงค่าเดิม — เว้นทั้งหมดแล้ว
+              กดบันทึก = บันทึกค่าเดิมเป็นบันทึกเดือนนี้
             </p>
 
             <div className="mt-4 flex flex-col gap-4">
@@ -237,6 +253,73 @@ export default function MeasurementUpdateCard({
                 className="flex h-14 flex-1 items-center justify-center rounded-full bg-[#18A659] px-5 text-base font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:cursor-not-allowed disabled:opacity-60"
               >
                 {saving ? "กำลังบันทึก..." : "บันทึก"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {confirmKeep && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+          role="dialog"
+          aria-modal="true"
+          aria-label="ยืนยันบันทึกสัดส่วนเดิม"
+          onClick={(e) => {
+            if (e.target === e.currentTarget) setConfirmKeep(false);
+          }}
+        >
+          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl">
+            <h3 className="text-lg font-bold text-zinc-900">
+              บันทึกค่าเดิม?
+            </h3>
+            <p className="mt-1 text-sm text-zinc-500">
+              คุณไม่ได้แก้ไขสัดส่วน — ระบบจะบันทึกค่าเดิมเป็นบันทึกเดือนนี้:
+            </p>
+            <ul className="mt-3 flex flex-col gap-2">
+              <li className="flex items-center justify-between rounded-xl bg-zinc-50 px-4 py-3 text-sm">
+                <span className="text-zinc-500">รอบเอว</span>
+                <span className="font-medium text-zinc-900">
+                  {waistIn != null ? `${waistIn} นิ้ว` : "—"}
+                </span>
+              </li>
+              <li className="flex items-center justify-between rounded-xl bg-zinc-50 px-4 py-3 text-sm">
+                <span className="text-zinc-500">รอบสะโพก</span>
+                <span className="font-medium text-zinc-900">
+                  {hipIn != null ? `${hipIn} นิ้ว` : "—"}
+                </span>
+              </li>
+              <li className="flex items-center justify-between rounded-xl bg-zinc-50 px-4 py-3 text-sm">
+                <span className="text-zinc-500">รอบอก</span>
+                <span className="font-medium text-zinc-900">
+                  {chestIn != null ? `${chestIn} นิ้ว` : "—"}
+                </span>
+              </li>
+            </ul>
+
+            <div className="mt-5 flex flex-col gap-3 sm:flex-row">
+              <button
+                type="button"
+                onClick={() => setConfirmKeep(false)}
+                disabled={saving}
+                className="flex h-14 flex-1 items-center justify-center rounded-full border border-zinc-300 text-base font-semibold text-zinc-700 transition-colors hover:bg-zinc-100"
+              >
+                แก้ไขใหม่
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setConfirmKeep(false);
+                  void submitSaved({
+                    waistIn: waistIn!,
+                    hipIn: hipIn!,
+                    chestIn: chestIn!,
+                  });
+                }}
+                disabled={saving}
+                className="flex h-14 flex-1 items-center justify-center rounded-full bg-[#18A659] px-5 text-base font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {saving ? "กำลังบันทึก..." : "บันทึกค่าเดิม"}
               </button>
             </div>
           </div>
