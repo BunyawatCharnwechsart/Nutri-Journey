@@ -43,7 +43,7 @@ function formatClock(milliseconds: number): string {
 /** Formats a timestamp as a Thai date + 24-hour time, e.g. "25/08/2026 14:30 น.". */
 function formatThaiTime(value: string | null | undefined): string {
   if (!value) {
-    return "—";
+    return "-";
   }
   const date = new Date(value);
   const day = String(date.getDate()).padStart(2, "0");
@@ -175,7 +175,7 @@ function PhaseCard({ label, startTime, remainingMs, accent, expired = false }: P
       </span>
       {expired ? (
         <span className="text-lg font-bold text-red-600">
-          หมดเวลาที่วางไว้แล้ว — กดสิ้นสุดเพื่อเริ่มอด
+          หมดเวลาที่วางไว้แล้ว - กดสิ้นสุดเพื่อเริ่มอด
         </span>
       ) : (
         <span className="text-lg font-bold tabular-nums" style={{ color: accent }}>
@@ -251,7 +251,7 @@ export default function IfTracker({
   const [patternModalOpen, setPatternModalOpen] = useState(false);
   const [pendingPattern, setPendingPattern] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
-  /** อารมณ์ที่เลือกก่อนกด "สิ้นสุดการกิน" — ส่งไปกับ POST /end. */
+  /** อารมณ์ที่เลือกก่อนกด "สิ้นสุดการกิน" - ส่งไปกับ POST /end. */
   const [selectedMood, setSelectedMood] = useState<MoodValue | null>(null);
   const startedRef = useRef(false);
 
@@ -515,7 +515,7 @@ export default function IfTracker({
     ? "กำลังโหลดสถานะ IF..."
     : view === "timer"
       ? mode === "fasting"
-        ? `กำลังอดอาหาร — ${activePattern?.label ?? "IF"}`
+        ? `กำลังอดอาหาร - ${activePattern?.label ?? "IF"}`
         : "กำลังกินอาหาร"
       : view === "success"
         ? "ทำ IF สำเร็จ!"

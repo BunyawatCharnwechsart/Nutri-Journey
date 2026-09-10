@@ -261,7 +261,15 @@ function ProgressGrid({
 }) {
   return (
     <div className="grid gap-4 sm:grid-cols-2">
-      {sets.map((set) => (
+      <NextMonthCard
+        canUpload={canUpload}
+        monthLabel={nextRecordableMonthLabel}
+        onUpload={onUpload}
+      />
+
+      {[...sets]
+        .sort((a, b) => b.month.localeCompare(a.month))
+        .map((set) => (
         <section
           key={set.month}
           className="flex h-full flex-col gap-3 rounded-2xl border border-zinc-200 bg-white p-4"
@@ -281,12 +289,6 @@ function ProgressGrid({
           <PhotoMonthStats set={set} />
         </section>
       ))}
-
-      <NextMonthCard
-        canUpload={canUpload}
-        monthLabel={nextRecordableMonthLabel}
-        onUpload={onUpload}
-      />
     </div>
   );
 }
@@ -409,12 +411,7 @@ function ComparePanel({
               <h3 className="text-base font-semibold text-zinc-900">{label}</h3>
               <div className="flex items-center justify-between gap-2 text-xs font-semibold text-zinc-500">
                 <span className="flex-1 text-center">{monthLabel(setA.month)}</span>
-                <span
-                  aria-hidden="true"
-                  className="w-14 text-center text-sm font-bold text-[#18A659]"
-                >
-                  vs
-                </span>
+                <span aria-hidden="true" className="w-14" />
                 <span className="flex-1 text-center">{monthLabel(setB.month)}</span>
               </div>
               <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
