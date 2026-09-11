@@ -8,7 +8,7 @@ import {
   levelFromPoints,
   type MissionCode,
 } from "@/lib/healthy-journey";
-import { getICTDayBounds } from "@/lib/timezone";
+import { getQuestDayBounds } from "@/lib/timezone";
 
 export interface AwardResult {
   awarded: boolean;
@@ -59,8 +59,9 @@ export async function awardMission(
     ? DAILY_MISSION_POINTS
     : Math.max(0, Number(mission.points) || 0);
 
-  // "Today" in the user-facing (ICT) wall clock, as UTC timestamps.
-  const { startIso: dayStartIso, endIso: dayEndIso } = getICTDayBounds(
+  // "ตอนนี้" เทียบรอบเควสประจำวัน (09:00 ICT → 09:00 ICT วันถัดไป), เป็น UTC
+  // timestamps สำหรับเปรียบเทียบ completed_at.
+  const { startIso: dayStartIso, endIso: dayEndIso } = getQuestDayBounds(
     new Date()
   );
 

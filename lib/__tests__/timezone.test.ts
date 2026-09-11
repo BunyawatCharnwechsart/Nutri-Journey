@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   getICTMonthBounds,
+  getQuestDayBounds,
   toICTDateKey,
   toICTMonthKey,
 } from "@/lib/timezone";
@@ -90,5 +91,45 @@ describe("getICTMonthBounds", () => {
     const bounds = getICTMonthBounds(2026, 9);
     const nextMonthBoundary = "2026-09-30T17:30:00.000Z"; // 00:30 น. 1 ต.ค. ไทย
     expect(nextMonthBoundary < bounds.endIso).toBe(false);
+  });
+});
+
+describe("getQuestDayBounds", () => {
+  it("starts the current quest cycle at the previous 09:00 ICT before 09:00", () => {
+    const beforeNine = new Date("2026-09-10T01:59:59.000Z"); // 08:59:59 ICT
+    expect(getQuestDayBounds(beforeNine)).toEqual({
+      startIso: "2026-09-09T02:00:00.000Z", // 09:00 ICT วันที่ 9
+      endIso: "2026-09-10T02:00:00.000Z", // 09:00 ICT วันที่ 10
+    });
+  });
+
+  it("starts the current quest cycle at 09:00 ICT of the same day at/after 09:00", () => {
+    const atNine = new Date("2026-09-10T02:00:00.000Z"); // 09:00 ICT วันที่ 10
+    expect(getQuestDayBounds(atNine).startIso).toBe("2026-09-10T02:00:00.000Z");
+
+    const afterNine = new Date("2026-09-10T10:00:00.000Z"); // 17:00 ICT วันที่ 10
+    expect(getQuestDayBounds(afterNine).startIso).toBe(
+      "2026-09-10T02:00:00.000Z"
+    );
+    expect(getQuestDayBounds(afterNine).endIso).toBe(
+      "2026-09-11T02:00:00.000Z"
+    );
+  });
+
+  it("still counts a completion at 07:00 ICT before 09:00 refresh", () => {
+    // completed_at 2026-09-10T00:00:00Z = 07:00 ICT วันที่ 10. มองตอน 08:00 ICT
+    // (ยังไม่ถึง 09:00 = รอบยังไม่รีเฟรช) → รอบปัจจุบันคือ [09:00 ICT วันที่ 9,
+    // 09:00 ICT วันที่ 10] → completion ที่ 07:00 ยังอยู่ในรอบนี้.
+    const bounds = getQuestDayBounds(new Date("2026-09-10T01:00:00.000Z")); // 08:00 ICT วันที่ 10
+    expect("2026-09-10T00:00:00.000Z" >= bounds.startIso).toBe(true);
+    expect("2026-09-10T00:00:00.000Z" < bounds.endIso).toBe(true);
+  });
+
+  it("crosses month boundaries correctly", () => {
+    // 2026-09-30 03:00Z = 10:00 ICT วันที่ 30 ก.ย. → รอบเริ่ม 02:00Z วันที่ 30
+    // (= 09:00 ICT วันที่ 30) และสิ้นสุด 02:00Z วันที่ 1 ต.ค.
+    const bounds = getQuestDayBounds(new Date("2026-09-30T03:00:00.000Z"));
+    expect(bounds.startIso).toBe("2026-09-30T02:00:00.000Z");
+    expect(bounds.endIso).toBe("2026-10-01T02:00:00.000Z");
   });
 });
