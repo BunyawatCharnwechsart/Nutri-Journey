@@ -4,6 +4,8 @@ import { requireAuth } from "@/lib/auth";
 import { apiError, apiSuccess } from "@/lib/response";
 import { editTimeSchema, isValidEditTime } from "@/lib/validation";
 
+export const runtime = "nodejs";
+
 export async function PATCH(request: NextRequest) {
   try {
     const auth = await requireAuth();

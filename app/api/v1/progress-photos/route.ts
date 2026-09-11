@@ -166,6 +166,19 @@ export async function POST(request: Request) {
 
   const supabase = createServiceClient();
 
+  // Defensive cleanup: a previous attempt may have died between reserving the
+  // month (empty placeholder rows) and completing the upload/rollback. Those
+  // `photo_path = ''` rows would pin a phantom "locked month" in the gallery.
+  // Wipe any of this user's orphaned placeholders before reserving again.
+  const { error: cleanError } = await supabase
+    .from("progress_photos")
+    .delete()
+    .eq("user_id", auth.userId)
+    .eq("photo_path", "");
+  if (cleanError) {
+    console.error("Failed to clean orphaned progress photo placeholders", cleanError);
+  }
+
   // ------------------------------------------------------------------
   // Atomic month-lock via a placeholder insert.
   //

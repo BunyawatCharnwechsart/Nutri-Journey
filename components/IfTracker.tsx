@@ -1,9 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
+import ConfirmCancelModal from "@/components/ConfirmCancelModal";
+import ConfirmEndModal from "@/components/ConfirmEndModal";
+import EditTimeModal from "@/components/EditTimeModal";
+import PatternPickerModal from "@/components/PatternPickerModal";
 import {
   formatMinutes,
   getEatingMinutes,
@@ -11,11 +15,10 @@ import {
   getIfPattern,
   getMoodLevel,
   IfSession,
-  IF_PATTERNS,
-  MOOD_LEVELS,
   type MoodValue,
 } from "@/lib/if";
 import { dayStatusForSession } from "@/lib/calendar";
+import { toICT } from "@/lib/timezone";
 
 type View = "select" | "timer" | "success";
 type Phase = "eating" | "fasting";
@@ -45,13 +48,9 @@ function formatThaiTime(value: string | null | undefined): string {
   if (!value) {
     return "-";
   }
-  const date = new Date(value);
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${day}/${month}/${year} ${hours}:${minutes} น.`;
+  const ict = toICT(new Date(value));
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(ict.getUTCDate())}/${pad(ict.getUTCMonth() + 1)}/${ict.getUTCFullYear()} ${pad(ict.getUTCHours())}:${pad(ict.getUTCMinutes())} น.`;
 }
 
 /**
@@ -182,51 +181,6 @@ function PhaseCard({ label, startTime, remainingMs, accent, expired = false }: P
           เหลือ {formatClock(remainingMs)}
         </span>
       )}
-    </div>
-  );
-}
-
-interface ModalProps {
-  ariaLabel: string;
-  onClose: () => void;
-  children: ReactNode;
-}
-
-/**
- * Bottom-sheet-style dialog: closes on Escape or backdrop click, focuses the
- * panel so keyboard users land inside it.
- */
-function Modal({ ariaLabel, onClose, children }: ModalProps) {
-  const dialogRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    dialogRef.current?.focus();
-
-    function onKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") {
-        onClose();
-      }
-    }
-    document.addEventListener("keydown", onKeyDown);
-    return () => document.removeEventListener("keydown", onKeyDown);
-  }, [onClose]);
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-6 sm:items-center"
-      onClick={onClose}
-    >
-      <div
-        ref={dialogRef}
-        role="dialog"
-        aria-modal="true"
-        aria-label={ariaLabel}
-        tabIndex={-1}
-        onClick={(event) => event.stopPropagation()}
-        className="flex w-full max-w-sm flex-col gap-5 rounded-2xl bg-white p-6 outline-none"
-      >
-        {children}
-      </div>
     </div>
   );
 }
@@ -762,222 +716,51 @@ export default function IfTracker({
       )}
 
       {patternModalOpen && (
-        <Modal ariaLabel="เลือกรูปแบบ IF" onClose={closePatternModal}>
-          <div>
-            <h2 className="text-lg font-bold text-zinc-900">
-              เลือกรูปแบบ IF
-            </h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              เลือกแล้วกดบันทึกเพื่อยืนยัน
-            </p>
-          </div>
-          <div className="flex flex-col gap-3">
-            {IF_PATTERNS.map((pattern) => {
-              const isSelected = pendingPattern === pattern.value;
-              return (
-                <button
-                  key={pattern.value}
-                  type="button"
-                  onClick={() => setPendingPattern(pattern.value)}
-                  aria-pressed={isSelected}
-                  className={`flex flex-col gap-1 rounded-xl bg-white px-4 py-3 text-left text-black ${
-                    isSelected
-                      ? "ring-2 ring-[#000000] ring-offset-2"
-                      : "border border-zinc-200 hover:bg-zinc-50"
-                  }`}
-                >
-                  <span className="text-lg font-bold">{pattern.label}</span>
-                  <span className="text-sm text-black">
-                    {pattern.description}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-          <button
-            type="button"
-            disabled={!pendingPattern || loading}
-            onClick={() => {
-              if (pendingPattern) {
-                setSelectedPattern(pendingPattern);
-              }
-              closePatternModal();
-            }}
-            className="rounded-xl px-6 py-3 text-sm font-medium text-white disabled:cursor-not-allowed disabled:opacity-50"
-            style={PRIMARY_GRADIENT}
-          >
-            บันทึกรูปแบบ IF
-          </button>
-        </Modal>
+        <PatternPickerModal
+          value={pendingPattern}
+          disabled={loading}
+          onChange={setPendingPattern}
+          onConfirm={() => {
+            if (pendingPattern) {
+              setSelectedPattern(pendingPattern);
+            }
+            closePatternModal();
+          }}
+          onClose={closePatternModal}
+        />
       )}
 
       {confirmEnd && session && (
-        <Modal ariaLabel="ยืนยันสิ้นสุดการกิน" onClose={closeConfirmEnd}>
-          <div>
-            <h2 className="text-lg font-bold text-zinc-900">
-              สิ้นสุดการกิน?
-            </h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              คุณได้กินอาหารมาแล้ว{" "}
-              {formatClock(eatingElapsedMs)}{" "}
-              ต้องการบันทึกและสิ้นสุดหรือไม่?
-            </p>
-          </div>
-          <div>
-            <h3 className="text-sm font-semibold text-zinc-900">
-              วันนี้รู้สึกอย่างไร?
-            </h3>
-            <p className="mt-1 text-xs text-zinc-500">
-              อารมณ์นี้จะถูกบันทึกไว้บนปฏิทิน (เลือกก่อนสิ้นสุด)
-            </p>
-            <div className="mt-3 grid grid-cols-5 gap-2">
-              {MOOD_LEVELS.map((mood) => {
-                const isSelected = selectedMood === mood.value;
-                return (
-                  <button
-                    key={mood.value}
-                    type="button"
-                    onClick={() => setSelectedMood(mood.value)}
-                    aria-pressed={isSelected}
-                    aria-label={mood.labelThai}
-                    className={`flex flex-col items-center gap-1.5 rounded-xl border px-1 py-2.5 transition-colors ${
-                      isSelected
-                        ? "border-[#18A659] bg-[#18A659]/10"
-                        : "border-zinc-200 bg-white hover:bg-zinc-50"
-                    }`}
-                  >
-                    <span
-                      aria-hidden="true"
-                      className="flex h-6 w-6 items-center justify-center overflow-hidden rounded-full"
-                    >
-                      <Image
-                        src={mood.icon}
-                        alt=""
-                        width={24}
-                        height={24}
-                        className="h-full w-full"
-                      />
-                    </span>
-                    <span
-                      className={`text-xs leading-tight ${
-                        isSelected
-                          ? "font-semibold text-[#18A659]"
-                          : "font-medium text-zinc-600"
-                      }`}
-                    >
-                      {mood.labelThai}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          {error && (
-            <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
-              {error}
-            </p>
-          )}
-          <div className="flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={endSession}
-              disabled={loading}
-              className="rounded-full bg-[#18A659] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:opacity-50"
-            >
-              {loading ? "กำลังบันทึก..." : "สิ้นสุดการกิน"}
-            </button>
-            <button
-              type="button"
-              onClick={closeConfirmEnd}
-              disabled={loading}
-              className="rounded-full border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50"
-            >
-              ยังไม่สิ้นสุด
-            </button>
-          </div>
-        </Modal>
+        <ConfirmEndModal
+          eatingElapsedText={formatClock(eatingElapsedMs)}
+          selectedMood={selectedMood}
+          onSelectMood={setSelectedMood}
+          loading={loading}
+          error={error}
+          onConfirm={endSession}
+          onClose={closeConfirmEnd}
+        />
       )}
 
       {editTimeOpen && session && (
-        <Modal ariaLabel="แก้ไขเวลา" onClose={() => setEditTimeOpen(false)}>
-          <div>
-            <h2 className="text-lg font-bold text-zinc-900">
-              {mode === "fasting" ? "แก้ไขเวลาอดอาหาร" : "แก้ไขเวลากิน"}
-            </h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              {mode === "fasting"
-                ? "ใช้สำหรับกรณีที่ลืมกดเริ่มอดอาหาร"
-                : "ใช้สำหรับกรณีที่ลืมกดกินอาหาร"}
-            </p>
-          </div>
-          {error && (
-            <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
-              {error}
-            </p>
-          )}
-          <div className="mt-4 flex justify-center">
-            <input
-              type="time"
-              value={editTimeValue}
-              onChange={(e) => setEditTimeValue(e.target.value)}
-              className="rounded-xl border border-zinc-300 bg-white px-4 py-3 text-2xl font-bold tracking-wider text-center outline-none focus:border-[#18A659] focus:ring-1 focus:ring-[#18A659]"
-            />
-          </div>
-          <div className="mt-6 flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={saveEditedTime}
-              disabled={loading}
-              className="rounded-full bg-[#18A659] px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-[#148D4C] disabled:opacity-50"
-            >
-              {loading ? "กำลังบันทึก..." : "บันทึกเวลา"}
-            </button>
-            <button
-              type="button"
-              onClick={() => setEditTimeOpen(false)}
-              disabled={loading}
-              className="rounded-full border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50"
-            >
-              ยกเลิก
-            </button>
-          </div>
-        </Modal>
+        <EditTimeModal
+          value={editTimeValue}
+          mode={mode}
+          onChange={setEditTimeValue}
+          loading={loading}
+          error={error}
+          onSave={saveEditedTime}
+          onClose={() => setEditTimeOpen(false)}
+        />
       )}
 
       {confirmCancel && session && (
-        <Modal ariaLabel="ยืนยันยกเลิกเซสชัน" onClose={closeConfirmCancel}>
-          <div>
-            <h2 className="text-lg font-bold text-zinc-900">
-              ยกเลิกเซสชันนี้?
-            </h2>
-            <p className="mt-1 text-sm text-zinc-500">
-              เซสชันจะถูกลบและไม่ถูกบันทึกลงประวัติการทำ IF
-            </p>
-          </div>
-          {error && (
-            <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-600">
-              {error}
-            </p>
-          )}
-          <div className="flex flex-col gap-3">
-            <button
-              type="button"
-              onClick={cancelSession}
-              disabled={loading}
-              className="rounded-full bg-red-600 px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-700 disabled:opacity-50"
-            >
-              {loading ? "กำลังยกเลิก..." : "ยืนยันยกเลิก"}
-            </button>
-            <button
-              type="button"
-              onClick={closeConfirmCancel}
-              disabled={loading}
-              className="rounded-full border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50"
-            >
-              ยังไม่ยกเลิก
-            </button>
-          </div>
-        </Modal>
+        <ConfirmCancelModal
+          loading={loading}
+          error={error}
+          onConfirm={cancelSession}
+          onClose={closeConfirmCancel}
+        />
       )}
     </div>
   );

@@ -121,19 +121,20 @@ export async function POST(request: Request) {
     return apiError("บันทึกสัดส่วนไม่สำเร็จ", 500, "INTERNAL_ERROR");
   }
 
-  const { data: updatedProfile, error: profileError } = await supabase
+  // Sync the latest values onto profiles. This is DERIVED data: if it fails,
+  // the log row (the source of truth) is already saved, so we must NOT return
+  // an error — the user would keep retrying and hit the once-per-month 409
+  // while the sync was never done. Log instead; the next save re-syncs.
+  const { error: profileError } = await supabase
     .from("profiles")
     .update({
       waist_in: roundedWaist,
       hip_in: roundedHip,
       chest_in: roundedChest,
     })
-    .eq("user_id", auth.userId)
-    .select("user_id")
-    .maybeSingle();
-
-  if (profileError || !updatedProfile) {
-    return apiError("บันทึกสัดส่วนไม่สำเร็จ", 500, "INTERNAL_ERROR");
+    .eq("user_id", auth.userId);
+  if (profileError) {
+    console.error("Failed to sync measurements onto profiles", profileError);
   }
 
   return apiSuccess({ log }, { status: 200 });

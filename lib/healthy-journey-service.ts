@@ -99,6 +99,10 @@ export async function awardMission(
     );
 
   if (upsertError) {
+    console.error(
+      `Failed to upsert user_mission (user=${userId}, mission=${code})`,
+      upsertError
+    );
     return { awarded: false, reason: "already_done" };
   }
 
@@ -125,6 +129,10 @@ export async function awardMission(
       .single();
 
     if (createError || !created) {
+      console.error(
+        `Failed to create healthy_journey row (user=${userId}, code=${code})`,
+        createError
+      );
       return { awarded: false, reason: "already_done" };
     }
     return {
@@ -148,6 +156,10 @@ export async function awardMission(
     .single();
 
   if (updateError || !updated) {
+    console.error(
+      `Failed to update healthy_journey points (user=${userId}, code=${code})`,
+      updateError
+    );
     return { awarded: false, reason: "already_done" };
   }
 

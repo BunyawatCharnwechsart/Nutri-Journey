@@ -5,8 +5,10 @@ const WINDOW_MS = 60 * 1000; // 1 นาที
 
 const GENERAL_LIMIT = 60; // 60 req/min/IP สำหรับ API ทั่วไป
 const LOGIN_LIMIT = 10; // 10 req/min/IP สำหรับ /api/v1/auth/login
+const WEBHOOK_LIMIT = 120; // 120 req/min/IP สำหรับ LINE webhook (LINE อาจส่ง burst events + retry)
 
 const LOGIN_PATH = "/api/v1/auth/login";
+const WEBHOOK_PATH_PREFIX = "/webhooks";
 
 // bucket ที่ใช้ล้างทุกครั้งที่ถึง window ใหม่
 //
@@ -39,9 +41,10 @@ function cleanupExpired(now: number) {
 
 function checkLimit(
   ip: string,
-  kind: "general" | "login"
+  kind: "general" | "login" | "webhook"
 ): { allowed: boolean; resetAt: number; limit: number } {
-  const limit = kind === "login" ? LOGIN_LIMIT : GENERAL_LIMIT;
+  const limit =
+    kind === "login" ? LOGIN_LIMIT : kind === "webhook" ? WEBHOOK_LIMIT : GENERAL_LIMIT;
   const key = `${kind}:${ip}`;
   const now = Date.now();
 
@@ -62,10 +65,17 @@ function checkLimit(
 }
 
 export async function proxy(request: NextRequest) {
-  // rate limit เฉพาะ API เท่านั้น (หน้าเว็บ/static ไม่นับ)
-  if (request.nextUrl.pathname.startsWith("/api/")) {
+  // rate limit เฉพาะ API + webhook เท่านั้น (หน้าเว็บ/static ไม่นับ)
+  if (
+    request.nextUrl.pathname.startsWith("/api/") ||
+    request.nextUrl.pathname.startsWith(WEBHOOK_PATH_PREFIX)
+  ) {
     const ip = getClientIp(request);
-    const kind = request.nextUrl.pathname === LOGIN_PATH ? "login" : "general";
+    const kind = request.nextUrl.pathname === LOGIN_PATH
+      ? "login"
+      : request.nextUrl.pathname.startsWith(WEBHOOK_PATH_PREFIX)
+        ? "webhook"
+        : "general";
 
     const { allowed, resetAt } = checkLimit(ip, kind);
 
