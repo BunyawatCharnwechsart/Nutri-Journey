@@ -2,18 +2,19 @@ import { redirect } from "next/navigation";
 
 import { getSessionUserId } from "@/lib/auth";
 import EggAvatarCard from "@/components/EggAvatarCard";
+import EggLevelCard from "@/components/EggLevelCard";
 import {
   DEFAULT_AVATAR_NAME,
   MISSION_CODES,
   avatarForLevel,
-  expForNextLevel,
-  expInLevel,
   levelFromPoints,
-  progressRatio,
   type MissionCode,
 } from "@/lib/healthy-journey";
 import { createServiceClient } from "@/lib/supabase/service";
-import { getICTDayBounds } from "@/lib/timezone";
+import {
+  QUEST_DAY_START_HOUR_ICT,
+  getQuestDayBounds,
+} from "@/lib/timezone";
 
 export const dynamic = "force-dynamic";
 
@@ -34,6 +35,10 @@ export default async function MyEggPage() {
 
   const supabase = createServiceClient();
 
+  // เควสที่ทำสำเร็จในรอบปัจจุบัน (เริ่ม 09:00 ICT ของเมื่อวาน/วันนี้).
+  const { startIso: questStartIso, endIso: questEndIso } =
+    getQuestDayBounds(new Date());
+
   const [{ data: journey }, { data: missions }, { data: doneToday }] =
     await Promise.all([
       supabase
@@ -49,8 +54,8 @@ export default async function MyEggPage() {
         .select("mission_id")
         .eq("user_id", userId)
         .eq("is_completed", true)
-        .gte("completed_at", getICTDayBounds(new Date()).startIso)
-        .lt("completed_at", getICTDayBounds(new Date()).endIso),
+        .gte("completed_at", questStartIso)
+        .lt("completed_at", questEndIso),
     ]);
 
   const missionRows = (missions ?? []) as MissionRow[];
@@ -65,8 +70,6 @@ export default async function MyEggPage() {
 
   const totalPoints = Number(journey?.total_points ?? 0);
   const level = levelFromPoints(totalPoints);
-  const needNext = expForNextLevel(level);
-  const fillPercent = Math.round(progressRatio(totalPoints) * 100);
 
   const doneMissionIds = new Set((doneToday ?? []).map((row) => row.mission_id));
   const doneCount = ordered.filter((mission) => doneMissionIds.has(mission.id)).length;
@@ -80,27 +83,7 @@ export default async function MyEggPage() {
           </h1>
         </header>
 
-        <section className="rounded-2xl border border-zinc-200 bg-white p-5">
-          <div className="flex items-end justify-between gap-4">
-            <p className="text-xl font-bold text-zinc-900">เลเวล {level}</p>
-            <p className="text-sm text-zinc-500">
-              {expInLevel(totalPoints)} / {needNext ?? "MAX"} exp
-            </p>
-          </div>
-          <div
-            role="progressbar"
-            aria-valuenow={fillPercent}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="ความคืบหน้าเลเวล"
-            className="mt-3 h-3 w-full overflow-hidden rounded-full bg-zinc-100"
-          >
-            <div
-              className="h-full rounded-full bg-[#18A659] transition-all"
-              style={{ width: `${fillPercent}%` }}
-            />
-          </div>
-        </section>
+        <EggLevelCard totalPoints={totalPoints} />
 
         <EggAvatarCard
           avatarSrc={avatarForLevel(level)}
@@ -117,6 +100,10 @@ export default async function MyEggPage() {
               ทำสำเร็จแล้ว {doneCount}/{ordered.length}
             </p>
           </div>
+          <p className="px-1 text-xs text-zinc-400">
+            เควสจะรีเซ็ททุกวันเวลา{" "}
+            {`${QUEST_DAY_START_HOUR_ICT.toString().padStart(2, "0")}:00`} น.
+          </p>
 
           <div className="flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white">
             {ordered.map((mission, index) => {

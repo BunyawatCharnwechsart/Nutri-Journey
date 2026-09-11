@@ -8,7 +8,7 @@ import {
   levelFromPoints,
   type MissionCode,
 } from "@/lib/healthy-journey";
-import { getICTDayBounds } from "@/lib/timezone";
+import { getQuestDayBounds } from "@/lib/timezone";
 
 export interface AwardResult {
   awarded: boolean;
@@ -20,7 +20,7 @@ export interface AwardResult {
 }
 
 /**
- * Credit XP for completing a daily mission — once per ICT day.
+ * Credit XP for completing a daily mission — once per quest cycle (09:00 ICT).
  *
  * The user can never decide which mission to earn: the caller picks the code
  * from a real product behaviour (starting IF, ending IF, visiting /stats).
@@ -29,9 +29,9 @@ export interface AwardResult {
  *
  * `user_missions` enforces UNIQUE (user_id, mission_id) — one row per mission
  * per user forever, storing the LATEST completion. So an award UPSERTs that
- * row (bumping `completed_at` to now) if the last completion was on an earlier
- * ICT day, and skips when the mission was already completed TODAY (refreshing
- * the page never farms extra XP).
+ * row (bumping `completed_at` to now) if the last completion was in an earlier
+ * quest cycle, and skips when the mission was already completed in the CURRENT
+ * cycle (refreshing the page never farms extra XP).
  *
  * streak columns are intentionally not touched (streak system out of scope).
  */
@@ -59,8 +59,9 @@ export async function awardMission(
     ? DAILY_MISSION_POINTS
     : Math.max(0, Number(mission.points) || 0);
 
-  // "Today" in the user-facing (ICT) wall clock, as UTC timestamps.
-  const { startIso: dayStartIso, endIso: dayEndIso } = getICTDayBounds(
+  // "ตอนนี้" เทียบรอบเควสประจำวัน (09:00 ICT → 09:00 ICT วันถัดไป), เป็น UTC
+  // timestamps สำหรับเปรียบเทียบ completed_at.
+  const { startIso: dayStartIso, endIso: dayEndIso } = getQuestDayBounds(
     new Date()
   );
 

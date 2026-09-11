@@ -83,7 +83,7 @@ export default function EggAvatarCard({
   }
 
   return (
-    <div className="flex flex-col items-center gap-3 rounded-2xl border border-zinc-200 bg-white p-6 text-center">
+    <div className="flex flex-col items-center gap-3 text-center">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={avatarSrc}
