@@ -8,16 +8,11 @@
 --   # then replace the placeholder as described below).
 --
 -- What it does: installs the scheduler that calls the monthly-reminder cron
--- endpoint every day at 01:00 UTC = 08:00 ICT. The endpoint itself decides
--- what to send (see app/api/cron/monthly-reminder/route.ts and
--- lib/monthly-reminder.ts):
---   * on the 1st of the month it ALWAYS reminds the user to update weight,
---     measurements and a body photo, and lists exactly which are still missing.
---   * on later days it repeats daily (at most once per ICT day) while any of
---     the three items is still unrecorded.
--- Running daily instead of only on the 1st is what makes the repeated nudge
--- possible; the per-day dedupe lives in the endpoint via
--- users.last_monthly_reminder_at.
+-- endpoint every day. The endpoint itself gates the send to once per ICT
+-- month (see app/api/cron/monthly-reminder/route.ts and
+-- lib/monthly-reminder.ts). Running daily — instead of only on the 1st —
+-- is self-healing: if the 1st is somehow missed, the next day's run catches
+-- up (the month-key dedupe still prevents double-sends).
 --
 -- REPLACES the old weight-reminder (7 days) and measurement-reminder
 -- (14 days) schedulers, which are unscheduled here.
@@ -43,7 +38,7 @@ where jobname in ('weight-reminder', 'measurement-reminder', 'monthly-reminder')
 
 select cron.schedule(
   'monthly-reminder',
-  '0 1 * * *',  -- every day at 01:00 UTC = 08:00 ICT
+  '0 0 * * *',  -- every day 00:00 UTC = 07:00 ICT; logic gates to once per month
   $$
   select net.http_post(
     url := 'https://www.nutrijourney88.com/api/cron/monthly-reminder',

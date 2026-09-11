@@ -101,48 +101,23 @@ describe("buildPhaseEndMessages", () => {
     expect(message.text).toMatch(/^น{500} /);
   });
 
-  it("lists every missing item in the monthly update reminder", () => {
-    const [message] = buildMonthlyReminderMessages(LIFF_URL, undefined, [
-      "weight",
-      "measurements",
-      "photo",
-    ]);
+  it("builds the monthly update reminder with the app link", () => {
+    const [message] = buildMonthlyReminderMessages(LIFF_URL);
     expect(message.type).toBe("text");
     expect(message.text).toContain("อัปเดตน้ำหนัก");
     expect(message.text).toContain("อัปเดตสัดส่วน");
-    expect(message.text).toContain("ภาพถ่ายหุ่น");
     expect(message.text).toContain(LIFF_URL);
   });
 
-  it("lists only the items actually still missing", () => {
-    const [message] = buildMonthlyReminderMessages(LIFF_URL, undefined, [
-      "photo",
-    ]);
-    expect(message.text).toContain("ภาพถ่ายหุ่น");
-    expect(message.text).not.toContain("อัปเดตน้ำหนัก");
-    expect(message.text).not.toContain("อัปเดตสัดส่วน");
-  });
-
-  it("congratulates instead of nagging when nothing is missing", () => {
-    const [message] = buildMonthlyReminderMessages(LIFF_URL, undefined, []);
-    expect(message.text).toContain("ครบแล้วเดือนนี้");
-    expect(message.text).not.toContain("อัปเดตน้ำหนัก");
-    expect(message.text).not.toContain("อัปเดตสัดส่วน");
-    expect(message.text).not.toContain("ภาพถ่ายหุ่น");
-  });
-
   it("prepends userName when provided for the monthly reminder", () => {
-    const [message] = buildMonthlyReminderMessages(LIFF_URL, "นนท์", [
-      "weight",
-    ]);
+    const [message] = buildMonthlyReminderMessages(LIFF_URL, "นนท์");
     expect(message.text).toMatch(/^นนท์ /);
     expect(message.text).toContain("อัปเดตน้ำหนัก");
+    expect(message.text).toContain("อัปเดตสัดส่วน");
   });
 
   it("omits userName prefix for the monthly reminder when null", () => {
-    const [message] = buildMonthlyReminderMessages(LIFF_URL, null, [
-      "weight",
-    ]);
+    const [message] = buildMonthlyReminderMessages(LIFF_URL, null);
     expect(message.text.startsWith("📅")).toBe(true);
   });
 });
