@@ -76,3 +76,34 @@ export function getICTMonthBounds(year: number, month: number): ICTMonthBounds {
     endIso: new Date(monthEndICT.getTime() - ICT_OFFSET_MS).toISOString(),
   };
 }
+
+/** เวลา ~รอบเควสประจำวัน~ เริ่มต้นแต่ละวัน (09:00 ICT). */
+export const QUEST_DAY_START_HOUR_ICT = 9;
+
+/**
+ * ขอบเขต UTC ของรอบ "เควสประจำวัน": เริ่ม 09:00 ICT ของวัน และสิ้นสุด
+ * 09:00 ICT ของวันถัดไป — ภารกิจรายวันจะรีเฟรชตอน 09:00 เช้า ไม่ใช่เที่ยงคืน.
+ *
+ * เช่น ตอนนี้เป็น 07:00 ICT ของวันที่ 10 → รอบนี้คือ 09:00 ICT วันที่ 9
+ * ถึง 09:00 ICT วันที่ 10 (ยังไม่รีเฟรช) ส่วนเวลา 10:00 ICT วันที่ 10 →
+ * รอบนี้คือ 09:00 ICT วันที่ 10 ถึง 09:00 ICT วันที่ 11.
+ */
+export function getQuestDayBounds(date: Date): ICTDayBounds {
+  const ict = toICT(date);
+  const y = ict.getUTCFullYear();
+  const m = ict.getUTCMonth();
+  const d = ict.getUTCDate();
+
+  // 09:00 ICT = 02:00 UTC ของวันเดียวกัน. ถ้ายังไม่ถึง 09:00 ICT (เช่น 07:00)
+  // รอบนี้เริ่มตั้งแต่ 02:00 UTC เมื่อวาน (09:00 ICT เมื่อวาน).
+  const startUtcMs =
+    (ict.getUTCHours() < QUEST_DAY_START_HOUR_ICT
+      ? Date.UTC(y, m, d - 1)
+      : Date.UTC(y, m, d)) +
+    2 * 60 * 60 * 1000;
+
+  return {
+    startIso: new Date(startUtcMs).toISOString(),
+    endIso: new Date(startUtcMs + 86_400_000).toISOString(),
+  };
+}

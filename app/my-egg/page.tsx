@@ -11,7 +11,10 @@ import {
   type MissionCode,
 } from "@/lib/healthy-journey";
 import { createServiceClient } from "@/lib/supabase/service";
-import { getICTDayBounds } from "@/lib/timezone";
+import {
+  QUEST_DAY_START_HOUR_ICT,
+  getQuestDayBounds,
+} from "@/lib/timezone";
 
 export const dynamic = "force-dynamic";
 
@@ -32,6 +35,10 @@ export default async function MyEggPage() {
 
   const supabase = createServiceClient();
 
+  // เควสที่ทำสำเร็จในรอบปัจจุบัน (เริ่ม 09:00 ICT ของเมื่อวาน/วันนี้).
+  const { startIso: questStartIso, endIso: questEndIso } =
+    getQuestDayBounds(new Date());
+
   const [{ data: journey }, { data: missions }, { data: doneToday }] =
     await Promise.all([
       supabase
@@ -47,8 +54,8 @@ export default async function MyEggPage() {
         .select("mission_id")
         .eq("user_id", userId)
         .eq("is_completed", true)
-        .gte("completed_at", getICTDayBounds(new Date()).startIso)
-        .lt("completed_at", getICTDayBounds(new Date()).endIso),
+        .gte("completed_at", questStartIso)
+        .lt("completed_at", questEndIso),
     ]);
 
   const missionRows = (missions ?? []) as MissionRow[];
@@ -93,6 +100,10 @@ export default async function MyEggPage() {
               ทำสำเร็จแล้ว {doneCount}/{ordered.length}
             </p>
           </div>
+          <p className="px-1 text-xs text-zinc-400">
+            เควสจะรีเซ็ททุกวันเวลา{" "}
+            {`${QUEST_DAY_START_HOUR_ICT.toString().padStart(2, "0")}:00`} น.
+          </p>
 
           <div className="flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white">
             {ordered.map((mission, index) => {
