@@ -6,11 +6,7 @@ import {
   getLineLiffUrl,
   sendPushMessage,
 } from "@/lib/line-messaging";
-import {
-  type MonthlyReminderItem,
-  dueMonthlyReminder,
-  getMonthlyReminderDateKeys,
-} from "@/lib/monthly-reminder";
+import { dueMonthlyReminder } from "@/lib/monthly-reminder";
 import { checkFriendship } from "@/lib/line-friendship";
 
 export const runtime = "nodejs";
@@ -18,21 +14,20 @@ export const runtime = "nodejs";
 // ============================================================================
 // GET|POST /api/cron/monthly-reminder (Authorization: Bearer <CRON_SECRET>)
 //
-// Called daily at 01:00 UTC = 08:00 ICT (Supabase pg_cron → pg_net HTTP POST,
-// see supabase/scheduled_monthly_reminder.sql). For every user with LINE
-// notifications enabled it checks what the user has ALREADY recorded in the
-// current ICT month — weight (weight_logs), measurements (measurement_logs)
-// and a body photo (progress_photos) — then pushes a single LINE message that
-// lists EXACTLY which of those three are still missing.
+// Called daily (Supabase pg_cron → pg_net HTTP POST, see
+// supabase/scheduled_monthly_reminder.sql). For every user with LINE
+// notifications enabled it checks whether the current ICT month has rolled
+// over since the last successful push (`users.last_monthly_reminder_at`) and —
+// if it has — pushes a single LINE message reminding them to update both
+// weight and measurements.
 //
-// Send gate (lib/monthly-reminder.ts dueMonthlyReminder):
-//   * on the 1st of the current month it ALWAYS pushes (the monthly check-in),
-//     even when everything is already recorded.
-//   * on later days it pushes ONLY while something is still missing — so the
-//     reminder repeats at most once per ICT day (gated by
-//     users.last_monthly_reminder_at) until the user has updated everything.
+// This replaces the old weekly weight (7 days) / biweekly measurement
+// (14 days) reminders. Each user receives at most ONE message per ICT month,
+// on the day the month rolls over (the 1st). Running daily (instead of only
+// on the 1st) makes the check self-healing: if the 1st is missed the next
+// day's run catches up, and the month-key gate prevents duplicates.
 //
-// Guards (same pattern as the IF-notification cron):
+// Guards (same pattern as the previous reminder crons):
 //   * users.last_monthly_reminder_at updates only AFTER a successful push —
 //     failures retry on the next run.
 //   * users without oa_user_id or with notifications disabled are skipped.
@@ -88,76 +83,18 @@ async function handleCron(request: Request) {
     .not("oa_user_id", "is", null);
 
   if (error) {
-    console.error("[Monthly reminder] user query failed", error);
+    console.error("[Monthly reminder] query failed", error);
     return apiError("ไม่สามารถดึงข้อมูลผู้ใช้ได้", 500, "INTERNAL_ERROR");
   }
-
-  // ---- What has each user already recorded in the current ICT month? ----
-  // Batch-load each table once for the whole month instead of querying per
-  // user — monthly volumes are tiny and the pattern stays readable.
-  // "Recorded" = at least one row this month:
-  //   * weight:       weight_logs.recorded_on  (a day in the current month)
-  //   * measurements: measurement_logs.recorded_on
-  //   * body photo:   progress_photos.recorded_month (first day of the month)
-  const { monthStart, nextMonthStart } = getMonthlyReminderDateKeys(nowMs);
-
-  const [weightRes, measurementRes, photoRes] = await Promise.all([
-    supabase
-      .from("weight_logs")
-      .select("user_id")
-      .gte("recorded_on", monthStart)
-      .lt("recorded_on", nextMonthStart),
-    supabase
-      .from("measurement_logs")
-      .select("user_id")
-      .gte("recorded_on", monthStart)
-      .lt("recorded_on", nextMonthStart),
-    supabase
-      .from("progress_photos")
-      .select("user_id")
-      .eq("recorded_month", monthStart),
-  ]);
-
-  if (weightRes.error || measurementRes.error || photoRes.error) {
-    console.error("[Monthly reminder] update-history query failed", {
-      weight: weightRes.error?.message,
-      measurements: measurementRes.error?.message,
-      photos: photoRes.error?.message,
-    });
-    return apiError(
-      "ไม่สามารถตรวจสอบข้อมูลการอัปเดตได้",
-      500,
-      "INTERNAL_ERROR"
-    );
-  }
-
-  const weightRecorded = new Set((weightRes.data ?? []).map((row) => row.user_id));
-  const measurementRecorded = new Set(
-    (measurementRes.data ?? []).map((row) => row.user_id)
-  );
-  const photoRecorded = new Set((photoRes.data ?? []).map((row) => row.user_id));
 
   let sent = 0;
   let skippedUnreachable = 0;
   const friendshipCheckFailures = new Set<string>();
 
   for (const user of (users ?? []) as CronUser[]) {
-    // Which of the three items is still missing for THIS user this month?
-    const missingItems: MonthlyReminderItem[] = [];
-    if (!weightRecorded.has(user.user_id)) {
-      missingItems.push("weight");
-    }
-    if (!measurementRecorded.has(user.user_id)) {
-      missingItems.push("measurements");
-    }
-    if (!photoRecorded.has(user.user_id)) {
-      missingItems.push("photo");
-    }
-
     if (
       !dueMonthlyReminder(nowMs, {
         lastReminderAt: user.last_monthly_reminder_at,
-        missingItems,
       })
     ) {
       continue;
@@ -196,7 +133,7 @@ async function handleCron(request: Request) {
     try {
       await sendPushMessage(
         user.oa_user_id,
-        buildMonthlyReminderMessages(liffUrl, user.display_name, missingItems)
+        buildMonthlyReminderMessages(liffUrl, user.display_name)
       );
 
       const { error: markError } = await supabase
