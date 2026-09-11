@@ -2,14 +2,12 @@ import { redirect } from "next/navigation";
 
 import { getSessionUserId } from "@/lib/auth";
 import EggAvatarCard from "@/components/EggAvatarCard";
+import EggLevelCard from "@/components/EggLevelCard";
 import {
   DEFAULT_AVATAR_NAME,
   MISSION_CODES,
   avatarForLevel,
-  expForNextLevel,
-  expInLevel,
   levelFromPoints,
-  progressRatio,
   type MissionCode,
 } from "@/lib/healthy-journey";
 import { createServiceClient } from "@/lib/supabase/service";
@@ -65,8 +63,6 @@ export default async function MyEggPage() {
 
   const totalPoints = Number(journey?.total_points ?? 0);
   const level = levelFromPoints(totalPoints);
-  const needNext = expForNextLevel(level);
-  const fillPercent = Math.round(progressRatio(totalPoints) * 100);
 
   const doneMissionIds = new Set((doneToday ?? []).map((row) => row.mission_id));
   const doneCount = ordered.filter((mission) => doneMissionIds.has(mission.id)).length;
@@ -80,27 +76,7 @@ export default async function MyEggPage() {
           </h1>
         </header>
 
-        <section className="rounded-2xl border border-zinc-200 bg-white p-5">
-          <div className="flex items-end justify-between gap-4">
-            <p className="text-xl font-bold text-zinc-900">เลเวล {level}</p>
-            <p className="text-sm text-zinc-500">
-              {expInLevel(totalPoints)} / {needNext ?? "MAX"} exp
-            </p>
-          </div>
-          <div
-            role="progressbar"
-            aria-valuenow={fillPercent}
-            aria-valuemin={0}
-            aria-valuemax={100}
-            aria-label="ความคืบหน้าเลเวล"
-            className="mt-3 h-3 w-full overflow-hidden rounded-full bg-zinc-100"
-          >
-            <div
-              className="h-full rounded-full bg-[#18A659] transition-all"
-              style={{ width: `${fillPercent}%` }}
-            />
-          </div>
-        </section>
+        <EggLevelCard totalPoints={totalPoints} />
 
         <EggAvatarCard
           avatarSrc={avatarForLevel(level)}

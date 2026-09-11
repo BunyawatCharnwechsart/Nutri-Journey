@@ -1,9 +1,12 @@
 import { redirect } from "next/navigation";
+import Link from "next/link";
 
 import { getSessionUserId } from "@/lib/auth";
 import BellButton from "@/components/BellButton";
 import EggIconLink from "@/components/EggIconLink";
+import EggLevelCard from "@/components/EggLevelCard";
 import IfTracker from "@/components/IfTracker";
+import { createServiceClient } from "@/lib/supabase/service";
 
 export const dynamic = "force-dynamic";
 
@@ -12,6 +15,15 @@ export default async function DashboardPage() {
   if (!userId) {
     redirect("/");
   }
+
+  const supabase = createServiceClient();
+  const { data: journey } = await supabase
+    .from("healthy_journey")
+    .select("total_points")
+    .eq("user_id", userId)
+    .maybeSingle();
+
+  const totalPoints = Number(journey?.total_points ?? 0);
 
   return (
     <main className="flex flex-1 flex-col px-6 pt-6 pb-10">
@@ -28,6 +40,21 @@ export default async function DashboardPage() {
           </div>
         </header>
         <IfTracker allowEditTime={false} />
+
+        <section className="flex flex-col gap-3">
+          <div className="flex items-center justify-between px-1">
+            <h2 className="text-base font-semibold text-zinc-900">
+              ไข่ของฉัน
+            </h2>
+            <Link
+              href="/my-egg"
+              className="text-sm font-medium text-[#18A659] transition-opacity hover:opacity-70"
+            >
+              ดูทั้งหมด &gt;&gt;
+            </Link>
+          </div>
+          <EggLevelCard totalPoints={totalPoints} />
+        </section>
       </div>
     </main>
   );
