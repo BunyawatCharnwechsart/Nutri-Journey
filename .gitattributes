@@ -1,0 +1,5 @@
+# Canonical line endings: always LF in the repo, regardless of OS/autocrlf.
+# Fixes the perpetual "modified: <file>" noise on Windows (core.autocrlf=true)
+# where the stat cache churned between LF in the index and CRLF on disk.
+# Binary files are auto-detected by git and never normalized.
+* text=auto eol=lf
