@@ -12,6 +12,10 @@ jobs:
   preview:
     name: Deploy preview to Vercel
     runs-on: ubuntu-latest
+    # Dependabot PRs never receive repo secrets (GitHub security default), so
+    # VERCEL_TOKEN is empty and the deploy would always fail. Skip them —
+    # dependabot bumps are validated by CI and get a production deploy anyway.
+    if: github.actor != 'dependabot[bot]'
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
