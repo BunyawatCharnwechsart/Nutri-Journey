@@ -88,6 +88,53 @@ export async function POST(request: Request) {
     }
   }
 
+  // measurement_logs is the single source of truth for measurements. A new log
+  // entry (today, once per day via the unique index) is written only when at
+  // least one measurement differs from the latest log — so a brand-new user's
+  // wizard input becomes their first log (seeding the once-per-month gate on
+  // the profile page), while re-saving the form with unchanged measurements
+  // never resets the update lock.
+  const { data: lastMeasurementLog } = await supabase
+    .from("measurement_logs")
+    .select("waist_in, hip_in, chest_in")
+    .eq("user_id", auth.userId)
+    .order("recorded_on", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const toNumberValue = (v: unknown): number | null =>
+    v != null && v !== "" ? Number(v) : null;
+
+  const roundedWaist = Math.round(waistIn * 10) / 10;
+  const roundedHip = Math.round(hipIn * 10) / 10;
+  const roundedChest = Math.round(chestIn * 10) / 10;
+
+  const measurementsChanged =
+    toNumberValue(lastMeasurementLog?.waist_in) !== roundedWaist ||
+    toNumberValue(lastMeasurementLog?.hip_in) !== roundedHip ||
+    toNumberValue(lastMeasurementLog?.chest_in) !== roundedChest;
+
+  if (measurementsChanged) {
+    const now = new Date();
+    const { error: measurementLogError } = await supabase
+      .from("measurement_logs")
+      .upsert(
+        {
+          user_id: auth.userId,
+          recorded_on: getICTDateKey(now.getTime()),
+          waist_in: roundedWaist,
+          hip_in: roundedHip,
+          chest_in: roundedChest,
+          updated_at: now.toISOString(),
+        },
+        { onConflict: "user_id,recorded_on" }
+      );
+
+    if (measurementLogError) {
+      return apiError("Failed to save profile", 500, "INTERNAL_ERROR");
+    }
+  }
+
   // Upsert so a brand-new (or accidentally-cleared) profile row is created
   // automatically instead of failing an UPDATE that matches nothing. Weight
   // columns (weight/starting_weight) are intentionally no longer touched.
