@@ -46,10 +46,11 @@ next-env.d.ts
 # local-only dev tooling
 scripts/dev-session.mjs
 
-# local-only maintenance/seed scripts (untracked — CI still needs the vitest stub)
+# local-only maintenance/seed scripts (untracked — CI still needs the vitest stub and migration runner)
 /scripts/*
 !/scripts/test-stubs/
 !/scripts/test-stubs/*
+!/scripts/run-migration.mjs
 
 # supabase local tooling artifacts
 supabase/.temp/
