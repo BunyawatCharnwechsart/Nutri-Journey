@@ -121,4 +121,25 @@ describe("buildPhaseEndMessages", () => {
     expect(message.text.startsWith("สวัสดีคร้าคุณ")).toBe(true);
     expect(message.text).toContain("เริ่มต้นเดือนใหม่แล้ว");
   });
+
+  it("adds the photo line to the monthly reminder when photoDue", () => {
+    const [message] = buildMonthlyReminderMessages(LIFF_URL, "นนท์", {
+      photoDue: true,
+    });
+    expect(message.text).toContain("📸 ถ่ายรูปความคืบหน้าของคุณวันนี้");
+    expect(message.text).toContain("อัปเดตน้ำหนัก");
+    expect(message.text).toContain("อัปเดตสัดส่วน");
+  });
+
+  it("omits the photo line by default", () => {
+    const [message] = buildMonthlyReminderMessages(LIFF_URL, "นนท์");
+    expect(message.text).not.toContain("ถ่ายรูปความคืบหน้า");
+  });
+
+  it("omits the photo line when photoDue is false", () => {
+    const [message] = buildMonthlyReminderMessages(LIFF_URL, "นนท์", {
+      photoDue: false,
+    });
+    expect(message.text).not.toContain("ถ่ายรูปความคืบหน้า");
+  });
 });

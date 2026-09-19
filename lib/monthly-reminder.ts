@@ -36,3 +36,26 @@ export function dueMonthlyReminder(
   const currentMonthKey = toICTMonthKey(new Date(nowMs));
   return toMonthKey(input.lastReminderAt) !== currentMonthKey;
 }
+
+/**
+ * Decides whether the photo line should be appended to the monthly message.
+ *
+ * Rule (no nagging users who never started):
+ *   * no progress-photo history at all      → false (never encourages a habit
+ *     that has not begun).
+ *   * already uploaded in the current month → false (they did it).
+ *   * has history but NOT this month        → true  (a gentle "did you take
+ *     this month's photos yet?").
+ *
+ * `recordedMonthKeys` are the ICT month keys of the user's progress_photos
+ * rows (e.g. "2026-09"). Pure so it can be unit tested.
+ */
+export function photoReminderDue(
+  currentMonthKey: string,
+  recordedMonthKeys: readonly string[]
+): boolean {
+  if (recordedMonthKeys.length === 0) {
+    return false;
+  }
+  return !recordedMonthKeys.includes(currentMonthKey);
+}

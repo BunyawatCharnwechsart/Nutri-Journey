@@ -6,7 +6,8 @@ import {
   getLineLiffUrl,
   sendPushMessage,
 } from "@/lib/line-messaging";
-import { dueMonthlyReminder } from "@/lib/monthly-reminder";
+import { dueMonthlyReminder, photoReminderDue } from "@/lib/monthly-reminder";
+import { toICTMonthKey } from "@/lib/timezone";
 import { checkFriendship } from "@/lib/line-friendship";
 
 export const runtime = "nodejs";
@@ -97,14 +98,45 @@ async function handleCron(request: Request) {
   let skippedUnreachable = 0;
   const friendshipCheckFailures = new Set<string>();
 
-  for (const user of (users ?? []) as CronUser[]) {
-    if (
-      !dueMonthlyReminder(nowMs, {
-        lastReminderAt: user.last_monthly_reminder_at,
-      })
-    ) {
-      continue;
-    }
+  // First pass: only users whose month has rolled over since the last push.
+  const dueUsers = ((users ?? []) as CronUser[]).filter((user) =>
+    dueMonthlyReminder(nowMs, {
+      lastReminderAt: user.last_monthly_reminder_at,
+    })
+  );
+
+  if (dueUsers.length === 0) {
+    return apiSuccess({ checked: users?.length ?? 0, sent: 0, skippedUnreachable: 0 });
+  }
+
+  // Collect the ICT month keys of each due user's progress photos in ONE query.
+  // photoDue = has history but not yet this month (see photoReminderDue).
+  const currentMonthKey = toICTMonthKey(new Date(nowMs));
+  const { data: photoRows, error: photoError } = await supabase
+    .from("progress_photos")
+    .select("user_id, recorded_month")
+    .in(
+      "user_id",
+      dueUsers.map((user) => user.user_id)
+    );
+
+  if (photoError) {
+    console.error("[Monthly reminder] photo query failed", photoError);
+    return apiError("ไม่สามารถดึงข้อมูลรูปถ่ายได้", 500, "INTERNAL_ERROR");
+  }
+
+  const monthsByUser = new Map<string, Set<string>>();
+  for (const row of photoRows ?? []) {
+    const set = monthsByUser.get(row.user_id) ?? new Set<string>();
+    set.add(row.recorded_month);
+    monthsByUser.set(row.user_id, set);
+  }
+
+  for (const user of dueUsers) {
+    const photoDue = photoReminderDue(
+      currentMonthKey,
+      Array.from(monthsByUser.get(user.user_id) ?? [])
+    );
 
     // Only push to users who are genuinely friends of the OA. A 404
     // (unfriended/blocked) marks the user unreachable until a fresh `follow`
@@ -139,7 +171,7 @@ async function handleCron(request: Request) {
     try {
       await sendPushMessage(
         user.oa_user_id,
-        buildMonthlyReminderMessages(liffUrl, user.display_name)
+        buildMonthlyReminderMessages(liffUrl, user.display_name, { photoDue })
       );
 
       const { error: markError } = await supabase

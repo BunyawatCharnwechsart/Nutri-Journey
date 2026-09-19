@@ -152,19 +152,25 @@ export function buildPhaseEndMessages(
 
 /**
  * Builds the monthly "check-in" reminder sent by the monthly cron on the 1st
- * of every month. A single message covers both weight and measurements.
- * Kept pure so it is easy to unit test.
+ * of every month. One message covers weight (+ measurements) and, when the
+ * user has a progress-photo history but has NOT uploaded for the current month
+ * yet (`photoDue`), a photo reminder line as well. Kept pure so it is easy to
+ * unit test.
  */
 export function buildMonthlyReminderMessages(
   liffUrl: string,
-  userName?: string | null
+  userName?: string | null,
+  options?: { photoDue?: boolean }
 ): LineSendMessage[] {
   const prefix = userNamePrefix(userName);
+  const photoLine = options?.photoDue
+    ? "\n📸 ถ่ายรูปความคืบหน้าของคุณวันนี้"
+    : "";
 
   return [
     {
       type: "text",
-      text: `สวัสดีคร้าคุณ ${prefix}เริ่มต้นเดือนใหม่แล้ว อย่าลืมอัปเดตผลลัพธ์นะ\n⚖️ อัปเดตน้ำหนักของคุณวันนี้\n📏 อัปเดตสัดส่วนของคุณวันนี้\nกดบันทึกได้เลย:\n${liffUrl}`,
+      text: `สวัสดีคร้าคุณ ${prefix}เริ่มต้นเดือนใหม่แล้ว อย่าลืมอัปเดตผลลัพธ์นะ\n⚖️ อัปเดตน้ำหนักของคุณวันนี้\n📏 อัปเดตสัดส่วนของคุณวันนี้${photoLine}\nกดบันทึกได้เลย:\n${liffUrl}`,
     },
   ];
 }

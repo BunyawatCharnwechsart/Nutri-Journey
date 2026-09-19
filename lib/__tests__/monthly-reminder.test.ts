@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 
-import { dueMonthlyReminder } from "@/lib/monthly-reminder";
+import {
+  dueMonthlyReminder,
+  photoReminderDue,
+} from "@/lib/monthly-reminder";
 
 // 2026-09-02 00:00 UTC = 2026-09-02 07:00 ICT (same calendar day).
 const BASE = Date.UTC(2026, 8, 2);
@@ -54,5 +57,28 @@ describe("dueMonthlyReminder", () => {
   it("is due for a brand-new user who joined mid-month", () => {
     const now = Date.UTC(2026, 8, 15);
     expect(dueMonthlyReminder(now, { lastReminderAt: null })).toBe(true);
+  });
+});
+
+describe("photoReminderDue", () => {
+  const SEP = "2026-09";
+
+  it("never nags a user with no photo history", () => {
+    expect(photoReminderDue(SEP, [])).toBe(false);
+  });
+
+  it("skips when the user already uploaded this month", () => {
+    expect(photoReminderDue(SEP, [SEP])).toBe(false);
+    expect(photoReminderDue(SEP, ["2026-08", SEP])).toBe(false);
+  });
+
+  it("nags when the user has history but not this month yet", () => {
+    expect(photoReminderDue(SEP, ["2026-08"])).toBe(true);
+    expect(photoReminderDue(SEP, ["2026-07", "2026-08"])).toBe(true);
+  });
+
+  it("distinguishes past vs future month keys strictly", () => {
+    // A future month key is not "this month" → treated as pending upload.
+    expect(photoReminderDue(SEP, ["2026-10"])).toBe(true);
   });
 });

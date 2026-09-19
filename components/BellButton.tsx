@@ -30,7 +30,7 @@ interface LinkStatus {
   linked: boolean;
   /** เปิด/ปิด LINE แจ้งเตือนแยกประเภท: หมดเวลาอด/กิน (เส้น spam). */
   ifNotifications: boolean;
-  /** เปิด/ปิด LINE แจ้งเตือนแยกประเภท: อัปเดตน้ำหนัก/สัดส่วนทุกเดือน. */
+  /** เปิด/ปิด LINE แจ้งเตือนแยกประเภท: อัปเดตน้ำหนัก/สัดส่วน/รูปถ่ายทุกเดือน. */
   monthlyReminder: boolean;
   /** ตอบคำถามครั้งแรกแล้วหรือยัง (ถามครั้งเดียวจบ). */
   onboarded: boolean;
@@ -427,7 +427,7 @@ export default function BellButton() {
                   <div className="flex flex-col gap-3">
                     <p className="text-sm font-medium text-zinc-800">
                         อยากให้ NutriJourney ส่ง LINE แจ้งเตือนเมื่อหมดเวลาอด/กิน
-                        และเตือนอัปเดตน้ำหนัก/สัดส่วนทุกเดือนไหม?
+                        และเตือนอัปเดตน้ำหนัก/สัดส่วน/รูปถ่ายทุกเดือนไหม?
                       </p>
                     <button
                       type="button"
@@ -533,13 +533,13 @@ export default function BellButton() {
                         </div>
                         <div className="flex items-center justify-between gap-3 rounded-xl bg-zinc-50 px-4 py-3">
                           <span className="text-sm font-medium text-zinc-700">
-                            แจ้งเตือนอัปเดตน้ำหนัก/สัดส่วนทุกเดือน
+                            แจ้งเตือนอัปเดตน้ำหนัก/สัดส่วน/รูปถ่ายทุกเดือน
                           </span>
                           <button
                             type="button"
                             role="switch"
                             aria-checked={status.monthlyReminder}
-                            aria-label="แจ้งเตือนอัปเดตน้ำหนัก/สัดส่วนทุกเดือน"
+                            aria-label="แจ้งเตือนอัปเดตน้ำหนัก/สัดส่วน/รูปถ่ายทุกเดือน"
                             disabled={status.working}
                             onClick={() =>
                               toggleNotification(
