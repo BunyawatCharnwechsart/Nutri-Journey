@@ -217,3 +217,21 @@ export const avatarNameSchema = z.object({
     .min(1, "กรุณากรอกชื่อไข่")
     .max(20, "ชื่อไข่ต้องไม่เกิน 20 ตัวอักษร"),
 });
+
+/**
+ * POST /api/v1/notifications/settings
+ * ปรับเปิด/ปิดการแจ้งเตือนแยกตามประเภท (ตาม migration 0030):
+ *   * ifNotifications → line_notifications_enabled (หมดเวลาอด/กิน)
+ *   * monthlyReminder → monthly_reminder_enabled (อัปเดตน้ำหนัก/สัดส่วนทุกเดือน)
+ * ต้องส่งอย่างน้อย 1 ค่า — ส่งเฉพาะประเภทที่ต้องการเปลี่ยน.
+ */
+export const notificationSettingsSchema = z
+  .object({
+    ifNotifications: z.boolean().optional(),
+    monthlyReminder: z.boolean().optional(),
+  })
+  .refine(
+    (data) =>
+      data.ifNotifications !== undefined || data.monthlyReminder !== undefined,
+    { message: "ต้องระบุอย่างน้อย 1 รายการ", path: ["ifNotifications"] }
+  );

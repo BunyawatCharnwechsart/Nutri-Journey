@@ -15,7 +15,7 @@ export async function GET() {
   const { data: user, error: userError } = await supabase
     .from("users")
     .select(
-      "user_id, display_name, avatar_url, line_notifications_enabled, line_unreachable, line_onboarding_answered"
+      "user_id, display_name, avatar_url, line_notifications_enabled, monthly_reminder_enabled, line_unreachable, line_onboarding_answered"
     )
     .eq("user_id", auth.userId)
     .maybeSingle();

@@ -19,6 +19,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 export interface LineLinkState {
   linked: boolean;
+  /** User wants IF phase-end reminders (line_notifications_enabled). */
+  ifNotifications: boolean;
+  /** User wants the monthly check-in (monthly_reminder_enabled; null → inherit
+   *  line_notifications_enabled, see migration 0030). */
+  monthlyReminder: boolean;
   unreachable: boolean;
   /** True once the one-time "want LINE notifications?" prompt was answered. */
   onboarded: boolean;
@@ -46,14 +51,26 @@ export async function getLineLinkState(
   const { data } = await db
     .from("users")
     .select(
-      "oa_user_id, line_notifications_enabled, line_unreachable, line_onboarding_answered"
+      "oa_user_id, line_notifications_enabled, monthly_reminder_enabled, line_unreachable, line_onboarding_answered"
     )
     .eq("user_id", userId)
     .maybeSingle();
 
+  // `linked` is true when the user follows the OA and at least ONE of the two
+  // notification types is on (either explicitly or via NULL-inherit).
+  const ifNotifications = data?.line_notifications_enabled !== false;
+  const monthlyRaw = data?.monthly_reminder_enabled;
+  // NULL = "inherit" the IF flag (migration 0030); true/false = explicit choice.
+  const monthlyReminder =
+    monthlyRaw === null || monthlyRaw === undefined
+      ? ifNotifications
+      : monthlyRaw;
+
   return {
+    ifNotifications,
+    monthlyReminder,
     linked: Boolean(
-      data?.oa_user_id && data.line_notifications_enabled !== false
+      data?.oa_user_id && (ifNotifications || monthlyReminder)
     ),
     unreachable: Boolean(data?.line_unreachable === true),
     onboarded: Boolean(data?.line_onboarding_answered === true),

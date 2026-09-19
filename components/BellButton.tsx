@@ -28,6 +28,10 @@ interface LinkStatus {
   loading: boolean;
   working: boolean;
   linked: boolean;
+  /** เปิด/ปิด LINE แจ้งเตือนแยกประเภท: หมดเวลาอด/กิน (เส้น spam). */
+  ifNotifications: boolean;
+  /** เปิด/ปิด LINE แจ้งเตือนแยกประเภท: อัปเดตน้ำหนัก/สัดส่วนทุกเดือน. */
+  monthlyReminder: boolean;
   /** ตอบคำถามครั้งแรกแล้วหรือยัง (ถามครั้งเดียวจบ). */
   onboarded: boolean;
   /** true = เป็นเพื่อน OA, false = ยังไม่เป็น, null = เช็คไม่สำเร็จ/ไม่รู้. */
@@ -65,6 +69,8 @@ export default function BellButton() {
     loading: true,
     working: false,
     linked: false,
+    ifNotifications: false,
+    monthlyReminder: false,
     onboarded: false,
     friend: null,
     message: null,
@@ -81,6 +87,8 @@ export default function BellButton() {
           success?: boolean;
           data?: {
             linked?: boolean;
+            ifNotifications?: boolean;
+            monthlyReminder?: boolean;
             onboarded?: boolean;
             friend?: boolean | null;
           };
@@ -88,12 +96,13 @@ export default function BellButton() {
         if (cancelled) {
           return;
         }
-        const { linked, onboarded, friend } = json.success
-          ? json.data ?? {}
-          : {};
+        const { linked, ifNotifications, monthlyReminder, onboarded, friend } =
+          json.success ? json.data ?? {} : {};
         setStatus((prev) => ({
           ...prev,
           linked: Boolean(linked),
+          ifNotifications: Boolean(ifNotifications),
+          monthlyReminder: Boolean(monthlyReminder),
           onboarded: Boolean(onboarded),
           friend: friend ?? null,
           loading: false,
@@ -155,6 +164,8 @@ export default function BellButton() {
         apply({
           ...status,
           linked: true,
+          ifNotifications: true,
+          monthlyReminder: true,
           onboarded: true,
           friend: json.data?.friend ?? null,
           working: false,
@@ -186,6 +197,8 @@ export default function BellButton() {
       const next: LinkStatus = {
         ...status,
         linked: Boolean(res.ok && json.success && json.data?.linked),
+        ifNotifications: false,
+        monthlyReminder: false,
         onboarded: Boolean(res.ok && json.success && json.data?.onboarded),
         friend: null,
         working: false,
@@ -196,6 +209,64 @@ export default function BellButton() {
         ...prev,
         working: false,
         message: "ปิดการแจ้งเตือนไม่สำเร็จ ลองอีกครั้ง",
+      }));
+    }
+  }
+
+  /**
+   * สลับเปิด/ปิดแจ้งเตือนแยกประเภท (อัปเดตผ่าน /api/v1/notifications/settings).
+   * ส่งเฉพาะ switch ที่ user กด — อีกตัวคงค่าเดิมฝั่ง server.
+   */
+  async function toggleNotification(
+    key: "ifNotifications" | "monthlyReminder",
+    value: boolean
+  ) {
+    setStatus((prev) => ({ ...prev, working: true, message: null }));
+    try {
+      const res = await fetch("/api/v1/notifications/settings", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ [key]: value }),
+      });
+      const json = (await res.json().catch(() => null)) as {
+        success?: boolean;
+        data?: {
+          linked?: boolean;
+          ifNotifications?: boolean;
+          monthlyReminder?: boolean;
+        };
+      };
+      if (res.ok && json?.success) {
+        const nextLinked = Boolean(json.data?.linked ?? false);
+        const ifNotifications =
+          key === "ifNotifications"
+            ? value
+            : Boolean(json.data?.ifNotifications ?? false);
+        const monthlyReminder =
+          key === "monthlyReminder"
+            ? value
+            : Boolean(json.data?.monthlyReminder ?? false);
+        setStatus((prev) => ({
+          ...prev,
+          linked: nextLinked,
+          ifNotifications,
+          monthlyReminder,
+          working: false,
+          message: null,
+        }));
+        emitLineStatus(nextLinked, status.friend);
+      } else {
+        setStatus((prev) => ({
+          ...prev,
+          working: false,
+          message: "เปลี่ยนการแจ้งเตือนไม่สำเร็จ ลองอีกครั้ง",
+        }));
+      }
+    } catch {
+      setStatus((prev) => ({
+        ...prev,
+        working: false,
+        message: "เชื่อมต่อไม่สำเร็จ ลองอีกครั้ง",
       }));
     }
   }
@@ -248,6 +319,8 @@ export default function BellButton() {
       const next: LinkStatus = {
         ...status,
         linked: Boolean(res.ok && json.success && json.data?.linked),
+        ifNotifications: true,
+        monthlyReminder: true,
         onboarded: true,
         friend:
           res.ok && json.success && json.data ? json.data.friend ?? null : null,
@@ -353,8 +426,9 @@ export default function BellButton() {
                 {!status.onboarded ? (
                   <div className="flex flex-col gap-3">
                     <p className="text-sm font-medium text-zinc-800">
-                      อยากให้ NutriJourney ส่ง LINE แจ้งเตือนเมื่อหมดเวลาอด/กินไหม?
-                    </p>
+                        อยากให้ NutriJourney ส่ง LINE แจ้งเตือนเมื่อหมดเวลาอด/กิน
+                        และเตือนอัปเดตน้ำหนัก/สัดส่วนทุกเดือนไหม?
+                      </p>
                     <button
                       type="button"
                       onClick={enable}
@@ -421,6 +495,71 @@ export default function BellButton() {
                             ? "กำลังตรวจสอบ..."
                             : "ลองตรวจสอบอีกครั้ง"}
                         </button>
+                      </div>
+                    )}
+                    {status.linked && (
+                      <div className="flex flex-col gap-2">
+                        <p className="text-xs font-medium text-zinc-500">
+                          เลือกประเภทที่ต้องการรับ
+                        </p>
+                        <div className="flex items-center justify-between gap-3 rounded-xl bg-zinc-50 px-4 py-3">
+                          <span className="text-sm font-medium text-zinc-700">
+                            แจ้งเตือนหมดเวลาอด/กิน
+                          </span>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={status.ifNotifications}
+                            aria-label="แจ้งเตือนหมดเวลาอด/กิน"
+                            disabled={status.working}
+                            onClick={() =>
+                              toggleNotification(
+                                "ifNotifications",
+                                !status.ifNotifications
+                              )
+                            }
+                            className={`relative h-6 w-11 rounded-full transition-colors disabled:opacity-50 ${
+                              status.ifNotifications ? "bg-[#18A659]" : "bg-zinc-300"
+                            }`}
+                          >
+                            <span
+                              className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                                status.ifNotifications
+                                  ? "translate-x-5"
+                                  : "translate-x-0"
+                              }`}
+                            />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 rounded-xl bg-zinc-50 px-4 py-3">
+                          <span className="text-sm font-medium text-zinc-700">
+                            แจ้งเตือนอัปเดตน้ำหนัก/สัดส่วนทุกเดือน
+                          </span>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={status.monthlyReminder}
+                            aria-label="แจ้งเตือนอัปเดตน้ำหนัก/สัดส่วนทุกเดือน"
+                            disabled={status.working}
+                            onClick={() =>
+                              toggleNotification(
+                                "monthlyReminder",
+                                !status.monthlyReminder
+                              )
+                            }
+                            className={`relative h-6 w-11 rounded-full transition-colors disabled:opacity-50 ${
+                              status.monthlyReminder ? "bg-[#18A659]" : "bg-zinc-300"
+                            }`}
+                          >
+                            <span
+                              className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                                status.monthlyReminder
+                                  ? "translate-x-5"
+                                  : "translate-x-0"
+                              }`}
+                            />
+                          </button>
+                        </div>
                       </div>
                     )}
                     {!status.linked && (

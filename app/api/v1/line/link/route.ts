@@ -16,9 +16,11 @@ export const runtime = "nodejs";
 //            has been answered (onboarded) and the server-side OA friendship
 //            answer (friend, from a short-lived DB cache).
 //   POST   → answer the prompt with "yes": force a fresh OA friendship check
-//            and turn notifications ON (also marks the prompt answered).
-//   DELETE → turn notifications OFF / answer "no" later (marks it answered).
-//            The OA id stays; login re-binds it.
+//            and turn BOTH notification types ON (IF reminders + monthly
+//            check-in; also marks the prompt answered). Per-type toggles live
+//            in POST /api/v1/notifications/settings.
+//   DELETE → turn ALL notifications OFF / answer "no" later (marks it
+//            answered). The OA id stays; login re-binds it.
 //
 // Answering "no" once (first login) without asking again lives in
 // ./dismiss/route.ts.
@@ -60,6 +62,7 @@ export async function POST() {
       .from("users")
       .update({
         line_notifications_enabled: true,
+        monthly_reminder_enabled: true,
         line_unreachable: false,
         line_onboarding_answered: true,
       })
@@ -92,6 +95,7 @@ export async function DELETE() {
       .from("users")
       .update({
         line_notifications_enabled: false,
+        monthly_reminder_enabled: false,
         line_onboarding_answered: true,
       })
       .eq("user_id", auth.userId);

@@ -9,6 +9,7 @@ import {
   loginSchema,
   MAX_EDIT_TIME_AGE_MS,
   measurementLogSchema,
+  notificationSettingsSchema,
   sessionIdSchema,
 } from "@/lib/validation";
 
@@ -248,5 +249,44 @@ describe("measurementLogSchema", () => {
 
   it("rejects a measurement outside the inch range", () => {
     expect(() => measurementLogSchema.parse({ waistIn: "200" })).toThrow();
+  });
+});
+
+describe("notificationSettingsSchema", () => {
+  it("accepts a single toggle (ifNotifications only)", () => {
+    expect(notificationSettingsSchema.parse({ ifNotifications: true })).toEqual(
+      { ifNotifications: true }
+    );
+  });
+
+  it("accepts a single toggle (monthlyReminder only)", () => {
+    expect(notificationSettingsSchema.parse({ monthlyReminder: false })).toEqual(
+      { monthlyReminder: false }
+    );
+  });
+
+  it("accepts both toggles together", () => {
+    expect(
+      notificationSettingsSchema.parse({
+        ifNotifications: false,
+        monthlyReminder: true,
+      })
+    ).toEqual({ ifNotifications: false, monthlyReminder: true });
+  });
+
+  it("rejects an empty object (nothing to change)", () => {
+    expect(() => notificationSettingsSchema.parse({})).toThrow();
+  });
+
+  it("rejects a non-boolean value", () => {
+    expect(() =>
+      notificationSettingsSchema.parse({ ifNotifications: "yes" })
+    ).toThrow();
+  });
+
+  it("rejects unknown keys", () => {
+    expect(() =>
+      notificationSettingsSchema.parse({ spam: true })
+    ).toThrow();
   });
 });

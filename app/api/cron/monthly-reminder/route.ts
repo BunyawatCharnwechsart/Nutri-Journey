@@ -78,7 +78,13 @@ async function handleCron(request: Request) {
     .select(
       "user_id, line_user_id, oa_user_id, line_unreachable, last_monthly_reminder_at, display_name"
     )
-    .eq("line_notifications_enabled", true)
+    // Effective opt-in for the monthly check-in (migration 0030):
+    //   monthly_reminder_enabled = true   → explicit opt-in
+    //   monthly_reminder_enabled IS NULL  → inherit line_notifications_enabled
+    //   monthly_reminder_enabled = false  → explicit opt-out
+    .or(
+      "monthly_reminder_enabled.eq.true,and(line_notifications_enabled.eq.true,monthly_reminder_enabled.is.null)"
+    )
     .eq("line_unreachable", false)
     .not("oa_user_id", "is", null);
 
