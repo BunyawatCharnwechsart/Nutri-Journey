@@ -12,6 +12,7 @@ import {
   type ProgressPhotoView,
 } from "@/lib/progress-photo";
 import EggIconLink from "@/components/EggIconLink";
+import BellButton from "@/components/BellButton";
 import ProgressPhotoGallery, {
   type ProgressPhotoSet,
 } from "@/components/ProgressPhotoGallery";
@@ -142,7 +143,10 @@ export default async function PhotoPage() {
               ภาพถ่ายความคืบหน้า
             </p>
           </div>
-          <EggIconLink />
+          <div className="flex shrink-0 items-center gap-2 text-[#18A659]">
+            <BellButton />
+            <EggIconLink />
+          </div>
         </header>
 
         <ProgressPhotoGallery

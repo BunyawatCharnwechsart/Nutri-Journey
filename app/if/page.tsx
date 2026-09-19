@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSessionUserId } from "@/lib/auth";
 import IfTracker from "@/components/IfTracker";
 import EggIconLink from "@/components/EggIconLink";
+import BellButton from "@/components/BellButton";
 
 export const dynamic = "force-dynamic";
 
@@ -21,6 +22,7 @@ export default async function IfPage() {
             IF Tracker
           </h1>
           <div className="flex justify-end">
+            <BellButton />
             <EggIconLink />
           </div>
         </header>

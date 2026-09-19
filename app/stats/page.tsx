@@ -7,6 +7,7 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { getYearToDateWindow } from "@/lib/weight-log";
 import { getICTYear, toICTDateKey, toICTMonthKey } from "@/lib/timezone";
 import EggIconLink from "@/components/EggIconLink";
+import BellButton from "@/components/BellButton";
 import CalendarTab from "@/components/CalendarTab";
 import WeightChart, { type WeightPoint } from "@/components/WeightChart";
 
@@ -98,6 +99,7 @@ export default async function StatsPage({
             <p className="mt-1 text-sm text-zinc-500">{subtitle}</p>
           </div>
           <div className="flex shrink-0 items-center gap-2 text-[#18A659]">
+            <BellButton />
             <EggIconLink />
           </div>
         </header>

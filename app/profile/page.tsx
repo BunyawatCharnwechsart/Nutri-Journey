@@ -20,6 +20,7 @@ import {
 } from "@/lib/measurement-log";
 import LogoutButton from "@/components/LogoutButton";
 import EggIconLink from "@/components/EggIconLink";
+import BellButton from "@/components/BellButton";
 import WeightProgress from "@/components/WeightProgress";
 import MeasurementUpdateCard from "@/components/MeasurementUpdateCard";
 import EditProfileModal from "@/components/EditProfileModal";
@@ -166,6 +167,7 @@ export default async function ProfilePage() {
             </p>
           </div>
           <div className="flex shrink-0 items-center gap-2 text-[#18A659]">
+            <BellButton />
             <EggIconLink />
           </div>
         </header>
