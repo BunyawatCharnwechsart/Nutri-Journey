@@ -51,54 +51,54 @@ describe("buildPhaseEndMessages", () => {
   it("builds the fasting end message with the app link", () => {
     const [message] = buildPhaseEndMessages("fasting", LIFF_URL);
     expect(message.type).toBe("text");
-    expect(message.text).toContain("หมดเวลาการอดแล้ว");
+    expect(message.text).toContain("เก่งมาก");
+    expect(message.text).toContain("คุณอดครบตามเวลาแล้ว");
     expect(message.text).toContain(LIFF_URL);
   });
 
   it("builds the eating end message with the app link", () => {
     const [message] = buildPhaseEndMessages("eating", LIFF_URL);
     expect(message.type).toBe("text");
-    expect(message.text).toContain("หมดเวลาการกินแล้ว");
+    expect(message.text).toContain("หมดเวลากินแล้ว");
+    expect(message.text).toContain("กดจบรอบนี้ แล้วเริ่มรอบอดถัดไปได้เลย");
     expect(message.text).toContain(LIFF_URL);
   });
 
-  it("prepends userName when provided for fasting", () => {
+  it("places userName right after the greeting for fasting", () => {
     const [message] = buildPhaseEndMessages("fasting", LIFF_URL, "นนท์");
-    expect(message.text).toMatch(/^นนท์ /);
-    expect(message.text).toContain("หมดเวลาการอดแล้ว");
+    expect(message.text).toContain("เก่งมาก! นนท์ คุณอดครบตามเวลาแล้ว");
   });
 
-  it("prepends userName when provided for eating", () => {
+  it("places userName right after the greeting for eating", () => {
     const [message] = buildPhaseEndMessages("eating", LIFF_URL, "นนท์");
-    expect(message.text).toMatch(/^นนท์ /);
-    expect(message.text).toContain("หมดเวลาการกินแล้ว");
+    expect(message.text).toContain("กินได้เก่งมาก นนท์ หมดเวลากินแล้ว");
   });
 
   it("omits userName prefix when null", () => {
     const [message] = buildPhaseEndMessages("fasting", LIFF_URL, null);
-    expect(message.text.startsWith("⏰")).toBe(true);
+    expect(message.text.startsWith("(^o^)")).toBe(true);
   });
 
   it("omits userName prefix when undefined (not passed)", () => {
     const [message] = buildPhaseEndMessages("fasting", LIFF_URL);
-    expect(message.text.startsWith("⏰")).toBe(true);
+    expect(message.text.startsWith("(^o^)")).toBe(true);
   });
 
   it("omits userName prefix for whitespace-only and empty names", () => {
-    expect(buildPhaseEndMessages("fasting", LIFF_URL, "   ")[0].text.startsWith("⏰")).toBe(true);
-    expect(buildPhaseEndMessages("fasting", LIFF_URL, "")[0].text.startsWith("⏰")).toBe(true);
+    expect(buildPhaseEndMessages("fasting", LIFF_URL, "   ")[0].text.startsWith("(^o^)")).toBe(true);
+    expect(buildPhaseEndMessages("fasting", LIFF_URL, "")[0].text.startsWith("(^o^)")).toBe(true);
   });
 
   it("trims surrounding whitespace from userName", () => {
     const [message] = buildPhaseEndMessages("fasting", LIFF_URL, "  นนท์  ");
-    expect(message.text).toMatch(/^นนท์ /);
+    expect(message.text).toContain("เก่งมาก! นนท์ คุณอดครบตามเวลาแล้ว");
   });
 
-  it("handles a very long userName within LINE 2000-char limit", () => {
+  it("handles a very long userName within the LINE limit", () => {
     const longName = "น".repeat(500);
     const [message] = buildPhaseEndMessages("fasting", LIFF_URL, longName);
     expect(message.text.length).toBeLessThanOrEqual(2000);
-    expect(message.text).toMatch(/^น{500} /);
+    expect(message.text).toContain(longName);
   });
 
   it("builds the monthly update reminder with the app link", () => {
@@ -109,15 +109,16 @@ describe("buildPhaseEndMessages", () => {
     expect(message.text).toContain(LIFF_URL);
   });
 
-  it("prepends userName when provided for the monthly reminder", () => {
+  it("places userName right after the greeting for the monthly reminder", () => {
     const [message] = buildMonthlyReminderMessages(LIFF_URL, "นนท์");
-    expect(message.text).toMatch(/^นนท์ /);
+    expect(message.text).toContain("สวัสดีคร้าคุณ นนท์ เริ่มต้นเดือนใหม่แล้ว");
     expect(message.text).toContain("อัปเดตน้ำหนัก");
     expect(message.text).toContain("อัปเดตสัดส่วน");
   });
 
   it("omits userName prefix for the monthly reminder when null", () => {
     const [message] = buildMonthlyReminderMessages(LIFF_URL, null);
-    expect(message.text.startsWith("📅")).toBe(true);
+    expect(message.text.startsWith("สวัสดีคร้าคุณ")).toBe(true);
+    expect(message.text).toContain("เริ่มต้นเดือนใหม่แล้ว");
   });
 });
