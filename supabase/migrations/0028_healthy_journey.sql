@@ -62,9 +62,19 @@ create index if not exists user_missions_today_idx
 alter table public.missions enable row level security;
 alter table public.user_missions enable row level security;
 alter table public.healthy_journey enable row level security;
-alter table public.notifications enable row level security;
 
 revoke all on public.missions from anon, authenticated;
 revoke all on public.user_missions from anon, authenticated;
 revoke all on public.healthy_journey from anon, authenticated;
-revoke all on public.notifications from anon, authenticated;
+
+-- public.notifications was created out-of-band and is dropped by 0029, so it
+-- may or may not exist when this file re-runs. Guard with to_regclass so a
+-- full-folder re-run never aborts on 42P01 (relation does not exist).
+do $$
+begin
+  if to_regclass('public.notifications') is not null then
+    alter table public.notifications enable row level security;
+    revoke all on public.notifications from anon, authenticated;
+  end if;
+end
+$$;
