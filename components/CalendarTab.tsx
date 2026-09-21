@@ -6,6 +6,7 @@ import { type CalendarSessionInput } from "@/lib/calendar";
 import { toICTMonthKey } from "@/lib/timezone";
 import IfCalendar from "@/components/IfCalendar";
 import IfSuccessCard from "@/components/IfSuccessCard";
+import MoodBarChart from "@/components/MoodBarChart";
 
 interface CalendarTabProps {
   initialMonthKey: string;
@@ -72,6 +73,7 @@ export default function CalendarTab({
         onMonthChange={goMonth}
       />
       <IfSuccessCard monthKey={monthKey} sessions={sessions} loading={loading} />
+      <MoodBarChart sessions={sessions} loading={loading} />
     </div>
   );
 }
