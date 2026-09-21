@@ -21,7 +21,7 @@ export default async function IfPage() {
           <h1 className="text-center text-2xl font-bold tracking-tight text-zinc-900">
             IF Tracker
           </h1>
-          <div className="flex justify-end">
+          <div className="flex shrink-0 items-center justify-end gap-2 text-[#18A659]">
             <BellButton />
             <EggIconLink />
           </div>

@@ -12,7 +12,6 @@ const EMPTY_FORM = {
   birthDate: "",
   heightCm: null,
   weightKg: null,
-  activityLevel: "",
   waistIn: null,
   hipIn: null,
   chestIn: null,
@@ -37,7 +36,7 @@ export default async function HealthProfilePage({
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "gender, birth_date, height, activity_level, waist_in, hip_in, chest_in, goal, target_weight"
+      "gender, birth_date, height, waist_in, hip_in, chest_in, goal, target_weight"
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -72,8 +71,6 @@ export default async function HealthProfilePage({
     heightCm: profile?.height != null ? Number(profile.height) : null,
     weightKg:
       latestLog?.weight_kg != null ? Number(latestLog.weight_kg) : null,
-    activityLevel:
-      typeof profile?.activity_level === "string" ? profile.activity_level : "",
     waistIn: profile?.waist_in != null ? Number(profile.waist_in) : null,
     hipIn: profile?.hip_in != null ? Number(profile.hip_in) : null,
     chestIn: profile?.chest_in != null ? Number(profile.chest_in) : null,

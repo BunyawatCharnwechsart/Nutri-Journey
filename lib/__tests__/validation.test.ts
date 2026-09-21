@@ -151,7 +151,6 @@ describe("healthProfileSchema", () => {
     birthDate: "2000-01-01",
     heightCm: "175",
     weightKg: "70",
-    activityLevel: "moderate",
     waistIn: "29.5",
     hipIn: "37",
     chestIn: "34.5",

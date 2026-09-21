@@ -4,7 +4,6 @@ import Image from "next/image";
 import { getSessionUserId } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
-  ACTIVITY_LEVELS,
   GENDER_OPTIONS,
   calculateBmi,
   getBmiCategory,
@@ -30,15 +29,12 @@ export const dynamic = "force-dynamic";
 const GENDER_LABELS: Record<string, string> = Object.fromEntries(
   GENDER_OPTIONS.map((option) => [option.value, option.label])
 );
-const ACTIVITY_LABELS: Record<string, string> = Object.fromEntries(
-  ACTIVITY_LEVELS.map((option) => [option.value, option.label])
-);
 const BMI_COLORS: Record<string, string> = {
   "น้ำหนักน้อย": "#3ABFF8",
   "ปกติ": "#18A659",
   "น้ำหนักเกิน": "#FBBF24",
   "อ้วน ระดับ 1": "#F97316",
-  "อ้วน ระดับ 2 (อันตราย)": "#EF4444",
+  "อ้วน ระดับ 2": "#EF4444",
 };
 
 function InfoRow({
@@ -92,7 +88,7 @@ export default async function ProfilePage() {
   const { data: profile } = await supabase
     .from("profiles")
     .select(
-      "gender, birth_date, height, activity_level, waist_in, hip_in, chest_in, goal, target_weight"
+      "gender, birth_date, height, waist_in, hip_in, chest_in, goal, target_weight"
     )
     .eq("user_id", userId)
     .maybeSingle();
@@ -103,8 +99,6 @@ export default async function ProfilePage() {
   }
 
   const gender = GENDER_LABELS[profile.gender] ?? profile.gender;
-  const activityLevel =
-    ACTIVITY_LABELS[profile.activity_level] ?? profile.activity_level;
 
   const heightCm = profile.height != null ? Number(profile.height) : null;
   const targetWeightKg =
@@ -213,11 +207,6 @@ export default async function ProfilePage() {
             value={currentWeightKg != null ? `${currentWeightKg} กก.` : "—"}
           />
           <InfoRow
-            icon="/icon/activityLevelIcon.png"
-            label="ระดับกิจกรรม"
-            value={activityLevel}
-          />
-          <InfoRow
             icon="/icon/targetIcon.svg"
             label="น้ำหนักเป้าหมาย"
             value={targetWeightKg != null ? `${targetWeightKg} กก.` : "—"}
@@ -245,7 +234,6 @@ export default async function ProfilePage() {
             gender={profile.gender}
             birthDate={profile.birth_date}
             heightCm={heightCm}
-            activityLevel={profile.activity_level}
             goal={profile.goal}
             targetWeightKg={targetWeightKg}
           />

@@ -14,16 +14,6 @@ export const GENDER_OPTIONS = [
 
 export type Gender = (typeof GENDER_OPTIONS)[number]["value"];
 
-export const ACTIVITY_LEVELS = [
-  { value: "sedentary", label: "ไม่ออกกำลังกาย / นั่งทำงานเป็นส่วนใหญ่" },
-  { value: "light", label: "ออกกำลังกายเบาๆ 1–3 วัน/สัปดาห์" },
-  { value: "moderate", label: "ออกกำลังกายปานกลาง 3–5 วัน/สัปดาห์" },
-  { value: "active", label: "ออกกำลังกายหนัก 6–7 วัน/สัปดาห์" },
-  { value: "very_active", label: "งานใช้แรง / ออกกำลังกายหนักวันละ 2 รอบ" },
-] as const;
-
-export type ActivityLevel = (typeof ACTIVITY_LEVELS)[number]["value"];
-
 export const GOAL_OPTIONS = [
   { value: "weight_loss", label: "ลดน้ำหนัก" },
   { value: "eating_behavior", label: "ปรับพฤติกรรมการกิน" },
@@ -48,7 +38,6 @@ export function isProfileComplete(
     "gender",
     "birth_date",
     "height",
-    "activity_level",
     "waist_in",
     "hip_in",
     "chest_in",
@@ -94,5 +83,5 @@ export function getBmiCategory(bmi: number | null): string {
   if (bmi < 30) {
     return "อ้วน ระดับ 1";
   }
-  return "อ้วน ระดับ 2 (อันตราย)";
+  return "อ้วน ระดับ 2";
 }

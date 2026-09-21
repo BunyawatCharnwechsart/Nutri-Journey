@@ -9,8 +9,8 @@ export const runtime = "nodejs";
 /**
  * POST /api/v1/profile
  *
- * Saves the health profile fields (gender, birth date, height, activity
- * level, measurements, goal, target weight). Requires a valid session
+ * Saves the health profile fields (gender, birth date, height, weight,
+ * body measurements, goal, target weight). Requires a valid session
  * cookie; the userId comes from the verified JWT, never from the request
  * body.
  *
@@ -41,7 +41,6 @@ export async function POST(request: Request) {
     gender,
     birthDate,
     heightCm,
-    activityLevel,
     waistIn,
     hipIn,
     chestIn,
@@ -146,7 +145,6 @@ export async function POST(request: Request) {
         gender,
         birth_date: birthDate,
         height: heightCm,
-        activity_level: activityLevel,
         waist_in: waistIn,
         hip_in: hipIn,
         chest_in: chestIn,
@@ -169,7 +167,7 @@ export async function POST(request: Request) {
  * PATCH /api/v1/profile
  *
  * Basic profile edit from the "แก้ไขข้อมูล" modal: gender, birth date,
- * height, activity level, goal and target weight only.
+ * height, goal and target weight only.
  *
  * Scoped strictly to the authenticated user id from the verified JWT. This
  * intentionally never touches weight_logs or the measurement columns —
@@ -194,8 +192,7 @@ export async function PATCH(request: Request) {
     return apiError(message, 400, "VALIDATION_ERROR", parsed.error.issues);
   }
 
-  const { gender, birthDate, heightCm, activityLevel, goal, targetWeightKg } =
-    parsed.data;
+  const { gender, birthDate, heightCm, goal, targetWeightKg } = parsed.data;
 
   const supabase = createServiceClient();
 
@@ -205,7 +202,6 @@ export async function PATCH(request: Request) {
       gender,
       birth_date: birthDate,
       height: heightCm,
-      activity_level: activityLevel,
       goal,
       target_weight: targetWeightKg,
     })
