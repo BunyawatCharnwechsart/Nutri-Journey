@@ -17,8 +17,8 @@ export const runtime = "nodejs";
 //            answer (friend, from a short-lived DB cache).
 //   POST   → answer the prompt with "yes": force a fresh OA friendship check
 //            and turn BOTH notification types ON (IF reminders + monthly
-//            check-in; also marks the prompt answered). Per-type toggles live
-//            in POST /api/v1/notifications/settings.
+//            check-in + photo reminder; also marks the prompt answered).
+//            Per-type toggles live in POST /api/v1/notifications/settings.
 //   DELETE → turn ALL notifications OFF / answer "no" later (marks it
 //            answered). The OA id stays; login re-binds it.
 //
@@ -63,6 +63,7 @@ export async function POST() {
       .update({
         line_notifications_enabled: true,
         monthly_reminder_enabled: true,
+        photo_reminder_enabled: true,
         line_unreachable: false,
         line_onboarding_answered: true,
       })
@@ -96,6 +97,7 @@ export async function DELETE() {
       .update({
         line_notifications_enabled: false,
         monthly_reminder_enabled: false,
+        photo_reminder_enabled: false,
         line_onboarding_answered: true,
       })
       .eq("user_id", auth.userId);

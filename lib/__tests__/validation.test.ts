@@ -264,13 +264,24 @@ describe("notificationSettingsSchema", () => {
     );
   });
 
-  it("accepts both toggles together", () => {
+  it("accepts a single toggle (photoReminder only)", () => {
+    expect(notificationSettingsSchema.parse({ photoReminder: true })).toEqual({
+      photoReminder: true,
+    });
+  });
+
+  it("accepts all three toggles together", () => {
     expect(
       notificationSettingsSchema.parse({
         ifNotifications: false,
         monthlyReminder: true,
+        photoReminder: false,
       })
-    ).toEqual({ ifNotifications: false, monthlyReminder: true });
+    ).toEqual({
+      ifNotifications: false,
+      monthlyReminder: true,
+      photoReminder: false,
+    });
   });
 
   it("rejects an empty object (nothing to change)", () => {

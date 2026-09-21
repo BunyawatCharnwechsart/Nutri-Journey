@@ -8,9 +8,11 @@ export const runtime = "nodejs";
 // ============================================================================
 // POST /api/v1/notifications/settings
 //
-// Turns the two LINE notification types on/off independently (migration 0030):
+// Turns the three LINE notification types on/off independently (migration
+// 0030/0031):
 //   * ifNotifications → users.line_notifications_enabled  (IF phase reminders)
 //   * monthlyReminder → users.monthly_reminder_enabled    (monthly check-in)
+//   * photoReminder   → users.photo_reminder_enabled      (monthly photo)
 //
 // Only fields sent in the body are changed; at least one is required (see
 // notificationSettingsSchema). The effective "receive monthly?" value is
@@ -46,12 +48,16 @@ export async function POST(request: Request) {
   const updates: {
     line_notifications_enabled?: boolean;
     monthly_reminder_enabled?: boolean;
+    photo_reminder_enabled?: boolean;
   } = {};
   if (parsed.data.ifNotifications !== undefined) {
     updates.line_notifications_enabled = parsed.data.ifNotifications;
   }
   if (parsed.data.monthlyReminder !== undefined) {
     updates.monthly_reminder_enabled = parsed.data.monthlyReminder;
+  }
+  if (parsed.data.photoReminder !== undefined) {
+    updates.photo_reminder_enabled = parsed.data.photoReminder;
   }
 
   const supabase = createServiceClient();
@@ -71,7 +77,7 @@ export async function POST(request: Request) {
   const { data: user, error: readError } = await supabase
     .from("users")
     .select(
-      "oa_user_id, line_notifications_enabled, monthly_reminder_enabled"
+      "oa_user_id, line_notifications_enabled, monthly_reminder_enabled, photo_reminder_enabled"
     )
     .eq("user_id", auth.userId)
     .maybeSingle();
@@ -85,10 +91,12 @@ export async function POST(request: Request) {
       linked: Boolean(
         user.oa_user_id &&
           (user.line_notifications_enabled !== false ||
-            user.monthly_reminder_enabled !== false)
+            user.monthly_reminder_enabled !== false ||
+            user.photo_reminder_enabled !== false)
       ),
       ifNotifications: user.line_notifications_enabled !== false,
       monthlyReminder: user.monthly_reminder_enabled !== false,
+      photoReminder: user.photo_reminder_enabled !== false,
     },
     { status: 200 }
   );

@@ -5,6 +5,7 @@ import {
   LineMessagingError,
   buildMonthlyReminderMessages,
   buildPhaseEndMessages,
+  buildPhotoReminderMessages,
   verifyLineSignature,
 } from "@/lib/line-messaging";
 
@@ -122,24 +123,44 @@ describe("buildPhaseEndMessages", () => {
     expect(message.text).toContain("เริ่มต้นเดือนใหม่แล้ว");
   });
 
-  it("adds the photo line to the monthly reminder when photoDue", () => {
-    const [message] = buildMonthlyReminderMessages(LIFF_URL, "นนท์", {
-      photoDue: true,
-    });
-    expect(message.text).toContain("📸 ถ่ายรูปความคืบหน้าของคุณวันนี้");
-    expect(message.text).toContain("อัปเดตน้ำหนัก");
-    expect(message.text).toContain("อัปเดตสัดส่วน");
-  });
-
-  it("omits the photo line by default", () => {
+  it("never contains the photo line (it is a separate push)", () => {
     const [message] = buildMonthlyReminderMessages(LIFF_URL, "นนท์");
     expect(message.text).not.toContain("ถ่ายรูปความคืบหน้า");
   });
 
-  it("omits the photo line when photoDue is false", () => {
+  it("includes both lines by default (no options)", () => {
+    const [message] = buildMonthlyReminderMessages(LIFF_URL, "นนท์");
+    expect(message.text).toContain("อัปเดตน้ำหนัก");
+    expect(message.text).toContain("อัปเดตสัดส่วน");
+  });
+
+  it("asks only for measurements when weight was already logged", () => {
     const [message] = buildMonthlyReminderMessages(LIFF_URL, "นนท์", {
-      photoDue: false,
+      weightDue: false,
+      measurementDue: true,
     });
-    expect(message.text).not.toContain("ถ่ายรูปความคืบหน้า");
+    expect(message.text).toContain("อัปเดตสัดส่วน");
+    expect(message.text).not.toContain("อัปเดตน้ำหนัก");
+  });
+
+  it("asks only for weight when measurements were already logged", () => {
+    const [message] = buildMonthlyReminderMessages(LIFF_URL, "นนท์", {
+      weightDue: true,
+      measurementDue: false,
+    });
+    expect(message.text).toContain("อัปเดตน้ำหนัก");
+    expect(message.text).not.toContain("อัปเดตสัดส่วน");
+  });
+
+  it("builds the photo reminder with the app link", () => {
+    const [message] = buildPhotoReminderMessages(LIFF_URL);
+    expect(message.type).toBe("text");
+    expect(message.text).toContain("📸 ถ่ายรูปความคืบหน้าของคุณวันนี้");
+    expect(message.text).toContain(LIFF_URL);
+  });
+
+  it("places userName right after the greeting for the photo reminder", () => {
+    const [message] = buildPhotoReminderMessages(LIFF_URL, "นนท์");
+    expect(message.text).toContain("สวัสดีคร้าคุณ นนท์ เดือนใหม่แล้ว");
   });
 });

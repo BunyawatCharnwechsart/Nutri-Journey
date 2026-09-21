@@ -151,26 +151,56 @@ export function buildPhaseEndMessages(
 }
 
 /**
- * Builds the monthly "check-in" reminder sent by the monthly cron on the 1st
- * of every month. One message covers weight (+ measurements) and, when the
- * user has a progress-photo history but has NOT uploaded for the current month
- * yet (`photoDue`), a photo reminder line as well. Kept pure so it is easy to
- * unit test.
+ * Builds the monthly "update your results" reminder sent by the monthly cron
+ * on the 1st of every month. Only the lines the user has NOT done this month
+ * are mentioned (`weightDue`/`measurementDue`) — the caller computes them from
+ * the real weight_logs/measurement_logs so we never nag about something that
+ * was already recorded. The photo reminder is a separate push
+ * (`buildPhotoReminderMessages`). Kept pure so it is easy to unit test.
  */
 export function buildMonthlyReminderMessages(
   liffUrl: string,
   userName?: string | null,
-  options?: { photoDue?: boolean }
+  options?: { weightDue?: boolean; measurementDue?: boolean }
 ): LineSendMessage[] {
   const prefix = userNamePrefix(userName);
-  const photoLine = options?.photoDue
-    ? "\n📸 ถ่ายรูปความคืบหน้าของคุณวันนี้"
-    : "";
+  // Default to due (full message) when the option is absent — matches the
+  // pre-split behavior.
+  const weightDue = options?.weightDue !== false;
+  const measurementDue = options?.measurementDue !== false;
+
+  const lines = [
+    weightDue ? "⚖️ อัปเดตน้ำหนักของคุณวันนี้" : null,
+    measurementDue ? "📏 อัปเดตสัดส่วนของคุณวันนี้" : null,
+  ].filter((line): line is string => line !== null);
 
   return [
     {
       type: "text",
-      text: `สวัสดีคร้าคุณ ${prefix}เริ่มต้นเดือนใหม่แล้ว อย่าลืมอัปเดตผลลัพธ์นะ\n⚖️ อัปเดตน้ำหนักของคุณวันนี้\n📏 อัปเดตสัดส่วนของคุณวันนี้${photoLine}\nกดบันทึกได้เลย:\n${liffUrl}`,
+      text: `สวัสดีคร้าคุณ ${prefix}เริ่มต้นเดือนใหม่แล้ว อย่าลืมอัปเดตผลลัพธ์นะ\n${lines.join(
+        "\n"
+      )}\nกดบันทึกได้เลย:\n${liffUrl}`,
+    },
+  ];
+}
+
+/**
+ * Builds the monthly photo-progress reminder. A separate push from
+ * `buildMonthlyReminderMessages` so the photo reminder can be enabled/disabled
+ * on its own (users.photo_reminder_enabled). The cron only sends it when the
+ * user has a photo history and has not uploaded for the current month yet.
+ * Kept pure so it is easy to unit test.
+ */
+export function buildPhotoReminderMessages(
+  liffUrl: string,
+  userName?: string | null
+): LineSendMessage[] {
+  const prefix = userNamePrefix(userName);
+
+  return [
+    {
+      type: "text",
+      text: `สวัสดีคร้าคุณ ${prefix}เดือนใหม่แล้ว\n📸 ถ่ายรูปความคืบหน้าของคุณวันนี้\nกดบันทึกได้เลย:\n${liffUrl}`,
     },
   ];
 }

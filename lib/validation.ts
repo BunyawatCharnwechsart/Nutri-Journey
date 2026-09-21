@@ -206,18 +206,22 @@ export const avatarNameSchema = z.object({
 
 /**
  * POST /api/v1/notifications/settings
- * ปรับเปิด/ปิดการแจ้งเตือนแยกตามประเภท (ตาม migration 0030):
+ * ปรับเปิด/ปิดการแจ้งเตือนแยกตามประเภท (ตาม migration 0030/0031):
  *   * ifNotifications → line_notifications_enabled (หมดเวลาอด/กิน)
  *   * monthlyReminder → monthly_reminder_enabled (อัปเดตน้ำหนัก/สัดส่วนทุกเดือน)
+ *   * photoReminder   → photo_reminder_enabled   (ถ่ายรูปความคืบหน้าทุกเดือน)
  * ต้องส่งอย่างน้อย 1 ค่า — ส่งเฉพาะประเภทที่ต้องการเปลี่ยน.
  */
 export const notificationSettingsSchema = z
   .object({
     ifNotifications: z.boolean().optional(),
     monthlyReminder: z.boolean().optional(),
+    photoReminder: z.boolean().optional(),
   })
   .refine(
     (data) =>
-      data.ifNotifications !== undefined || data.monthlyReminder !== undefined,
+      data.ifNotifications !== undefined ||
+      data.monthlyReminder !== undefined ||
+      data.photoReminder !== undefined,
     { message: "ต้องระบุอย่างน้อย 1 รายการ", path: ["ifNotifications"] }
   );
