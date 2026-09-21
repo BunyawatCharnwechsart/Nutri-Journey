@@ -75,13 +75,6 @@ export const healthProfileSchema = z.object({
     ),
   heightCm: z.coerce.number().int().min(50).max(250),
   weightKg: z.coerce.number().min(20).max(300),
-  activityLevel: z.enum([
-    "sedentary",
-    "light",
-    "moderate",
-    "active",
-    "very_active",
-  ]),
 
   // Required fields (step 2 + step 3 of the health profile wizard).
   // Measurements are captured in inches and stored in inches.
@@ -99,8 +92,8 @@ export const healthProfileSchema = z.object({
 
 /**
  * Basic profile edit (from the "แก้ไขข้อมูล" modal on the profile page).
- * Only static info may change here: gender, birth date, height, activity
- * level, goal and target weight. Weight is deliberately absent — weight_logs
+ * Only static info may change here: gender, birth date, height, goal and
+ * target weight. Weight is deliberately absent — weight_logs
  * owns it (see /api/v1/weight-logs), and measurements have their own flow.
  */
 export const editProfileSchema = z.object({
@@ -117,13 +110,6 @@ export const editProfileSchema = z.object({
       "วันเดือนปีเกิดต้องไม่เป็นวันที่ในอนาคต"
     ),
   heightCm: z.coerce.number().int().min(50).max(250),
-  activityLevel: z.enum([
-    "sedentary",
-    "light",
-    "moderate",
-    "active",
-    "very_active",
-  ]),
   goal: z.enum([
     "weight_loss",
     "eating_behavior",

@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import Image from "next/image";
 
 import {
-  ACTIVITY_LEVELS,
   GENDER_OPTIONS,
   GOAL_OPTIONS,
 } from "@/lib/profile";
@@ -16,7 +15,6 @@ export interface HealthProfileValues {
   birthDate: string;
   heightCm: number | null;
   weightKg: number | null;
-  activityLevel: string;
   waistIn: number | null;
   hipIn: number | null;
   chestIn: number | null;
@@ -55,7 +53,6 @@ export default function HealthProfileForm({
   const [weightKg, setWeightKg] = useState(
     initialValues.weightKg?.toString() ?? ""
   );
-  const [activityLevel, setActivityLevel] = useState(initialValues.activityLevel);
   const [waistIn, setWaistIn] = useState(
     initialValues.waistIn?.toString() ?? ""
   );
@@ -128,7 +125,6 @@ export default function HealthProfileForm({
           birthDate,
           heightCm: Number(heightCm),
           weightKg: Number(weightKg),
-          activityLevel,
           waistIn: Number(waistIn),
           hipIn: Number(hipIn),
           chestIn: Number(chestIn),
@@ -328,36 +324,6 @@ export default function HealthProfileForm({
                 required
               />
             </div>
-          </div>
-
-          <div>
-            <label htmlFor="activity-level" className={labelClass}>
-              <Image
-                src="/icon/activityLevelIcon.png"
-                alt=""
-                aria-hidden="true"
-                width={22}
-                height={22}
-                className="shrink-0"
-              />
-              ระดับกิจกรรม
-            </label>
-            <select
-              id="activity-level"
-              value={activityLevel}
-              onChange={(e) => setActivityLevel(e.target.value)}
-              className={inputClass}
-              required
-            >
-              <option value="" disabled>
-                เลือกระดับกิจกรรมของคุณ
-              </option>
-              {ACTIVITY_LEVELS.map((option) => (
-                <option key={option.value} value={option.value}>
-                  {option.label}
-                </option>
-              ))}
-            </select>
           </div>
         </section>
       )}

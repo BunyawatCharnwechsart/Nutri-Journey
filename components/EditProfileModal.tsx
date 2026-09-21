@@ -3,18 +3,13 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-import {
-  ACTIVITY_LEVELS,
-  GENDER_OPTIONS,
-  GOAL_OPTIONS,
-} from "@/lib/profile";
+import { GENDER_OPTIONS, GOAL_OPTIONS } from "@/lib/profile";
 import BirthDatePicker from "@/components/BirthDatePicker";
 
 interface EditProfileModalProps {
   gender: string;
   birthDate: string;
   heightCm: number | null;
-  activityLevel: string;
   goal: string;
   targetWeightKg: number | null;
 }
@@ -28,7 +23,7 @@ const selectClass =
  * "แก้ไขข้อมูล" modal on the profile page.
  *
  * Only static health info can change here: เพศ, วันเกิด, ส่วนสูง,
- * ระดับกิจกรรม, เป้าหมาย and น้ำหนักเป้าหมาย. Weight and measurements are
+ * เป้าหมาย and น้ำหนักเป้าหมาย. Weight and measurements are
  * deliberately absent — they have dedicated flows (weight_logs lock + the
  * อัปเดตสัดส่วน modal), so this modal never touches them.
  */
@@ -36,7 +31,6 @@ export default function EditProfileModal({
   gender,
   birthDate,
   heightCm,
-  activityLevel,
   goal,
   targetWeightKg,
 }: EditProfileModalProps) {
@@ -45,7 +39,6 @@ export default function EditProfileModal({
   const [genderValue, setGenderValue] = useState(gender);
   const [birthDateValue, setBirthDateValue] = useState(birthDate);
   const [height, setHeight] = useState("");
-  const [activityLevelValue, setActivityLevelValue] = useState(activityLevel);
   const [goalValue, setGoalValue] = useState(goal);
   const [targetWeight, setTargetWeight] = useState("");
   const [saving, setSaving] = useState(false);
@@ -57,7 +50,6 @@ export default function EditProfileModal({
     setGenderValue(gender);
     setBirthDateValue(birthDate);
     setHeight(heightCm != null ? String(heightCm) : "");
-    setActivityLevelValue(activityLevel);
     setGoalValue(goal);
     setTargetWeight(targetWeightKg != null ? String(targetWeightKg) : "");
     setError(null);
@@ -80,7 +72,6 @@ export default function EditProfileModal({
       !Number.isFinite(heightCmNumber) ||
       heightCmNumber < 50 ||
       heightCmNumber > 250 ||
-      !activityLevelValue ||
       !goalValue ||
       !Number.isFinite(targetWeightKgNumber) ||
       targetWeightKgNumber < 20 ||
@@ -101,7 +92,6 @@ export default function EditProfileModal({
           gender: genderValue,
           birthDate: birthDateValue,
           heightCm: heightCmNumber,
-          activityLevel: activityLevelValue,
           goal: goalValue,
           targetWeightKg: targetWeightKgNumber,
         }),
@@ -201,27 +191,6 @@ export default function EditProfileModal({
                   onChange={(e) => setHeight(e.target.value)}
                   className={inputClass}
                 />
-              </div>
-
-              <div>
-                <label
-                  htmlFor="edit-profile-activity"
-                  className="mb-1 block text-sm font-medium text-zinc-700"
-                >
-                  ระดับกิจกรรม
-                </label>
-                <select
-                  id="edit-profile-activity"
-                  value={activityLevelValue}
-                  onChange={(e) => setActivityLevelValue(e.target.value)}
-                  className={selectClass}
-                >
-                  {ACTIVITY_LEVELS.map((option) => (
-                    <option key={option.value} value={option.value}>
-                      {option.label}
-                    </option>
-                  ))}
-                </select>
               </div>
 
               <div>

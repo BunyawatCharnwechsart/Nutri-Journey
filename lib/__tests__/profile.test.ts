@@ -7,7 +7,6 @@ describe("isProfileComplete", () => {
     gender: "male",
     birth_date: "2000-01-01",
     height: 175,
-    activity_level: "moderate",
     waist_in: 29.5,
     hip_in: 37,
     chest_in: 34.5,
@@ -85,7 +84,7 @@ describe("getBmiCategory", () => {
     expect(getBmiCategory(22)).toBe("ปกติ");
     expect(getBmiCategory(24)).toBe("น้ำหนักเกิน");
     expect(getBmiCategory(29)).toBe("อ้วน ระดับ 1");
-    expect(getBmiCategory(30)).toBe("อ้วน ระดับ 2 (อันตราย)");
+    expect(getBmiCategory(30)).toBe("อ้วน ระดับ 2");
   });
 
   it("returns a dash for null", () => {
