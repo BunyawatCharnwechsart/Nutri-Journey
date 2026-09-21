@@ -23,6 +23,21 @@ ChartJS.register(
   Filler
 );
 
+/** เงาอ่อนใต้เส้นกราฟ (Chart.js ไม่มี shadow option ในตัว → plugin วาดเอง). */
+const lineShadow = {
+  id: "lineShadow",
+  beforeDatasetsDraw: (chart: { ctx: CanvasRenderingContext2D }) => {
+    const { ctx } = chart;
+    ctx.save();
+    ctx.shadowColor = "rgba(0, 0, 0, 0.15)";
+    ctx.shadowBlur = 6;
+    ctx.shadowOffsetY = 2;
+  },
+  afterDatasetsDraw: (chart: { ctx: CanvasRenderingContext2D }) => {
+    chart.ctx.restore();
+  },
+};
+
 export interface WeightPoint {
   id: string;
   /** "YYYY-MM-DD" (ICT calendar day). */
@@ -182,7 +197,7 @@ export default function WeightChart({
       aria-label={`กราฟน้ำหนักช่วง ${displayLabel}`}
       className="h-64 w-full sm:h-72"
     >
-      <Line data={data} options={options} />
+      <Line data={data} options={options} plugins={[lineShadow]} />
     </div>
   );
 }
