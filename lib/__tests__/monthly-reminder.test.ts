@@ -2,7 +2,9 @@ import { describe, expect, it } from "vitest";
 
 import {
   dueMonthlyReminder,
+  monthlyCheckinStatus,
   photoReminderDue,
+  shouldSendPhotoReminder,
 } from "@/lib/monthly-reminder";
 
 // 2026-09-02 00:00 UTC = 2026-09-02 07:00 ICT (same calendar day).
@@ -80,5 +82,119 @@ describe("photoReminderDue", () => {
   it("distinguishes past vs future month keys strictly", () => {
     // A future month key is not "this month" → treated as pending upload.
     expect(photoReminderDue(SEP, ["2026-10"])).toBe(true);
+  });
+});
+
+describe("shouldSendPhotoReminder", () => {
+  const SEP = "2026-09";
+  const base = {
+    currentMonthKey: SEP,
+  };
+
+  it("never sends when the user toggled the photo reminder off", () => {
+    expect(
+      shouldSendPhotoReminder({
+        ...base,
+        photoReminderEnabled: false,
+        recordedMonthKeys: ["2026-08"],
+      })
+    ).toBe(false);
+  });
+
+  it("treats NULL (unanswered) as ON, keeping pre-0031 behavior", () => {
+    expect(
+      shouldSendPhotoReminder({
+        ...base,
+        photoReminderEnabled: null,
+        recordedMonthKeys: ["2026-08"],
+      })
+    ).toBe(true);
+    expect(
+      shouldSendPhotoReminder({
+        ...base,
+        photoReminderEnabled: undefined,
+        recordedMonthKeys: ["2026-08"],
+      })
+    ).toBe(true);
+  });
+
+  it("sends when enabled and history exists but not this month", () => {
+    expect(
+      shouldSendPhotoReminder({
+        ...base,
+        photoReminderEnabled: true,
+        recordedMonthKeys: ["2026-08"],
+      })
+    ).toBe(true);
+  });
+
+  it("never nags a user with no photo history", () => {
+    expect(
+      shouldSendPhotoReminder({
+        ...base,
+        photoReminderEnabled: true,
+        recordedMonthKeys: [],
+      })
+    ).toBe(false);
+  });
+
+  it("skips when the user already uploaded this month", () => {
+    expect(
+      shouldSendPhotoReminder({
+        ...base,
+        photoReminderEnabled: true,
+        recordedMonthKeys: [SEP],
+      })
+    ).toBe(false);
+  });
+});
+
+describe("monthlyCheckinStatus", () => {
+  it("needs both lines when nothing was logged this month", () => {
+    const status = monthlyCheckinStatus({
+      weightUpdatedThisMonth: false,
+      measurementUpdatedThisMonth: false,
+    });
+    expect(status).toEqual({
+      weightDue: true,
+      measurementDue: true,
+      needsCheckin: true,
+    });
+  });
+
+  it("reminds only weight when measurements were already logged", () => {
+    const status = monthlyCheckinStatus({
+      weightUpdatedThisMonth: false,
+      measurementUpdatedThisMonth: true,
+    });
+    expect(status).toEqual({
+      weightDue: true,
+      measurementDue: false,
+      needsCheckin: true,
+    });
+  });
+
+  it("reminds only measurements when weight was already logged", () => {
+    const status = monthlyCheckinStatus({
+      weightUpdatedThisMonth: true,
+      measurementUpdatedThisMonth: false,
+    });
+    expect(status).toEqual({
+      weightDue: false,
+      measurementDue: true,
+      needsCheckin: true,
+    });
+  });
+
+  it("needs no check-in push when both are already logged", () => {
+    const status = monthlyCheckinStatus({
+      weightUpdatedThisMonth: true,
+      measurementUpdatedThisMonth: true,
+    });
+    expect(status).toEqual({
+      weightDue: false,
+      measurementDue: false,
+      needsCheckin: false,
+    });
   });
 });

@@ -30,8 +30,10 @@ interface LinkStatus {
   linked: boolean;
   /** เปิด/ปิด LINE แจ้งเตือนแยกประเภท: หมดเวลาอด/กิน (เส้น spam). */
   ifNotifications: boolean;
-  /** เปิด/ปิด LINE แจ้งเตือนแยกประเภท: อัปเดตน้ำหนัก/สัดส่วน/รูปถ่ายทุกเดือน. */
+  /** เปิด/ปิด LINE แจ้งเตือนแยกประเภท: อัปเดตน้ำหนัก/สัดส่วนทุกเดือน. */
   monthlyReminder: boolean;
+  /** เปิด/ปิด LINE แจ้งเตือนแยกประเภท: ถ่ายรูปความคืบหน้าทุกเดือน. */
+  photoReminder: boolean;
   /** ตอบคำถามครั้งแรกแล้วหรือยัง (ถามครั้งเดียวจบ). */
   onboarded: boolean;
   /** true = เป็นเพื่อน OA, false = ยังไม่เป็น, null = เช็คไม่สำเร็จ/ไม่รู้. */
@@ -71,6 +73,7 @@ export default function BellButton() {
     linked: false,
     ifNotifications: false,
     monthlyReminder: false,
+    photoReminder: false,
     onboarded: false,
     friend: null,
     message: null,
@@ -89,6 +92,7 @@ export default function BellButton() {
             linked?: boolean;
             ifNotifications?: boolean;
             monthlyReminder?: boolean;
+            photoReminder?: boolean;
             onboarded?: boolean;
             friend?: boolean | null;
           };
@@ -96,13 +100,14 @@ export default function BellButton() {
         if (cancelled) {
           return;
         }
-        const { linked, ifNotifications, monthlyReminder, onboarded, friend } =
+        const { linked, ifNotifications, monthlyReminder, photoReminder, onboarded, friend } =
           json.success ? json.data ?? {} : {};
         setStatus((prev) => ({
           ...prev,
           linked: Boolean(linked),
           ifNotifications: Boolean(ifNotifications),
           monthlyReminder: Boolean(monthlyReminder),
+          photoReminder: Boolean(photoReminder),
           onboarded: Boolean(onboarded),
           friend: friend ?? null,
           loading: false,
@@ -166,6 +171,7 @@ export default function BellButton() {
           linked: true,
           ifNotifications: true,
           monthlyReminder: true,
+          photoReminder: true,
           onboarded: true,
           friend: json.data?.friend ?? null,
           working: false,
@@ -199,6 +205,7 @@ export default function BellButton() {
         linked: Boolean(res.ok && json.success && json.data?.linked),
         ifNotifications: false,
         monthlyReminder: false,
+        photoReminder: false,
         onboarded: Boolean(res.ok && json.success && json.data?.onboarded),
         friend: null,
         working: false,
@@ -218,7 +225,7 @@ export default function BellButton() {
    * ส่งเฉพาะ switch ที่ user กด — อีกตัวคงค่าเดิมฝั่ง server.
    */
   async function toggleNotification(
-    key: "ifNotifications" | "monthlyReminder",
+    key: "ifNotifications" | "monthlyReminder" | "photoReminder",
     value: boolean
   ) {
     setStatus((prev) => ({ ...prev, working: true, message: null }));
@@ -234,6 +241,7 @@ export default function BellButton() {
           linked?: boolean;
           ifNotifications?: boolean;
           monthlyReminder?: boolean;
+          photoReminder?: boolean;
         };
       };
       if (res.ok && json?.success) {
@@ -246,11 +254,16 @@ export default function BellButton() {
           key === "monthlyReminder"
             ? value
             : Boolean(json.data?.monthlyReminder ?? false);
+        const photoReminder =
+          key === "photoReminder"
+            ? value
+            : Boolean(json.data?.photoReminder ?? false);
         setStatus((prev) => ({
           ...prev,
           linked: nextLinked,
           ifNotifications,
           monthlyReminder,
+          photoReminder,
           working: false,
           message: null,
         }));
@@ -533,13 +546,13 @@ export default function BellButton() {
                         </div>
                         <div className="flex items-center justify-between gap-3 rounded-xl bg-zinc-50 px-4 py-3">
                           <span className="text-sm font-medium text-zinc-700">
-                            แจ้งเตือนอัปเดตน้ำหนัก/สัดส่วน/รูปถ่ายทุกเดือน
+                            แจ้งเตือนอัปเดตน้ำหนัก/สัดส่วนทุกเดือน
                           </span>
                           <button
                             type="button"
                             role="switch"
                             aria-checked={status.monthlyReminder}
-                            aria-label="แจ้งเตือนอัปเดตน้ำหนัก/สัดส่วน/รูปถ่ายทุกเดือน"
+                            aria-label="แจ้งเตือนอัปเดตน้ำหนัก/สัดส่วนทุกเดือน"
                             disabled={status.working}
                             onClick={() =>
                               toggleNotification(
@@ -554,6 +567,35 @@ export default function BellButton() {
                             <span
                               className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
                                 status.monthlyReminder
+                                  ? "translate-x-5"
+                                  : "translate-x-0"
+                              }`}
+                            />
+                          </button>
+                        </div>
+                        <div className="flex items-center justify-between gap-3 rounded-xl bg-zinc-50 px-4 py-3">
+                          <span className="text-sm font-medium text-zinc-700">
+                            แจ้งเตือนถ่ายรูปความคืบหน้าทุกเดือน
+                          </span>
+                          <button
+                            type="button"
+                            role="switch"
+                            aria-checked={status.photoReminder}
+                            aria-label="แจ้งเตือนถ่ายรูปความคืบหน้าทุกเดือน"
+                            disabled={status.working}
+                            onClick={() =>
+                              toggleNotification(
+                                "photoReminder",
+                                !status.photoReminder
+                              )
+                            }
+                            className={`relative h-6 w-11 rounded-full transition-colors disabled:opacity-50 ${
+                              status.photoReminder ? "bg-[#18A659]" : "bg-zinc-300"
+                            }`}
+                          >
+                            <span
+                              className={`absolute top-0.5 left-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                                status.photoReminder
                                   ? "translate-x-5"
                                   : "translate-x-0"
                               }`}
