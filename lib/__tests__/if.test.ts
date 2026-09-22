@@ -9,6 +9,7 @@ import {
   formatMinutes,
   MOOD_LEVELS,
   MOOD_VALUES,
+  wouldMissFastingGoal,
 } from "@/lib/if";
 
 describe("getIfPattern", () => {
@@ -75,6 +76,26 @@ describe("computeIfResult", () => {
   it("marks fail for missing/null durations", () => {
     expect(computeIfResult("16:8", null, null)).toBe("fail");
     expect(computeIfResult("16:8", undefined, undefined)).toBe("fail");
+  });
+});
+
+describe("wouldMissFastingGoal", () => {
+  it("returns false when the fasting time reaches the pattern goal", () => {
+    expect(wouldMissFastingGoal("16:8", 960)).toBe(false);
+    expect(wouldMissFastingGoal("16:8", 960.4)).toBe(false);
+    expect(wouldMissFastingGoal("12:12", 720)).toBe(false);
+  });
+
+  it("returns true when fasting is below the pattern goal", () => {
+    expect(wouldMissFastingGoal("16:8", 959)).toBe(true);
+    // หัก 2 ชม. ในเคส bug: pattern 12:12 แต่อดได้แค่ 120 นาที.
+    expect(wouldMissFastingGoal("12:12", 120)).toBe(true);
+  });
+
+  it("returns true for unknown/null patterns (can never be success)", () => {
+    expect(wouldMissFastingGoal("99:9", 99999)).toBe(true);
+    expect(wouldMissFastingGoal(null, 99999)).toBe(true);
+    expect(wouldMissFastingGoal(undefined, null)).toBe(true);
   });
 });
 

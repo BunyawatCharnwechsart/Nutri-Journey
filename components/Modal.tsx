@@ -10,8 +10,9 @@ interface ModalProps {
 
 /**
  * Bottom-sheet-style dialog shared by every IF tracker modal: closes on
- * Escape or backdrop click and focuses the panel so keyboard users land
- * inside it.
+ * Escape or a tap on the backdrop (not on children — needed because the
+ * native <select> dropdown fires click events that must not close the modal)
+ * and focuses the panel so keyboard users land inside it.
  */
 export default function Modal({ ariaLabel, onClose, children }: ModalProps) {
   const dialogRef = useRef<HTMLDivElement>(null);
@@ -31,7 +32,13 @@ export default function Modal({ ariaLabel, onClose, children }: ModalProps) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-6 sm:items-center"
-      onClick={onClose}
+      onClick={(event) => {
+        // ปิดเฉพาะตอนแตะพื้นหลังจริงๆ — ถ้าปิดบน click ไหนก็ตาม native select
+        // (ชั่วโมง/นาที) ที่เปิดอยู่จะทะลุมาอัน overlay แล้วดันปิด modal เอง.
+        if (event.target === event.currentTarget) {
+          onClose();
+        }
+      }}
     >
       <div
         ref={dialogRef}
@@ -39,7 +46,6 @@ export default function Modal({ ariaLabel, onClose, children }: ModalProps) {
         aria-modal="true"
         aria-label={ariaLabel}
         tabIndex={-1}
-        onClick={(event) => event.stopPropagation()}
         className="flex w-full max-w-sm flex-col gap-5 rounded-2xl bg-white p-6 outline-none"
       >
         {children}

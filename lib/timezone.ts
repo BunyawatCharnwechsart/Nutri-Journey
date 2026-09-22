@@ -32,6 +32,47 @@ export function toICTDateKey(date: Date): string {
   )}`;
 }
 
+/**
+ * สร้าง UTC timestamp จากวัน/เวลาที่ผู้ใช้กรอกตามนาฬิกาไทย (ICT, UTC+7) —
+ * ยึดเวลาไทยเป็นกลาง ไม่ขึ้นกับ timezone ของเครื่องผู้ใช้.
+ *
+ * `dateKey` รูปแบบ "yyyy-MM-dd", `time` รูปแบบ "HH:mm"
+ * (ค่าเดียวกับ <input type="date"> / <input type="time">).
+ * โยน RangeError ถ้ารูปแบบผิดหรือค่าวัน/เวลาไม่สมเหตุสมผล (เช่น 24:00, 13:60).
+ * ใช้กับหน้า "แก้ไขช่วงเวลา" — ผู้ใช้เลือกเวลาที่ผ่านมาแล้วโดยแจ้งวันที่ชัดเจน
+ * ไม่ใช่ให้โค้ดย้อนวันให้อัตโนมัติแบบเงียบๆ (เดิมเคยมี bug เลื่อนวันพลาดทั้งวัน).
+ */
+export function fromICTWallClock(dateKey: string, time: string): Date {
+  const dateMatch = /^(\d{4})-(\d{2})-(\d{2})$/.exec(dateKey);
+  const timeMatch = /^(\d{2}):(\d{2})$/.exec(time);
+  if (!dateMatch || !timeMatch) {
+    throw new RangeError("Invalid ICT date/time format");
+  }
+
+  const year = Number(dateMatch[1]);
+  const month = Number(dateMatch[2]) - 1;
+  const day = Number(dateMatch[3]);
+  const hour = Number(timeMatch[1]);
+  const minute = Number(timeMatch[2]);
+
+  // เอา wall-clock ไปนับเป็น UTC ก่อนแล้วลบ offset → ได้ UTC instant ที่ตรงกับ
+  // เวลาไทยที่ผู้ใช้ตั้งใจ. ตรวจย้อนกลับ (map กลับเป็นเวลาไทย) เพื่อกันข้อมูลเกิน
+  // ที่ Date.UTC เลื่อนให้เงียบๆ (เช่น month=13, hour=24, 30 ก.พ.) — ถ้าเลื่อน
+  // ค่า ICT ที่ได้จะไม่ตรงกับ input อีกแล้วจึง throw.
+  const date = new Date(Date.UTC(year, month, day, hour, minute) - ICT_OFFSET_MS);
+  const ict = toICT(date);
+  if (
+    ict.getUTCFullYear() !== year ||
+    ict.getUTCMonth() !== month ||
+    ict.getUTCDate() !== day ||
+    ict.getUTCHours() !== hour ||
+    ict.getUTCMinutes() !== minute
+  ) {
+    throw new RangeError(`Invalid ICT wall-clock: ${dateKey} ${time}`);
+  }
+  return date;
+}
+
 /** เดือนตามผนัง (wall-clock) แบบไทย "yyyy-MM" จาก UTC timestamp. */
 export function toICTMonthKey(date: Date): string {
   const ict = toICT(date);
