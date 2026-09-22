@@ -186,6 +186,32 @@ describe("healthProfileSchema", () => {
     ).toThrow();
   });
 
+  it("rejects a decimal height because height is stored in whole centimeters", () => {
+    expect(() =>
+      healthProfileSchema.parse({
+        ...fullProfile,
+        heightCm: "175.5",
+      })
+    ).toThrow("ส่วนสูงต้องเป็นจำนวนเต็ม");
+  });
+
+  it("still accepts decimal body values and target weight", () => {
+    const result = healthProfileSchema.parse({
+      ...fullProfile,
+      weightKg: "70.5",
+      waistIn: "29.5",
+      hipIn: "37.2",
+      chestIn: "34.5",
+      targetWeightKg: "64.5",
+    });
+
+    expect(result.weightKg).toBe(70.5);
+    expect(result.waistIn).toBe(29.5);
+    expect(result.hipIn).toBe(37.2);
+    expect(result.chestIn).toBe(34.5);
+    expect(result.targetWeightKg).toBe(64.5);
+  });
+
   it("rejects a missing (blank) measurement", () => {
     expect(() =>
       healthProfileSchema.parse({

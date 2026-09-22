@@ -73,7 +73,11 @@ export const healthProfileSchema = z.object({
       (value) => new Date(value) <= new Date(),
       "วันเดือนปีเกิดต้องไม่เป็นวันที่ในอนาคต"
     ),
-  heightCm: z.coerce.number().int().min(50).max(250),
+  heightCm: z.coerce
+    .number()
+    .int("ส่วนสูงต้องเป็นจำนวนเต็ม")
+    .min(50, "ส่วนสูงต้องอยู่ระหว่าง 50-250 ซม.")
+    .max(250, "ส่วนสูงต้องอยู่ระหว่าง 50-250 ซม."),
   weightKg: z.coerce.number().min(20).max(300),
 
   // Required fields (step 2 + step 3 of the health profile wizard).
@@ -109,7 +113,11 @@ export const editProfileSchema = z.object({
       (value) => new Date(value) <= new Date(),
       "วันเดือนปีเกิดต้องไม่เป็นวันที่ในอนาคต"
     ),
-  heightCm: z.coerce.number().int().min(50).max(250),
+  heightCm: z.coerce
+    .number()
+    .int("ส่วนสูงต้องเป็นจำนวนเต็ม")
+    .min(50, "ส่วนสูงต้องอยู่ระหว่าง 50-250 ซม.")
+    .max(250, "ส่วนสูงต้องอยู่ระหว่าง 50-250 ซม."),
   goal: z.enum([
     "weight_loss",
     "eating_behavior",

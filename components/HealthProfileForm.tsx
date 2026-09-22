@@ -75,16 +75,34 @@ export default function HealthProfileForm({
     3: "เป้าหมาย",
   };
 
+  function isInRange(value: number, min: number, max: number): boolean {
+    return Number.isFinite(value) && value >= min && value <= max;
+  }
+
   async function handleSubmit(event: FormEvent) {
     event.preventDefault();
 
     if (step === 1) {
+      const heightCmNumber = Number(heightCm);
+      const weightKgNumber = Number(weightKg);
+
       if (gender === "") {
         setError("กรุณาเลือกเพศของคุณ");
         return;
       }
       if (birthDate === "") {
         setError("กรุณาเลือกวันเกิดของคุณ");
+        return;
+      }
+      if (
+        !Number.isInteger(heightCmNumber) ||
+        !isInRange(heightCmNumber, 50, 250)
+      ) {
+        setError("กรุณากรอกส่วนสูงเป็นจำนวนเต็ม 50-250 ซม.");
+        return;
+      }
+      if (!isInRange(weightKgNumber, 20, 300)) {
+        setError("กรุณากรอกน้ำหนัก 20-300 กก.");
         return;
       }
     }
@@ -286,10 +304,10 @@ export default function HealthProfileForm({
               <input
                 id="height-cm"
                 type="number"
-                inputMode="decimal"
+                inputMode="numeric"
                 min={50}
                 max={250}
-                step={0.1}
+                step={1}
                 placeholder="เช่น 165"
                 value={heightCm}
                 onChange={(e) => setHeightCm(e.target.value)}
