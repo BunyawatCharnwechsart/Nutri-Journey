@@ -4,7 +4,6 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 
-import ConfirmCancelModal from "@/components/ConfirmCancelModal";
 import ConfirmEndModal from "@/components/ConfirmEndModal";
 import EditTimeModal from "@/components/EditTimeModal";
 import PatternPickerModal from "@/components/PatternPickerModal";
@@ -43,14 +42,14 @@ function formatClock(milliseconds: number): string {
   return `${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
 }
 
-/** Formats a timestamp as a Thai date + 24-hour time, e.g. "25/08/2026 14:30 น.". */
-function formatThaiTime(value: string | null | undefined): string {
+/** Formats a timestamp as a Thai date + 24-hour time, e.g. "25/08/2026 เวลา 14:30 น.". */
+function formatThaiDateTime(value: string | null | undefined): string {
   if (!value) {
     return "-";
   }
   const ict = toICT(new Date(value));
   const pad = (n: number) => String(n).padStart(2, "0");
-  return `${pad(ict.getUTCDate())}/${pad(ict.getUTCMonth() + 1)}/${ict.getUTCFullYear()} ${pad(ict.getUTCHours())}:${pad(ict.getUTCMinutes())} น.`;
+  return `${pad(ict.getUTCDate())}/${pad(ict.getUTCMonth() + 1)}/${ict.getUTCFullYear()} เวลา ${pad(ict.getUTCHours())}:${pad(ict.getUTCMinutes())} น.`;
 }
 
 /**
@@ -158,6 +157,24 @@ function FastingClock({
   );
 }
 
+function TimerIcon({ className }: { className?: string }) {
+  return (
+    <svg
+      viewBox="0 0 29 29"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+      className={className}
+    >
+      <path d="M6.68508 18.4442C6.23279 17.3522 6 16.1819 6 15C6 12.6131 6.94821 10.3239 8.63604 8.63604C10.3239 6.94821 12.6131 6 15 6C17.3869 6 19.6761 6.94821 21.364 8.63604C23.0518 10.3239 24 12.6131 24 15C24 16.1819 23.7672 17.3522 23.3149 18.4442C22.8626 19.5361 22.1997 20.5282 21.364 21.364C20.5282 22.1997 19.5361 22.8626 18.4442 23.3149C17.3522 23.7672 16.1819 24 15 24C13.8181 24 12.6478 23.7672 11.5558 23.3149C10.4639 22.8626 9.47177 22.1997 8.63604 21.364C7.80031 20.5282 7.13738 19.5361 6.68508 18.4442Z" />
+      <path d="M15 10V15L18 18" />
+    </svg>
+  );
+}
+
 interface PhaseCardProps {
   label: string;
   startTime: string;
@@ -168,18 +185,33 @@ interface PhaseCardProps {
 
 function PhaseCard({ label, startTime, remainingMs, accent, expired = false }: PhaseCardProps) {
   return (
-    <div className="flex w-full flex-col gap-1 rounded-2xl border border-zinc-200 bg-white p-4 text-center">
-      <span className="text-sm text-zinc-500">
-        {label} · {startTime}
-      </span>
+    <div className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-[0_4px_16px_-4px_rgba(0,0,0,0.12)]">
+      <div
+        className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl"
+        style={{ backgroundColor: `${accent}1A`, color: accent }}
+      >
+        <TimerIcon className="h-6 w-6" />
+      </div>
+      <div className="flex min-w-0 flex-col gap-0.5">
+        <span className="text-base font-bold text-zinc-900">{label}</span>
+        <span className="text-xs text-zinc-500">
+          {formatThaiDateTime(startTime)}
+        </span>
+      </div>
       {expired ? (
-        <span className="text-lg font-bold text-red-600">
-          หมดเวลาที่วางไว้แล้ว - กดสิ้นสุดเพื่อเริ่มอด
+        <span className="text-right text-sm font-bold text-red-600">
+          หมดเวลาที่วางไว้แล้ว กดสิ้นสุดเพื่อเริ่มอด
         </span>
       ) : (
-        <span className="text-lg font-bold tabular-nums" style={{ color: accent }}>
-          เหลือ {formatClock(remainingMs)}
-        </span>
+        <div className="flex flex-col items-end gap-0.5">
+          <span className="text-xs text-zinc-500">เหลือ</span>
+          <span
+            className="text-lg font-bold tabular-nums"
+            style={{ color: accent }}
+          >
+            {formatClock(remainingMs)}
+          </span>
+        </div>
       )}
     </div>
   );
@@ -198,7 +230,6 @@ export default function IfTracker({
   const [now, setNow] = useState(() => Date.now());
   const [loading, setLoading] = useState(false);
   const [initializing, setInitializing] = useState(true);
-  const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [editTimeOpen, setEditTimeOpen] = useState(false);
   const [editTimeValue, setEditTimeValue] = useState("");
@@ -219,7 +250,6 @@ export default function IfTracker({
   // Stable closers so the Modal listeners are not re-bound on every tick.
   const closePatternModal = useCallback(() => setPatternModalOpen(false), []);
   const closeConfirmEnd = useCallback(() => setConfirmEnd(false), []);
-  const closeConfirmCancel = useCallback(() => setConfirmCancel(false), []);
 
   useEffect(() => {
     if (startedRef.current) {
@@ -373,31 +403,6 @@ export default function IfTracker({
 
     setSession(result.data.session);
     setEditTimeOpen(false);
-  }
-
-  async function cancelSession() {
-    if (!session) {
-      return;
-    }
-    setLoading(true);
-    setError(null);
-    const result = await requestApi(
-      "/api/v1/if-sessions",
-      "DELETE",
-      { sessionId: session.id }
-    );
-    setLoading(false);
-
-    if (!result.ok) {
-      setError(result.message ?? "ยกเลิกไม่สำเร็จ ลองอีกครั้ง");
-      return;
-    }
-    setConfirmCancel(false);
-    setSession(null);
-    setSelectedPattern(null);
-    setSelectedMood(null);
-    setMode("eating");
-    setView("select");
   }
 
   function resetToSelect() {
@@ -564,16 +569,14 @@ export default function IfTracker({
           {mode === "fasting" ? (
             <PhaseCard
               label="เริ่มการอด"
-              startTime={formatThaiTime(session.fasting_start_time)}
+              startTime={session.fasting_start_time}
               remainingMs={fastingRemainingMs}
               accent="#DC8426"
             />
           ) : (
             <PhaseCard
               label="เริ่มการกิน"
-              startTime={formatThaiTime(
-                session.eating_start_time ?? session.fasting_start_time
-              )}
+              startTime={session.eating_start_time ?? session.fasting_start_time}
               remainingMs={eatingRemainingMs}
               accent="#18A659"
               expired={eatingExpired}
@@ -612,14 +615,6 @@ export default function IfTracker({
                 แก้ไขช่วงเวลา
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => setConfirmCancel(true)}
-              disabled={loading}
-              className="w-full rounded-2xl border border-zinc-300 px-6 py-4 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-100 disabled:opacity-50"
-            >
-              ยกเลิกเซสชันนี้
-            </button>
           </div>
         </section>
       )}
@@ -751,15 +746,6 @@ export default function IfTracker({
           error={error}
           onSave={saveEditedTime}
           onClose={() => setEditTimeOpen(false)}
-        />
-      )}
-
-      {confirmCancel && session && (
-        <ConfirmCancelModal
-          loading={loading}
-          error={error}
-          onConfirm={cancelSession}
-          onClose={closeConfirmCancel}
         />
       )}
     </div>
