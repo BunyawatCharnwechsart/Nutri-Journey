@@ -66,13 +66,13 @@ export function calculateBmi(
   return Math.round((weightKg / (heightM * heightM)) * 10) / 10;
 }
 
-/** หมวดหมู่ BMI ตามมาตรฐานไทย (อช.) */
+/** หมวดหมู่ BMI ตามมาตรฐานของคณะแพทยศาสตร์ศิริราชพยาบาล มหาวิทยาลัยมหิดล */
 export function getBmiCategory(bmi: number | null): string {
   if (bmi === null) {
     return "—";
   }
   if (bmi < 18.5) {
-    return "น้ำหนักน้อย";
+    return "น้ำหนักน้อยหรือผอม";
   }
   if (bmi < 23) {
     return "ปกติ";
@@ -81,7 +81,7 @@ export function getBmiCategory(bmi: number | null): string {
     return "น้ำหนักเกิน";
   }
   if (bmi < 30) {
-    return "อ้วน ระดับ 1";
+    return "โรคอ้วนระดับที่ 1";
   }
-  return "อ้วน ระดับ 2";
+  return "โรคอ้วนระดับที่ 2";
 }

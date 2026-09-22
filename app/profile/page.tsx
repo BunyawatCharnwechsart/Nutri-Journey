@@ -30,11 +30,11 @@ const GENDER_LABELS: Record<string, string> = Object.fromEntries(
   GENDER_OPTIONS.map((option) => [option.value, option.label])
 );
 const BMI_COLORS: Record<string, string> = {
-  "น้ำหนักน้อย": "#3ABFF8",
+  "น้ำหนักน้อยหรือผอม": "#3ABFF8",
   "ปกติ": "#18A659",
   "น้ำหนักเกิน": "#FBBF24",
-  "อ้วน ระดับ 1": "#F97316",
-  "อ้วน ระดับ 2": "#EF4444",
+  "โรคอ้วนระดับที่ 1": "#F97316",
+  "โรคอ้วนระดับที่ 2": "#EF4444",
 };
 
 function InfoRow({

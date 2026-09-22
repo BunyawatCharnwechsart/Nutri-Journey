@@ -80,11 +80,11 @@ describe("calculateBmi", () => {
 
 describe("getBmiCategory", () => {
   it("maps thresholds to Thai BMI categories", () => {
-    expect(getBmiCategory(18.4)).toBe("น้ำหนักน้อย");
+    expect(getBmiCategory(18.4)).toBe("น้ำหนักน้อยหรือผอม");
     expect(getBmiCategory(22)).toBe("ปกติ");
     expect(getBmiCategory(24)).toBe("น้ำหนักเกิน");
-    expect(getBmiCategory(29)).toBe("อ้วน ระดับ 1");
-    expect(getBmiCategory(30)).toBe("อ้วน ระดับ 2");
+    expect(getBmiCategory(29)).toBe("โรคอ้วนระดับที่ 1");
+    expect(getBmiCategory(30)).toBe("โรคอ้วนระดับที่ 2");
   });
 
   it("returns a dash for null", () => {
