@@ -280,14 +280,15 @@ export default function IfTracker({
     loadActiveSession();
   }, []);
 
-  // Count-down ticker while a session is running.
+  // Count-down ticker while a session is running. หยุดตอน modal แก้เวลาเปิดอยู่
+  // เพื่อไม่ให้ re-render ทุก 1 วิไปดัน native picker ของ select (เดิม) ปิดเอง.
   useEffect(() => {
-    if (view !== "timer") {
+    if (view !== "timer" || editTimeOpen) {
       return;
     }
     const timer = setInterval(() => setNow(Date.now()), 1000);
     return () => clearInterval(timer);
-  }, [view]);
+  }, [view, editTimeOpen]);
 
   async function startSession() {
     if (!selectedPattern) {
@@ -451,6 +452,8 @@ export default function IfTracker({
     setEditError(null);
     setEditTimeWarning(null);
     setEditTimeOpen(false);
+    // ticker ถูกหยุดระหว่าง modal เปิด → resync ให้เลขนาฬิกาเด้งทันทีเมื่อปิด.
+    setNow(Date.now());
   }
 
   function resetToSelect() {
