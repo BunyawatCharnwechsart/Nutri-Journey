@@ -47,7 +47,11 @@ function formatThaiDateTime(value: string | null | undefined): string {
   if (!value) {
     return "-";
   }
-  const ict = toICT(new Date(value));
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "-";
+  }
+  const ict = toICT(date);
   const pad = (n: number) => String(n).padStart(2, "0");
   return `${pad(ict.getUTCDate())}/${pad(ict.getUTCMonth() + 1)}/${ict.getUTCFullYear()} เวลา ${pad(ict.getUTCHours())}:${pad(ict.getUTCMinutes())} น.`;
 }
@@ -180,10 +184,9 @@ interface PhaseCardProps {
   startTime: string;
   remainingMs: number;
   accent: string;
-  expired?: boolean;
 }
 
-function PhaseCard({ label, startTime, remainingMs, accent, expired = false }: PhaseCardProps) {
+function PhaseCard({ label, startTime, remainingMs, accent }: PhaseCardProps) {
   return (
     <div className="grid w-full grid-cols-[auto_1fr_auto] items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-[0_4px_16px_-4px_rgba(0,0,0,0.12)]">
       <div
@@ -198,21 +201,15 @@ function PhaseCard({ label, startTime, remainingMs, accent, expired = false }: P
           {formatThaiDateTime(startTime)}
         </span>
       </div>
-      {expired ? (
-        <span className="text-right text-sm font-bold text-red-600">
-          หมดเวลาที่วางไว้แล้ว กดสิ้นสุดเพื่อเริ่มอด
+      <div className="flex flex-col items-end gap-0.5">
+        <span className="text-xs text-zinc-500">เหลือ</span>
+        <span
+          className="text-lg font-bold tabular-nums"
+          style={{ color: accent }}
+        >
+          {formatClock(remainingMs)}
         </span>
-      ) : (
-        <div className="flex flex-col items-end gap-0.5">
-          <span className="text-xs text-zinc-500">เหลือ</span>
-          <span
-            className="text-lg font-bold tabular-nums"
-            style={{ color: accent }}
-          >
-            {formatClock(remainingMs)}
-          </span>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
@@ -579,7 +576,6 @@ export default function IfTracker({
               startTime={session.eating_start_time ?? session.fasting_start_time}
               remainingMs={eatingRemainingMs}
               accent="#18A659"
-              expired={eatingExpired}
             />
           )}
 
