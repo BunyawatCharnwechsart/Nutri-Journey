@@ -230,6 +230,7 @@ export default function IfTracker({
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [editTimeOpen, setEditTimeOpen] = useState(false);
   const [editTimeValue, setEditTimeValue] = useState("");
+  const [editError, setEditError] = useState<string | null>(null);
   const [patternModalOpen, setPatternModalOpen] = useState(false);
   const [pendingPattern, setPendingPattern] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -365,6 +366,7 @@ export default function IfTracker({
     const hh = String(targetDate.getHours()).padStart(2, "0");
     const mm = String(targetDate.getMinutes()).padStart(2, "0");
     setEditTimeValue(`${hh}:${mm}`);
+    setEditError(null);
     setEditTimeOpen(true);
   }
 
@@ -385,7 +387,7 @@ export default function IfTracker({
     }
 
     setLoading(true);
-    setError(null);
+    setEditError(null);
     const result = await requestApi<{ session: IfSession }>(
       "/api/v1/if-sessions/edit-time",
       "PATCH",
@@ -394,11 +396,12 @@ export default function IfTracker({
     setLoading(false);
 
     if (!result.ok || !result.data) {
-      setError(result.message ?? "แก้ไขเวลาไม่สำเร็จ ลองอีกครั้ง");
+      setEditError(result.message ?? "แก้ไขเวลาไม่สำเร็จ ลองอีกครั้ง");
       return;
     }
 
     setSession(result.data.session);
+    setEditError(null);
     setEditTimeOpen(false);
   }
 
@@ -739,7 +742,7 @@ export default function IfTracker({
           mode={mode}
           onChange={setEditTimeValue}
           loading={loading}
-          error={error}
+          error={editError}
           onSave={saveEditedTime}
           onClose={() => setEditTimeOpen(false)}
         />
