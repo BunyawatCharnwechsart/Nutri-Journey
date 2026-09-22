@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  fromICTWallClock,
   getICTMonthBounds,
   getQuestDayBounds,
+  toICT,
   toICTDateKey,
   toICTMonthKey,
 } from "@/lib/timezone";
@@ -60,6 +62,47 @@ describe("toICTMonthKey", () => {
   it("keeps the month even when the UTC instant falls on the previous UTC day", () => {
     // 2026-08-31 18:00Z = 2026-09-01 01:00 ICT → ยังเป็นเดือน 9.
     expect(toICTMonthKey(new Date("2026-08-31T18:00:00.000Z"))).toBe("2026-09");
+  });
+});
+
+describe("fromICTWallClock", () => {
+  it("builds a UTC instant for an ICT wall-clock time", () => {
+    // 2026-09-05 18:58 ไทย = 11:58Z (ลบ 7 ชม.).
+    expect(fromICTWallClock("2026-09-05", "18:58").toISOString()).toBe(
+      "2026-09-05T11:58:00.000Z"
+    );
+  });
+
+  it("keeps a time before 07:00 on the same UTC day", () => {
+    // 02:00 ไทย = 19:00Z ของวันก่อนหน้า (ข้ามเที่ยงคืน UTC).
+    expect(fromICTWallClock("2026-09-05", "02:00").toISOString()).toBe(
+      "2026-09-04T19:00:00.000Z"
+    );
+  });
+
+  it("round-trips with toICTDateKey + toICT", () => {
+    const original = new Date("2026-09-05T11:58:00.000Z");
+    const ict = toICT(original);
+    const rebuilt = fromICTWallClock(
+      toICTDateKey(original),
+      `${String(ict.getUTCHours()).padStart(2, "0")}:${String(
+        ict.getUTCMinutes()
+      ).padStart(2, "0")}`
+    );
+    expect(rebuilt.toISOString()).toBe(original.toISOString());
+  });
+
+  it("rejects a malformed date or time string", () => {
+    expect(() => fromICTWallClock("2026-13-40", "18:58")).toThrow();
+    expect(() => fromICTWallClock("2026-09-05", "24:00")).toThrow();
+    expect(() => fromICTWallClock("2026-09-05", "18:99")).toThrow();
+    expect(() => fromICTWallClock("05/09/2026", "18:58")).toThrow();
+    expect(() => fromICTWallClock("2026-09-05", "6:58")).toThrow();
+  });
+
+  it("rejects non-existent calendar dates instead of silently rolling over", () => {
+    expect(() => fromICTWallClock("2026-02-30", "18:58")).toThrow();
+    expect(() => fromICTWallClock("2026-13-01", "18:58")).toThrow();
   });
 });
 

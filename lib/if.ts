@@ -113,6 +113,23 @@ export function computeIfResult(
 }
 
 /**
+ * ดูว่าเวลาอดที่ได้ (นาที) ยังถึงเป้าที่ pattern กำหนดหรือไม่ — ใช้เตือนตอนแก้
+ * เวลาช่วง eating phase เพราะการแก้ "เวลาเริ่มกิน" เท่ากับเลื่อนจุดที่อดจบด้วย
+ * การอดอาจถูกบันทึกสั้นลงจน session จะกลายเป็น fail โดยที่ user ไม่ทันเห็น.
+ * pattern ไม่รู้จัก/null → ถือว่า miss (ไม่มีทาง success) เหมือน computeIfResult.
+ */
+export function wouldMissFastingGoal(
+  pattern: string | null | undefined,
+  fastingMinutes: number | null | undefined
+): boolean {
+  const planned = getFastingMinutes(pattern);
+  if (planned === 0) {
+    return true;
+  }
+  return (fastingMinutes ?? 0) < planned;
+}
+
+/**
  * Formats a duration in minutes into a short, human-readable Thai string:
  * "16 ชม." / "30 นาที" / "16 ชม. 30 นาที" / "—" when null/0.
  */

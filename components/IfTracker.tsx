@@ -15,9 +15,10 @@ import {
   getMoodLevel,
   IfSession,
   type MoodValue,
+  wouldMissFastingGoal,
 } from "@/lib/if";
 import { dayStatusForSession } from "@/lib/calendar";
-import { toICT } from "@/lib/timezone";
+import { fromICTWallClock, toICT } from "@/lib/timezone";
 
 type View = "select" | "timer" | "success";
 type Phase = "eating" | "fasting";
@@ -229,8 +230,11 @@ export default function IfTracker({
   const [initializing, setInitializing] = useState(true);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [editTimeOpen, setEditTimeOpen] = useState(false);
-  const [editTimeValue, setEditTimeValue] = useState("");
+  const [editTimeDate, setEditTimeDate] = useState("");
+  const [editTimeTime, setEditTimeTime] = useState("");
   const [editError, setEditError] = useState<string | null>(null);
+  const [editTimeWarning, setEditTimeWarning] = useState<string | null>(null);
+  const [editTimeWarned, setEditTimeWarned] = useState(false);
   const [patternModalOpen, setPatternModalOpen] = useState(false);
   const [pendingPattern, setPendingPattern] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -358,32 +362,75 @@ export default function IfTracker({
 
   function openEditTimeModal() {
     if (!session) return;
-    const targetDate = new Date(
+    const target = new Date(
       mode === "fasting"
         ? session.fasting_start_time
         : session.eating_start_time!
     );
-    const hh = String(targetDate.getHours()).padStart(2, "0");
-    const mm = String(targetDate.getMinutes()).padStart(2, "0");
-    setEditTimeValue(`${hh}:${mm}`);
+    if (Number.isNaN(target.getTime())) {
+      return;
+    }
+    const ict = toICT(target);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    setEditTimeDate(
+      `${ict.getUTCFullYear()}-${pad(ict.getUTCMonth() + 1)}-${pad(
+        ict.getUTCDate()
+      )}`
+    );
+    setEditTimeTime(`${pad(ict.getUTCHours())}:${pad(ict.getUTCMinutes())}`);
     setEditError(null);
+    setEditTimeWarning(null);
+    setEditTimeWarned(false);
     setEditTimeOpen(true);
   }
 
   async function saveEditedTime() {
-    if (!session || !editTimeValue) return;
+    if (!session || !editTimeDate || !editTimeTime) return;
 
-    const baseDate = new Date(
-      mode === "fasting"
-        ? session.fasting_start_time
-        : session.eating_start_time!
-    );
-    
-    const [hours, minutes] = editTimeValue.split(":").map(Number);
-    baseDate.setHours(hours, minutes, 0, 0);
+    let newStart: Date;
+    try {
+      newStart = fromICTWallClock(editTimeDate, editTimeTime);
+    } catch {
+      setEditError("วันที่หรือเวลาไม่ถูกต้อง");
+      return;
+    }
 
-    if (baseDate.getTime() > Date.now()) {
-      baseDate.setDate(baseDate.getDate() - 1);
+    // ไม่อนุญาตเวลาในอนาคต และไม่ย้อนวันให้อัตโนมัติ — ผู้ใช้ต้องเลือกวันที่จริง
+    // เอง (แก้ไขที่ซ่อนอยู่เดิม: เลือกเวลาที่เลยตอนนี้ไปนิดเดียวแล้วถูกเลื่อน
+    // ย้อนหลังทั้งวันเงียบๆ ทำให้ระยะอดในสรุปเพี้ยนจากเวลาจริง).
+    if (newStart.getTime() > Date.now()) {
+      setEditError("เวลาที่เลือกยังมาไม่ถึง (เลือกวันที่/เวลา ที่ผ่านไปแล้ว)");
+      return;
+    }
+
+    // ตอน eating phase การแก้ "เวลาเริ่มกิน" เท่ากับเลื่อนจุดที่อดสิ้นสุดด้วย
+    // → คำนวณการอดใหม่ให้เห็นก่อน เช่น ถ้าจะสั้นลงจนไม่ถึงเป้า session จะ fail.
+    if (mode === "eating") {
+      const fastingStartMs = new Date(session.fasting_start_time).getTime();
+      const newFastingEndMs = newStart.getTime();
+      if (newFastingEndMs < fastingStartMs) {
+        setEditError("เวลากินไม่สามารถเกิดก่อนเวลาเริ่มอดได้");
+        return;
+      }
+      const prospectiveFasting = Math.round(
+        (newFastingEndMs - fastingStartMs) / 60000
+      );
+      if (
+        wouldMissFastingGoal(session.if_pattern, prospectiveFasting) &&
+        !editTimeWarned
+      ) {
+        const plannedFasting = getFastingMinutes(session.if_pattern);
+        setEditTimeWarning(
+          `การอดจะถูกบันทึกเป็น ${formatMinutes(
+            prospectiveFasting
+          )} (เป้า ${formatMinutes(
+            plannedFasting
+          )}) — ถ้าบันทึกผลจะแสดงเป็น "ไม่สำเร็จ" กด "บันทึกเวลา" อีกครั้งเพื่อยืนยัน`
+        );
+        setEditTimeWarned(true);
+        return;
+      }
+      setEditTimeWarning(null);
     }
 
     setLoading(true);
@@ -391,7 +438,7 @@ export default function IfTracker({
     const result = await requestApi<{ session: IfSession }>(
       "/api/v1/if-sessions/edit-time",
       "PATCH",
-      { sessionId: session.id, newStartTime: baseDate.toISOString() }
+      { sessionId: session.id, newStartTime: newStart.toISOString() }
     );
     setLoading(false);
 
@@ -402,6 +449,7 @@ export default function IfTracker({
 
     setSession(result.data.session);
     setEditError(null);
+    setEditTimeWarning(null);
     setEditTimeOpen(false);
   }
 
@@ -604,7 +652,7 @@ export default function IfTracker({
                 สิ้นสุดการกิน
               </button>
             )}
-            {allowEditTime && (
+            {allowEditTime && mode === "fasting" && (
               <button
                 type="button"
                 onClick={openEditTimeModal}
@@ -738,11 +786,17 @@ export default function IfTracker({
 
       {editTimeOpen && session && (
         <EditTimeModal
-          value={editTimeValue}
+          dateValue={editTimeDate}
+          timeValue={editTimeTime}
           mode={mode}
-          onChange={setEditTimeValue}
+          onTimeChange={(value) => {
+            setEditTimeTime(value);
+            setEditTimeWarning(null);
+            setEditTimeWarned(false);
+          }}
           loading={loading}
           error={editError}
+          warning={editTimeWarning}
           onSave={saveEditedTime}
           onClose={() => setEditTimeOpen(false)}
         />
