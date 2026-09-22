@@ -1,6 +1,7 @@
 "use client";
 
 import Modal from "@/components/Modal";
+import TimeColumnPicker from "@/components/TimeColumnPicker";
 
 type Phase = "fasting" | "eating";
 
@@ -24,8 +25,8 @@ const inputClass =
 
 const pad2 = (value: number) => String(value).padStart(2, "0");
 
-const HOUR_OPTIONS = Array.from({ length: 24 }, (_, hour) => hour);
-const MINUTE_OPTIONS = Array.from({ length: 60 }, (_, minute) => minute);
+const HOURS = { min: 0, max: 23 };
+const MINUTES = { min: 0, max: 59 };
 
 function ClockIcon() {
   return (
@@ -123,41 +124,27 @@ export default function EditTimeModal({
             เวลา 24 ชม.
           </span>
           <div className="flex items-center gap-2">
-            <label htmlFor="edit-time-hour" className="sr-only">
-              ชั่วโมง
-            </label>
-            <select
-              id="edit-time-hour"
+            <TimeColumnPicker
+              label="ชั่วโมง"
+              min={HOURS.min}
+              max={HOURS.max}
               value={hourValue}
               disabled={timeDisabled}
-              onChange={(e) => setHour(Number(e.target.value))}
-              className={`${inputClass} flex-1 text-center disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-400`}
-            >
-              {HOUR_OPTIONS.map((hour) => (
-                <option key={hour} value={hour}>
-                  {pad2(hour)}
-                </option>
-              ))}
-            </select>
+              onChange={setHour}
+              format={pad2}
+            />
             <span aria-hidden="true" className="text-lg font-bold text-zinc-400">
               :
             </span>
-            <label htmlFor="edit-time-minute" className="sr-only">
-              นาที
-            </label>
-            <select
-              id="edit-time-minute"
+            <TimeColumnPicker
+              label="นาที"
+              min={MINUTES.min}
+              max={MINUTES.max}
               value={minuteValue}
               disabled={timeDisabled}
-              onChange={(e) => setMinute(Number(e.target.value))}
-              className={`${inputClass} flex-1 text-center disabled:cursor-not-allowed disabled:bg-zinc-50 disabled:text-zinc-400`}
-            >
-              {MINUTE_OPTIONS.map((minute) => (
-                <option key={minute} value={minute}>
-                  {pad2(minute)}
-                </option>
-              ))}
-            </select>
+              onChange={setMinute}
+              format={pad2}
+            />
           </div>
         </div>
       </div>
