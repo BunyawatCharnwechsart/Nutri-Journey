@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
   LineMessagingError,
+  buildFastingPreReminderMessages,
   buildMonthlyReminderMessages,
   buildPhaseEndMessages,
   buildPhotoReminderMessages,
@@ -49,12 +50,19 @@ describe("verifyLineSignature", () => {
 });
 
 describe("buildPhaseEndMessages", () => {
-  it("builds the fasting end message with the app link", () => {
+  it("builds the fasting end message verbatim (no name, no link)", () => {
     const [message] = buildPhaseEndMessages("fasting", LIFF_URL);
     expect(message.type).toBe("text");
-    expect(message.text).toContain("เก่งมาก");
-    expect(message.text).toContain("คุณอดครบตามเวลาแล้ว");
-    expect(message.text).toContain(LIFF_URL);
+    expect(message.text).toBe(
+      `🥳 เย้~ Fasting สำเร็จแล้วค่ะ! คุณเก่งที่สุดเลย\n\nภารกิจอดอาหารรอบนี้สำเร็จลุล่วงแล้วน้า! น้องสัตว์เลี้ยงได้รับ +50 EXP ไปเต็มๆ เลย! ตอนนี้เข้าสู่ช่วงทานอาหารแล้ว อิ่มอร่อยกับมื้อแรกนะค้า ✨`
+    );
+  });
+
+  it("ignores userName for the fasting end message", () => {
+    const [withName] = buildPhaseEndMessages("fasting", LIFF_URL, "นนท์");
+    const [withoutName] = buildPhaseEndMessages("fasting", LIFF_URL, null);
+    expect(withName.text).toBe(withoutName.text);
+    expect(withName.text).not.toContain("นนท์");
   });
 
   it("builds the eating end message with the app link", () => {
@@ -65,39 +73,14 @@ describe("buildPhaseEndMessages", () => {
     expect(message.text).toContain(LIFF_URL);
   });
 
-  it("places userName right after the greeting for fasting", () => {
-    const [message] = buildPhaseEndMessages("fasting", LIFF_URL, "นนท์");
-    expect(message.text).toContain("เก่งมาก! นนท์ คุณอดครบตามเวลาแล้ว");
-  });
-
   it("places userName right after the greeting for eating", () => {
     const [message] = buildPhaseEndMessages("eating", LIFF_URL, "นนท์");
     expect(message.text).toContain("กินได้เก่งมาก นนท์ หมดเวลากินแล้ว");
   });
 
-  it("omits userName prefix when null", () => {
-    const [message] = buildPhaseEndMessages("fasting", LIFF_URL, null);
-    expect(message.text.startsWith("(^o^)")).toBe(true);
-  });
-
-  it("omits userName prefix when undefined (not passed)", () => {
-    const [message] = buildPhaseEndMessages("fasting", LIFF_URL);
-    expect(message.text.startsWith("(^o^)")).toBe(true);
-  });
-
-  it("omits userName prefix for whitespace-only and empty names", () => {
-    expect(buildPhaseEndMessages("fasting", LIFF_URL, "   ")[0].text.startsWith("(^o^)")).toBe(true);
-    expect(buildPhaseEndMessages("fasting", LIFF_URL, "")[0].text.startsWith("(^o^)")).toBe(true);
-  });
-
-  it("trims surrounding whitespace from userName", () => {
-    const [message] = buildPhaseEndMessages("fasting", LIFF_URL, "  นนท์  ");
-    expect(message.text).toContain("เก่งมาก! นนท์ คุณอดครบตามเวลาแล้ว");
-  });
-
   it("handles a very long userName within the LINE limit", () => {
     const longName = "น".repeat(500);
-    const [message] = buildPhaseEndMessages("fasting", LIFF_URL, longName);
+    const [message] = buildPhaseEndMessages("eating", LIFF_URL, longName);
     expect(message.text.length).toBeLessThanOrEqual(2000);
     expect(message.text).toContain(longName);
   });
@@ -162,5 +145,23 @@ describe("buildPhaseEndMessages", () => {
   it("places userName right after the greeting for the photo reminder", () => {
     const [message] = buildPhotoReminderMessages(LIFF_URL, "นนท์");
     expect(message.text).toContain("สวัสดีคร้าคุณ นนท์ เดือนใหม่แล้ว");
+  });
+});
+
+describe("buildFastingPreReminderMessages", () => {
+  it("builds the 1-hour-left reminder verbatim (no name, no link)", () => {
+    const [message] = buildFastingPreReminderMessages(LIFF_URL);
+    expect(message.type).toBe("text");
+    expect(message.text).toBe(
+      `⏱️ อีกแค่ 1 ชั่วโมงจะครบเวลา Fasting แล้วค่ะ!\nฮึบสุดท้ายแล้วน้าา เป้าหมายอยู่แค่อีกอึดใจเดียว! เตรียมคิดเมนูมื้อแรกที่มีประโยชน์ไว้รอได้เลยจ้า แล้วอย่าลืมมาตามเก็บ EXP น้า 🥗`
+    );
+  });
+
+  it("ignores userName and liffUrl", () => {
+    const [withName] = buildFastingPreReminderMessages(LIFF_URL, "นนท์");
+    const [withoutName] = buildFastingPreReminderMessages("other-url", null);
+    expect(withName.text).toBe(withoutName.text);
+    expect(withName.text).not.toContain("นนท์");
+    expect(withName.text).not.toContain("liff.line.me");
   });
 });

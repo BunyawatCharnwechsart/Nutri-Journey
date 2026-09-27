@@ -217,7 +217,7 @@ async function handleCron(request: Request) {
           await supabase
             .from("users")
             .update({ line_unreachable: true })
-            .eq("line_user_id", user.line_user_id);
+            .eq("user_id", user.user_id);
           skippedUnreachable += 1;
         } else {
           // Server-side failure (e.g. 401/403) — try again next run.

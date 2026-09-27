@@ -18,6 +18,7 @@ function iso(ms: number): string {
 const BASE = {
   fasting_start_time: new Date(0).toISOString(),
   fasting_end_time: null,
+  fasting_pre_notified_at: null,
   fasting_end_notified_at: null,
   eating_start_time: null,
   eating_end_time: null,
@@ -94,9 +95,12 @@ describe("duePhaseNotification — fasting phase: repeat reminders", () => {
   it("stops once the reminder window (3h) has elapsed, even if still fasting", () => {
     const notifiedInsideWindow = iso(FASTING_END + 2 * HOUR + 50 * MINUTE);
     // 3h exactly after the target — inside the window, so the cadence still fires.
+    // NOTE: passes reminderWindowMs explicitly — the production default is now
+    // 2h, but this test verifies the boundary logic itself with a 3h window.
     expect(
       duePhaseNotification(FASTING_END + WINDOW, running(FASTING_END + 2 * HOUR + 50 * MINUTE), {
         reminderIntervalMs: INTERVAL,
+        reminderWindowMs: WINDOW,
       })
     ).toEqual({ kind: "send", phase: "fasting" });
     // Over the window boundary — silent from now on.
@@ -106,6 +110,7 @@ describe("duePhaseNotification — fasting phase: repeat reminders", () => {
         fasting_end_notified_at: notifiedInsideWindow,
       }, {
         reminderIntervalMs: INTERVAL,
+        reminderWindowMs: WINDOW,
       })
     ).toEqual({ kind: "none" });
   });
@@ -129,6 +134,76 @@ describe("duePhaseNotification — fasting phase: repeat reminders", () => {
     expect(
       duePhaseNotification(FASTING_END + 10 * MINUTE, stopped, {
         reminderIntervalMs: INTERVAL,
+      })
+    ).toEqual({ kind: "none" });
+  });
+});
+
+describe("duePhaseNotification — fasting pre-reminder (1h before)", () => {
+  const PRE = HOUR; // 1-hour lead time (matches FASTING_PRE_REMINDER_MS)
+  const opts = { preReminderMs: PRE };
+
+  it("sends nothing more than 1h before the end", () => {
+    expect(duePhaseNotification(FASTING_END - PRE - 1 * MINUTE, BASE, opts)).toEqual({
+      kind: "none",
+    });
+  });
+
+  it("sends fasting_pre exactly 1h before the end", () => {
+    expect(duePhaseNotification(FASTING_END - PRE, BASE, opts)).toEqual({
+      kind: "send",
+      phase: "fasting_pre",
+    });
+  });
+
+  it("sends fasting_pre inside the last hour (late first check still nudges)", () => {
+    expect(duePhaseNotification(FASTING_END - 30 * MINUTE, BASE, opts)).toEqual({
+      kind: "send",
+      phase: "fasting_pre",
+    });
+  });
+
+  it("sends only once — a sent pre-reminder never repeats", () => {
+    const sent = { ...BASE, fasting_pre_notified_at: iso(FASTING_END - PRE) };
+    expect(duePhaseNotification(FASTING_END - 30 * MINUTE, sent, opts)).toEqual({
+      kind: "none",
+    });
+  });
+
+  it("yields to the finished reminder once past the end (no belated pre)", () => {
+    expect(duePhaseNotification(FASTING_END, BASE, opts)).toEqual({
+      kind: "send",
+      phase: "fasting",
+    });
+    expect(duePhaseNotification(FASTING_END + 1 * MINUTE, BASE, opts)).toEqual({
+      kind: "send",
+      phase: "fasting",
+    });
+  });
+
+  it("does not send the pre-reminder once the finished reminder went out", () => {
+    const finished = { ...BASE, fasting_end_notified_at: iso(FASTING_END) };
+    expect(duePhaseNotification(FASTING_END - 30 * MINUTE, finished, opts)).toEqual({
+      kind: "none",
+    });
+  });
+
+  it("does not send when the user already stopped fasting", () => {
+    const stopped = {
+      ...BASE,
+      fasting_end_time: iso(FASTING_END - 2 * HOUR),
+      eating_start_time: iso(FASTING_END - 2 * HOUR),
+    };
+    expect(duePhaseNotification(FASTING_END - 30 * MINUTE, stopped, opts)).toEqual({
+      kind: "none",
+    });
+  });
+
+  it("skips when the lead time is longer than the whole fast", () => {
+    // A 20h lead on a 16h fast puts the pre-time before the start → skip.
+    expect(
+      duePhaseNotification(FASTING_END - 1 * MINUTE, BASE, {
+        preReminderMs: 20 * HOUR,
       })
     ).toEqual({ kind: "none" });
   });

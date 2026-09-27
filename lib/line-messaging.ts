@@ -131,21 +131,39 @@ export function buildPhaseEndMessages(
   liffUrl: string,
   userName?: string | null
 ): LineSendMessage[] {
-  const prefix = userNamePrefix(userName);
-
   if (phase === "fasting") {
     return [
       {
         type: "text",
-        text: `(^o^) เก่งมาก! ${prefix}คุณอดครบตามเวลาแล้ว\nถึงเวลาเริ่มช่วงกินได้ กดหยุดการอดได้เลย:\n${liffUrl}`,
+        text: `🥳 เย้~ Fasting สำเร็จแล้วค่ะ! คุณเก่งที่สุดเลย\n\nภารกิจอดอาหารรอบนี้สำเร็จลุล่วงแล้วน้า! น้องสัตว์เลี้ยงได้รับ +50 EXP ไปเต็มๆ เลย! ตอนนี้เข้าสู่ช่วงทานอาหารแล้ว อิ่มอร่อยกับมื้อแรกนะค้า ✨`,
       },
     ];
   }
 
+  const prefix = userNamePrefix(userName);
   return [
     {
       type: "text",
       text: `:) กินได้เก่งมาก ${prefix}หมดเวลากินแล้ว\nกดจบรอบนี้ แล้วเริ่มรอบอดถัดไปได้เลย:\n${liffUrl}`,
+    },
+  ];
+}
+
+/**
+ * Builds the "1 hour left" pre-reminder sent once while the user is still
+ * fasting (`fastingEnd - 1h <= now < fastingEnd`). The copy is fixed
+ * (verbatim, no user name or LIFF link) — `liffUrl`/`userName` stay in the
+ * signature only so callers do not need to branch. Kept pure so it is easy
+ * to unit test.
+ */
+export function buildFastingPreReminderMessages(
+  _liffUrl: string,
+  _userName?: string | null
+): LineSendMessage[] {
+  return [
+    {
+      type: "text",
+      text: `⏱️ อีกแค่ 1 ชั่วโมงจะครบเวลา Fasting แล้วค่ะ!\nฮึบสุดท้ายแล้วน้าา เป้าหมายอยู่แค่อีกอึดใจเดียว! เตรียมคิดเมนูมื้อแรกที่มีประโยชน์ไว้รอได้เลยจ้า แล้วอย่าลืมมาตามเก็บ EXP น้า 🥗`,
     },
   ];
 }

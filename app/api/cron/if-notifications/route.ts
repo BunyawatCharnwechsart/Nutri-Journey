@@ -2,6 +2,7 @@ import { apiError, apiSuccess } from "@/lib/response";
 import { createServiceClient } from "@/lib/supabase/service";
 import {
   LineMessagingError,
+  buildFastingPreReminderMessages,
   buildPhaseEndMessages,
   getLineLiffUrl,
   sendPushMessage,
@@ -22,9 +23,12 @@ export const runtime = "nodejs";
 //
 // Reminders repeat while the phase is still running: `*_end_notified_at` holds
 // the *last* successful send time and `duePhaseNotification` re-arms it every
-// PHASE_REMINDER_INTERVAL_MS (10 min) as long as the phase end is still inside
-// PHASE_REMINDER_WINDOW_MS (3 h). A phase the user already stopped is skipped
+// PHASE_REMINDER_INTERVAL_MS (30 min) as long as the phase end is still inside
+// PHASE_REMINDER_WINDOW_MS (2 h). A phase the user already stopped is skipped
 // (they acted, no reminder).
+//
+// Before that, a ONE-TIME pre-reminder fires while still fasting when the
+// planned end is <= 1 hour away (`fasting_pre_notified_at` marks it sent).
 //
 // Guards:
 //   * `*_end_notified_at` is updated only after a successful push; on failure
@@ -40,6 +44,7 @@ export const runtime = "nodejs";
 // ============================================================================
 
 interface CronUser {
+  user_id: string;
   line_user_id: string | null;
   oa_user_id: string | null;
   line_notifications_enabled: boolean | null;
@@ -51,6 +56,7 @@ interface CronSession {
   id: string;
   fasting_start_time: string | null;
   fasting_end_time: string | null;
+  fasting_pre_notified_at: string | null;
   fasting_end_notified_at: string | null;
   eating_start_time: string | null;
   eating_end_time: string | null;
@@ -97,9 +103,9 @@ async function handleCron(request: Request) {
     .from("if_sessions")
     .select(
       `id,
-       fasting_start_time, fasting_end_time, fasting_end_notified_at,
+       fasting_start_time, fasting_end_time, fasting_pre_notified_at, fasting_end_notified_at,
        eating_start_time, eating_end_time, eating_end_notified_at, if_pattern,
-       users ( line_user_id, oa_user_id, line_notifications_enabled, line_unreachable, display_name )`
+       users ( user_id, line_user_id, oa_user_id, line_notifications_enabled, line_unreachable, display_name )`
     )
     .eq("status", "active");
 
@@ -109,6 +115,8 @@ async function handleCron(request: Request) {
   }
 
   let sent = 0;
+  let sentPre = 0;
+  let sentEnd = 0;
   let skippedUnlinked = 0;
   let skippedUnreachable = 0;
   const friendshipCheckFailures = new Set<string>();
@@ -144,7 +152,7 @@ async function handleCron(request: Request) {
           await supabase
             .from("users")
             .update({ line_unreachable: true })
-            .eq("line_user_id", user.line_user_id);
+            .eq("user_id", user.user_id);
           skippedUnreachable += 1;
         } else {
           // Server-side failure (e.g. 401/403) — do not burn push quota now;
@@ -166,15 +174,18 @@ async function handleCron(request: Request) {
     }
 
     try {
-      await sendPushMessage(
-        user.oa_user_id,
-        buildPhaseEndMessages(decision.phase, liffUrl, user.display_name)
-      );
+      const messages =
+        decision.phase === "fasting_pre"
+          ? buildFastingPreReminderMessages(liffUrl, user.display_name)
+          : buildPhaseEndMessages(decision.phase, liffUrl, user.display_name);
+      await sendPushMessage(user.oa_user_id, messages);
 
       const notifiedColumn =
-        decision.phase === "fasting"
-          ? "fasting_end_notified_at"
-          : "eating_end_notified_at";
+        decision.phase === "fasting_pre"
+          ? "fasting_pre_notified_at"
+          : decision.phase === "fasting"
+            ? "fasting_end_notified_at"
+            : "eating_end_notified_at";
 
       const { error: markError } = await supabase
         .from("if_sessions")
@@ -187,6 +198,11 @@ async function handleCron(request: Request) {
       }
 
       sent += 1;
+      if (decision.phase === "fasting_pre") {
+        sentPre += 1;
+      } else {
+        sentEnd += 1;
+      }
     } catch (pushError) {
       // e.g. LINE rejected the push. Do not mark as notified → the next run
       // will try again later.
@@ -202,6 +218,8 @@ async function handleCron(request: Request) {
   return apiSuccess({
     checked: sessions?.length ?? 0,
     sent,
+    sentPre,
+    sentEnd,
     skippedUnlinked,
     skippedUnreachable,
   });
