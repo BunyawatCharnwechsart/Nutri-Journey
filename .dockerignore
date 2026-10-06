@@ -1,0 +1,14 @@
+# Keep secrets and build noise out of the image context.
+node_modules
+.next
+out
+coverage
+.git
+.github
+.vercel
+*.log
+.env*
+!.env.example
+Dockerfile
+docker-compose.yml
+.dockerignore
