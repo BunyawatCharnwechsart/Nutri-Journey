@@ -58,3 +58,20 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run build
+
+  audit:
+    name: Audit
+    runs-on: ubuntu-latest
+    # Non-blocking: reports high/critical CVEs without failing CI.
+    # Replaces the early-warning signal lost by removing Dependabot.
+    # Current baseline has known highs (e.g. source-map-js via sharp);
+    # flip continue-on-error to false once the baseline is clean.
+    continue-on-error: true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci
+      - run: npm audit --audit-level=high
