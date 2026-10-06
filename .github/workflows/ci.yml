@@ -64,8 +64,11 @@ jobs:
     runs-on: ubuntu-latest
     # Non-blocking: reports high/critical CVEs without failing CI.
     # Replaces the early-warning signal lost by removing Dependabot.
-    # Current baseline has known highs (e.g. source-map-js via sharp);
-    # flip continue-on-error to false once the baseline is clean.
+    # Known remaining highs (5, all dev-only via eslint-config-next:
+    # braces/micromatch/fast-glob DoS) need an upstream fix — the only
+    # suggested fix is an unacceptable downgrade to v14, so they are
+    # accepted risks. Flip continue-on-error to false once upstream
+    # ships a patched eslint-config-next v16.
     continue-on-error: true
     steps:
       - uses: actions/checkout@v4
