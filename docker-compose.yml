@@ -1,0 +1,18 @@
+# Local production-like run: docker compose up --build
+# Build args come from your (gitignored) .env — never committed.
+# Runtime secrets (SESSION_SECRET, SUPABASE_SERVICE_ROLE_KEY, …)
+# are also read from .env via env_file so server routes work locally.
+name: nutrijourney
+
+services:
+  web:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:?missing in .env}
+        NEXT_PUBLIC_LIFF_ID: ${NEXT_PUBLIC_LIFF_ID:?missing in .env}
+    ports:
+      - "3000:3000"
+    env_file:
+      - .env
+    restart: unless-stopped
