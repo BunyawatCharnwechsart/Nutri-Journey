@@ -12,7 +12,7 @@
   },
   "dependencies": {
     "@line/liff": "^2.31.1",
-    "@supabase/supabase-js": "^2.112.0",
+    "@supabase/supabase-js": "^2.117.2",
     "chart.js": "^4.5.1",
     "date-fns": "^4.4.0",
     "jose": "^6.2.8",
