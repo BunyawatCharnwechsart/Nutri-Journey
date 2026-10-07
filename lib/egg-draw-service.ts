@@ -306,15 +306,32 @@ export async function claimDraw(userId: string): Promise<ClaimResult> {
     throw new Error("Failed to claim egg draw");
   }
 
-  // Claim แถวค้างที่เก่าสุด — where claimed_at is null กันกดพร้อมกัน:
-  // ใคร update ได้แถวก่อนชนะ อีกคนได้ 0 แถว.
-  const { data: claimedRow, error: claimError } = await supabase
+  // Claim แถวค้างที่เก่าสุดแบบ 2 ขั้น (PostgREST เมิน limit บน UPDATE —
+  // เคย update โดนหลายแถวพร้อมกันแล้ว maybeSingle ระเบิดเป็น 500):
+  // 1) เลือก id เก่าสุดก่อน 2) update ทีละ id พร้อม guard claimed_at is null
+  // (กันกดพร้อมกัน — ใคร update ได้ก่อนชนะ อีกคนได้ 0 แถว).
+  const { data: oldest } = await supabase
     .from("egg_draws")
-    .update({ claimed_at: new Date().toISOString(), egg_type: picked.code })
+    .select("id")
     .eq("user_id", userId)
     .is("claimed_at", null)
     .order("granted_at", { ascending: true })
     .limit(1)
+    .maybeSingle();
+
+  if (!oldest) {
+    return {
+      ok: false,
+      reason: resolveClaimOutcome(justGranted, false),
+    };
+  }
+
+  const { data: claimedRow, error: claimError } = await supabase
+    .from("egg_draws")
+    .update({ claimed_at: new Date().toISOString(), egg_type: picked.code })
+    .eq("id", oldest.id as string)
+    .eq("user_id", userId)
+    .is("claimed_at", null)
     .select("id")
     .maybeSingle();
 
