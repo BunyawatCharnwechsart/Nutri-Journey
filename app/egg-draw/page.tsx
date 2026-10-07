@@ -2,8 +2,6 @@ import { redirect } from "next/navigation";
 
 import { getSessionUserId } from "@/lib/auth";
 import { getDrawStatus } from "@/lib/egg-draw-service";
-import { DEFAULT_AVATAR_NAME } from "@/lib/healthy-journey";
-import { createServiceClient } from "@/lib/supabase/service";
 import BackButton from "@/components/BackButton";
 import EggClaimButton from "@/components/EggClaimButton";
 import EggCollection from "@/components/EggCollection";
@@ -21,14 +19,6 @@ export default async function EggDrawPage() {
   }
 
   const status = await getDrawStatus(userId);
-
-  // ชื่อที่ตั้งให้ไข่ (โชว์แทนชื่อชนิด เฉพาะตัว active ให้ตรงกับใต้รูป Avatar).
-  const supabase = createServiceClient();
-  const { data: journey } = await supabase
-    .from("healthy_journey")
-    .select("avatar_name")
-    .eq("user_id", userId)
-    .maybeSingle();
 
   return (
     <main className="flex flex-1 flex-col px-6 pt-6 pb-10">
@@ -84,10 +74,7 @@ export default async function EggDrawPage() {
           <h2 className="px-1 text-base font-semibold text-zinc-900">
             ตู้สะสม ({status.collection.length})
           </h2>
-          <EggCollection
-            collection={status.collection}
-            activeName={journey?.avatar_name ?? DEFAULT_AVATAR_NAME}
-          />
+          <EggCollection collection={status.collection} />
         </section>
       </div>
     </main>

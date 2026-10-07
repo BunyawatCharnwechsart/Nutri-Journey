@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { currentProgress } from "@/lib/egg-draw";
-import { pickEggType } from "@/lib/egg-draw-service";
+import { pickEggType, resolveDisplayName } from "@/lib/egg-draw-service";
 
 describe("currentProgress", () => {
   it("counts 3 consecutive success days as eligible", () => {
@@ -111,5 +111,26 @@ describe("pickEggType", () => {
   it("picks deterministically from an injected random source", () => {
     expect(pickEggType(types, () => 0)?.code).toBe("common");
     expect(pickEggType(types, () => 0.99)?.code).toBe("rare");
+  });
+});
+
+describe("resolveDisplayName", () => {
+  it("prefers the egg's own nickname", () => {
+    expect(resolveDisplayName("น้องชมพู", true, "ชื่อรวม", "ไข่ชมพู")).toBe(
+      "น้องชมพู"
+    );
+    expect(resolveDisplayName("น้องฟ้า", false, "ชื่อรวม", "ไข่สีน้ำเงิน")).toBe(
+      "น้องฟ้า"
+    );
+  });
+
+  it("falls back to the legacy name only for the active egg", () => {
+    expect(resolveDisplayName(null, true, "ชื่อรวม", "ไข่ชมพู")).toBe("ชื่อรวม");
+    expect(resolveDisplayName(null, false, "ชื่อรวม", "ไข่ชมพู")).toBe("ไข่ชมพู");
+  });
+
+  it("falls back to the type name when nothing else exists", () => {
+    expect(resolveDisplayName(null, true, null, "ไข่ชมพู")).toBe("ไข่ชมพู");
+    expect(resolveDisplayName(null, false, null, "ไข่ชมพู")).toBe("ไข่ชมพู");
   });
 });
