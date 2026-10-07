@@ -29,6 +29,8 @@ export interface LeaderboardResult {
   /** อันดับของตัวเอง (row number) — null ถ้ายังไม่มีแถว healthy_journey. */
   myRank: number | null;
   myPoints: number;
+  /** รูปโปรไฟล์ของตัวเอง (ไว้โชว์ในการ์ดอันดับตอนหลุดโผ). */
+  myAvatarUrl: string | null;
   /** จำนวนผู้ติดอันดับทั้งหมด (ไว้ให้ frontend คิดจำนวนหน้า). */
   total: number;
 }
@@ -138,10 +140,24 @@ export async function getLeaderboard(
     myRank = 1 + (higher ?? 0) + (tiedEarlier ?? 0);
   }
 
+  // รูปตัวเอง: ถ้าติดโผมีใน map แล้ว ถ้าหลุดโผดึงแถวตัวเองเพิ่ม 1 ครั้ง.
+  // พังก็ไม่เป็นไร (การ์ดโชว์อักษรย่อแทน) เลยไม่ throw.
+  let myAvatarUrl: string | null =
+    usersById.get(userId)?.avatar_url ?? null;
+  if (myAvatarUrl == null) {
+    const { data: me } = await supabase
+      .from("users")
+      .select("avatar_url")
+      .eq("user_id", userId)
+      .maybeSingle();
+    myAvatarUrl = (me?.avatar_url as string | null) ?? null;
+  }
+
   return {
     entries: buildEntries(rows, offset, userId),
     myRank,
     myPoints,
+    myAvatarUrl,
     total: total ?? 0,
   };
 }

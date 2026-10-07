@@ -78,4 +78,16 @@ describe("buildEntries", () => {
   it("returns an empty list when the page has no rows", () => {
     expect(buildEntries([], 100, "u1")).toEqual([]);
   });
+
+  it("passes avatarUrl through to the entry", () => {
+    const withAvatar: RankingRow = {
+      user_id: "u1",
+      total_points: 500,
+      display_name: "A",
+      avatar_url: "https://example.com/a.png",
+    };
+    const entries = buildEntries([withAvatar], 0, "u1");
+    expect(entries[0]?.avatarUrl).toBe("https://example.com/a.png");
+    expect(entries[0]?.isMe).toBe(true);
+  });
 });
