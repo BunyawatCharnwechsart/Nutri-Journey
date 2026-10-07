@@ -163,6 +163,32 @@ export async function awardMission(
     return { awarded: false, reason: "already_done" };
   }
 
+  // แบ่งแต้มให้ไข่ตัว active ด้วย — คง invariant "user EXP = ผลรวม EXP ไข่":
+  // total_points กับ egg_exp ถูกบวกพร้อมกันเสมอ. ถ้ายังไม่มีตัว active
+  // (ยังไม่เคยสุ่มได้ไข่) แต้มอยู่แค่ total_points แบบเดิม. ขั้นนี้ล้มเหลว
+  // ไม่ถือว่า award ล้ม (total ถูกบวกไปแล้ว) แค่ log ไว้ไล่ทีหลัง.
+  // หมายเหตุ: read-modify-write ไม่ atomic — award พร้อมกัน 2 มิชชันอาจ
+  // ทับกันได้ (เสียสูงสุด 50 แต้ม/ครั้ง, เกิดยากเพราะกันฟาร์มรายวันอยู่แล้ว).
+  const { data: activeEgg } = await supabase
+    .from("egg_draws")
+    .select("id, egg_exp")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (activeEgg) {
+    const { error: eggError } = await supabase
+      .from("egg_draws")
+      .update({ egg_exp: Number(activeEgg.egg_exp) + points })
+      .eq("id", activeEgg.id);
+    if (eggError) {
+      console.error(
+        `Failed to credit active egg (user=${userId}, code=${code})`,
+        eggError
+      );
+    }
+  }
+
   return {
     awarded: true,
     reason: "awarded",

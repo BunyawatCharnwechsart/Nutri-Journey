@@ -18,7 +18,7 @@
  *   - XP is cumulative (`total_points`), never spent down.
  */
 
-/** Highest level a user can reach (matches public/avatar/level0..9.svg). */
+/** Highest level a user or egg can reach (avatar sets have 0..9). */
 export const HEALTHY_JOURNEY_LEVEL_CAP = 9;
 
 /** XP granted per completed daily mission (SDS 4.5: +50 exp each). */
@@ -97,8 +97,32 @@ export function progressRatio(points: number): number {
 
 /** Avatar asset for a level, clamped to the 10 available SVGs (0–9). */
 export function avatarForLevel(level: number): string {
+  // Legacy path (user-level avatar on dashboard/my-egg) now points at the
+  // starter set — the old /avatar/levelN.svg files were replaced.
+  return `/avatar/starter/level${clampLevel(level)}.svg`;
+}
+
+/**
+ * ชนิดไข่ → ชื่อไฟล์รูปต่อ level. เพิ่มชนิดใหม่แค่เติม entry ตรงนี้
+ * (ไฟล์จริงอยู่ใต้ public/avatar/<dir>/).
+ */
+const EGG_ART: Record<string, { dir: string; prefix: string; ext: string }> = {
+  starter: { dir: "starter", prefix: "level", ext: "svg" },
+  pink: { dir: "pink", prefix: "pink", ext: "png" },
+};
+
+/** รูปไข่รายฟองตามชนิด + level — ชนิดไม่รู้จักตกไปใช้ starter. */
+export function avatarForEgg(eggType: string | null, level: number): string {
+  const art = (eggType != null ? EGG_ART[eggType] : undefined) ?? {
+    dir: "starter",
+    prefix: "level",
+    ext: "svg",
+  };
+  return `/avatar/${art.dir}/${art.prefix}${clampLevel(level)}.${art.ext}`;
+}
+
+function clampLevel(level: number): number {
   const numeric = Math.floor(level);
   const safe = Number.isFinite(numeric) ? numeric : 0;
-  const clamped = Math.max(0, Math.min(HEALTHY_JOURNEY_LEVEL_CAP, safe));
-  return `/avatar/level${clamped}.svg`;
+  return Math.max(0, Math.min(HEALTHY_JOURNEY_LEVEL_CAP, safe));
 }

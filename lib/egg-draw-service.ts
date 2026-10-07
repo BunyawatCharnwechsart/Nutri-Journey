@@ -5,8 +5,11 @@ import { createServiceClient } from "@/lib/supabase/service";
 import { currentProgress } from "@/lib/egg-draw";
 
 export interface CollectedEgg {
+  id: string;
   eggType: string;
   eggName: string;
+  eggExp: number;
+  isActive: boolean;
   claimedAt: string;
 }
 
@@ -129,8 +132,8 @@ export async function getDrawStatus(userId: string): Promise<DrawStatus> {
     loadLastCycleEnd(supabase, userId),
     countPending(supabase, userId),
     supabase
-      .from("egg_draws")
-      .select("egg_type, claimed_at")
+    .from("egg_draws")
+    .select("id, egg_type, egg_exp, is_active, claimed_at")
       .eq("user_id", userId)
       .not("claimed_at", "is", null)
       .order("claimed_at", { ascending: false }),
@@ -156,8 +159,11 @@ export async function getDrawStatus(userId: string): Promise<DrawStatus> {
     pendingDraws: pending,
     canClaim: pending > 0,
     collection: (claimed.data ?? []).map((row) => ({
+      id: row.id as string,
       eggType: row.egg_type as string,
       eggName: names.get(row.egg_type as string) ?? (row.egg_type as string),
+      eggExp: Number(row.egg_exp ?? 0),
+      isActive: (row.is_active as boolean) ?? false,
       claimedAt: row.claimed_at as string,
     })),
   };
@@ -236,5 +242,76 @@ export async function claimDraw(userId: string): Promise<ClaimResult> {
     return { ok: false, reason: "already_claimed" };
   }
 
+  // ฟองแรกที่เคยได้ = ตัวเลี้ยงอัตโนมัติ (ถ้ายังไม่มีตัว active).
+  // unique index กัน 2 คนชนกัน — ชนแล้วข้าม (แต้มได้แล้ว แค่ active ไม่เปลี่ยน).
+  const { data: existingActive } = await supabase
+    .from("egg_draws")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .maybeSingle();
+
+  if (!existingActive) {
+    const { error: activeError } = await supabase
+      .from("egg_draws")
+      .update({ is_active: true })
+      .eq("id", claimedRow.id as string);
+    if (activeError && activeError.code !== "23505") {
+      console.error(`Failed to auto-activate egg (user=${userId})`, activeError);
+    }
+  }
+
   return { ok: true, reason: "claimed", eggType: picked.code, eggName: picked.name };
+}
+
+export type SetActiveReason = "moved" | "not_found" | "conflict";
+
+export interface SetActiveResult {
+  ok: boolean;
+  reason: SetActiveReason;
+}
+
+/**
+ * ย้ายตัวเลี้ยง (ตัวรับ EXP จากภารกิจ) — ได้เฉพาะไข่ของตัวเองที่ claim แล้ว.
+ * ล้างตัวเก่าก่อนแล้วเปิดตัวใหม่; unique index กันกดพร้อมกัน 2 เครื่อง
+ * (ชนแล้วตอบ conflict ให้กดใหม่).
+ */
+export async function setActiveEgg(
+  userId: string,
+  drawId: string
+): Promise<SetActiveResult> {
+  const supabase = createServiceClient();
+
+  const { data: own } = await supabase
+    .from("egg_draws")
+    .select("id")
+    .eq("id", drawId)
+    .eq("user_id", userId)
+    .not("claimed_at", "is", null)
+    .maybeSingle();
+
+  if (!own) {
+    return { ok: false, reason: "not_found" };
+  }
+
+  await supabase
+    .from("egg_draws")
+    .update({ is_active: false })
+    .eq("user_id", userId)
+    .eq("is_active", true);
+
+  const { data: moved, error: moveError } = await supabase
+    .from("egg_draws")
+    .update({ is_active: true })
+    .eq("id", drawId)
+    .eq("user_id", userId)
+    .select("id")
+    .maybeSingle();
+
+  if (moveError || !moved) {
+    console.error(`Failed to move active egg (user=${userId})`, moveError);
+    return { ok: false, reason: moveError?.code === "23505" ? "conflict" : "not_found" };
+  }
+
+  return { ok: true, reason: "moved" };
 }

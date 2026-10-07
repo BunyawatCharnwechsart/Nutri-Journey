@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   HEALTHY_JOURNEY_LEVEL_CAP,
+  avatarForEgg,
   avatarForLevel,
   cumulativeThreshold,
   expForNextLevel,
@@ -94,15 +95,37 @@ describe("progressRatio", () => {
 });
 
 describe("avatarForLevel", () => {
-  it("maps each level to its own asset", () => {
+  it("maps each level to its starter asset", () => {
     for (let l = 0; l <= HEALTHY_JOURNEY_LEVEL_CAP; l++) {
-      expect(avatarForLevel(l)).toBe(`/avatar/level${l}.svg`);
+      expect(avatarForLevel(l)).toBe(`/avatar/starter/level${l}.svg`);
     }
   });
 
   it("clamps out-of-range levels to the available SVGs", () => {
-    expect(avatarForLevel(-1)).toBe("/avatar/level0.svg");
-    expect(avatarForLevel(99)).toBe(`/avatar/level${HEALTHY_JOURNEY_LEVEL_CAP}.svg`);
-    expect(avatarForLevel(Number.NaN)).toBe("/avatar/level0.svg");
+    expect(avatarForLevel(-1)).toBe("/avatar/starter/level0.svg");
+    expect(avatarForLevel(99)).toBe(
+      `/avatar/starter/level${HEALTHY_JOURNEY_LEVEL_CAP}.svg`
+    );
+    expect(avatarForLevel(Number.NaN)).toBe("/avatar/starter/level0.svg");
+  });
+});
+
+describe("avatarForEgg", () => {
+  it("maps each egg type to its own art set", () => {
+    expect(avatarForEgg("starter", 3)).toBe("/avatar/starter/level3.svg");
+    expect(avatarForEgg("pink", 5)).toBe("/avatar/pink/pink5.png");
+  });
+
+  it("falls back to starter for unknown or null types", () => {
+    expect(avatarForEgg("mystery", 2)).toBe("/avatar/starter/level2.svg");
+    expect(avatarForEgg("nope", 2)).toBe("/avatar/starter/level2.svg");
+    expect(avatarForEgg(null, 2)).toBe("/avatar/starter/level2.svg");
+  });
+
+  it("clamps levels like avatarForLevel", () => {
+    expect(avatarForEgg("pink", -1)).toBe("/avatar/pink/pink0.png");
+    expect(avatarForEgg("pink", 99)).toBe(
+      `/avatar/pink/pink${HEALTHY_JOURNEY_LEVEL_CAP}.png`
+    );
   });
 });
