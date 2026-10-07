@@ -86,8 +86,6 @@ export default async function MyEggPage() {
 
         <EggLevelCard totalPoints={totalPoints} />
 
-        <RankingCard />
-
         <EggAvatarCard
           avatarSrc={avatarForLevel(level)}
           name={journey?.avatar_name ?? DEFAULT_AVATAR_NAME}
@@ -158,6 +156,8 @@ export default async function MyEggPage() {
             })}
           </div>
         </section>
+
+        <RankingCard />
       </div>
     </main>
   );
