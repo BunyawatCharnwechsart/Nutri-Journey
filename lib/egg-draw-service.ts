@@ -237,7 +237,8 @@ export async function getDrawStatus(userId: string): Promise<DrawStatus> {
 
 /**
  * กดสุ่มไข่ 1 ครั้ง: คำนวณสิทธิ์ใหม่ฝั่ง server เสมอ (ไม่เชื่อ client),
- * แจกหน้าต่างที่ครบ (กันซ้ำด้วย unique) แล้ว claim แถวเก่าสุดที่ค้างอยู่.
+ * ถ้ารอบปัจจุบันครบแจกหน้าต่างเพิ่ม แล้ว claim แถวเก่าสุดที่ค้างอยู่ —
+ * สิทธิ์ค้าง (เช่น ของขวัญ) กดได้เลยไม่ต้องรอครบรอบใหม่.
  * กดพร้อมกัน 2 ครั้ง: ครั้งที่สองเจอแถวไม่เหลือ → already_claimed.
  */
 export async function claimDraw(userId: string): Promise<ClaimResult> {
@@ -250,20 +251,21 @@ export async function claimDraw(userId: string): Promise<ClaimResult> {
   ]);
 
   const progress = currentProgress(keys, lastCycleEnd, todayKey);
-  if (!progress.eligible || !progress.cycleStart || !progress.cycleEnd) {
-    return { ok: false, reason: "not_eligible" };
-  }
+  // จำไว้ว่าเพิ่งแจกหน้าต่างใหม่หรือไม่ (ไว้แยก already_claimed/not_eligible).
+  let justGranted = false;
+  if (progress.eligible && progress.cycleStart && progress.cycleEnd) {
+    // แจกหน้าต่างที่ครบ — ถ้ามีแถวนี้แล้ว (กดซ้ำ/แข่งกัน) unique จะกันให้.
+    const { error: grantError } = await supabase.from("egg_draws").insert({
+      user_id: userId,
+      cycle_start: progress.cycleStart,
+      cycle_end: progress.cycleEnd,
+    });
 
-  // แจกหน้าต่างที่ครบ — ถ้ามีแถวนี้แล้ว (กดซ้ำ/แข่งกัน) unique จะกันให้.
-  const { error: grantError } = await supabase.from("egg_draws").insert({
-    user_id: userId,
-    cycle_start: progress.cycleStart,
-    cycle_end: progress.cycleEnd,
-  });
-
-  if (grantError && grantError.code !== "23505") {
-    console.error(`Failed to grant egg draw (user=${userId})`, grantError);
-    throw new Error("Failed to claim egg draw");
+    if (grantError && grantError.code !== "23505") {
+      console.error(`Failed to grant egg draw (user=${userId})`, grantError);
+      throw new Error("Failed to claim egg draw");
+    }
+    justGranted = true;
   }
 
   const { data: types, error: typesError } = await supabase
@@ -305,7 +307,12 @@ export async function claimDraw(userId: string): Promise<ClaimResult> {
   }
 
   if (!claimedRow) {
-    return { ok: false, reason: "already_claimed" };
+    // แถวค้างไม่เหลือแล้ว: ถ้าเพิ่งแจกหน้าต่างใหม่แปลว่าโดนแย่งพร้อมกัน
+    // (already_claimed) ถ้าไม่ได้แจกอะไรเลยแปลว่าไม่มีสิทธิ์แต่แรก.
+    return {
+      ok: false,
+      reason: justGranted ? "already_claimed" : "not_eligible",
+    };
   }
 
   // ฟองแรกที่เคยได้ = ตัวเลี้ยงอัตโนมัติ (ถ้ายังไม่มีตัว active).
