@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 type ClaimPhase =
   | { name: "idle" }
   | { name: "loading" }
-  | { name: "done"; eggName: string }
+  | { name: "done"; eggName: string; duplicate: boolean; expGranted: number }
   | { name: "rejected"; message: string };
 
 /**
@@ -27,11 +27,20 @@ export default function EggClaimButton({ canClaim }: { canClaim: boolean }) {
       const res = await fetch("/api/v1/egg-draws/claim", { method: "POST" });
       const body = (await res.json()) as {
         success: boolean;
-        data?: { eggName?: string };
+        data?: {
+          eggName?: string;
+          duplicate?: boolean;
+          expGranted?: number;
+        };
         error?: { message?: string };
       };
       if (res.ok && body.success) {
-        setPhase({ name: "done", eggName: body.data?.eggName ?? "ไข่" });
+        setPhase({
+          name: "done",
+          eggName: body.data?.eggName ?? "ไข่",
+          duplicate: body.data?.duplicate ?? false,
+          expGranted: body.data?.expGranted ?? 0,
+        });
         router.refresh();
       } else {
         setPhase({
@@ -62,7 +71,9 @@ export default function EggClaimButton({ canClaim }: { canClaim: boolean }) {
           🥚
         </p>
         <p className="mt-2 text-base font-semibold text-zinc-900">
-          ยินดีด้วย! ได้{phase.eggName}
+          {phase.duplicate
+            ? `ได้${phase.eggName}ซ้ำ! แปลงเป็น +${phase.expGranted} EXP แล้ว`
+            : `ยินดีด้วย! ได้${phase.eggName}`}
         </p>
         <p className="mt-1 text-sm text-zinc-500">
           ดูได้ในตู้สะสมด้านล่าง

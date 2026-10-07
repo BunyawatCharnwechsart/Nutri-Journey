@@ -25,7 +25,12 @@ export async function POST() {
           : "รับสิทธิ์นี้ไปแล้ว";
       return apiError(message, 409, "CLAIM_REJECTED");
     }
-    return apiSuccess({ eggType: result.eggType, eggName: result.eggName });
+    return apiSuccess({
+      eggType: result.eggType,
+      eggName: result.eggName,
+      duplicate: result.duplicate ?? false,
+      expGranted: result.expGranted ?? 0,
+    });
   } catch (error) {
     console.error(`POST /api/v1/egg-draws/claim failed (user=${auth.userId})`, error);
     return apiError("สุ่มไข่ไม่สำเร็จ", 500, "EGG_CLAIM_FAILED");
