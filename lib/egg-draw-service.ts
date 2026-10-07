@@ -56,6 +56,23 @@ export interface DrawStatus {
 
 export type ClaimReason = "claimed" | "not_eligible" | "already_claimed";
 
+/**
+ * กติกาการสุ่ม 3 ข้อ (ล็อกไว้กันแก้พัง):
+ * 1. ครบ 3 วัน → แจกสิทธิ์ใหม่ 1 ครั้ง (granted=true มาจากหน้าต่างที่เพิ่งแจก).
+ * 2. สิทธิ์ค้างกดได้เลย ไม่ต้องรอครบรอบ (claimed=true ได้โดย granted=false ได้).
+ * 3. ไม่มีอะไรให้กดเลย → not_eligible (ไม่ใช่ already_claimed).
+ * pure แยกไว้เทสต์ตารางตัดสินใจได้โดยไม่ต่อ DB.
+ */
+export function resolveClaimOutcome(
+  granted: boolean,
+  claimed: boolean
+): ClaimReason {
+  if (claimed) {
+    return "claimed";
+  }
+  return granted ? "already_claimed" : "not_eligible";
+}
+
 export interface ClaimResult {
   ok: boolean;
   reason: ClaimReason;
@@ -311,7 +328,7 @@ export async function claimDraw(userId: string): Promise<ClaimResult> {
     // (already_claimed) ถ้าไม่ได้แจกอะไรเลยแปลว่าไม่มีสิทธิ์แต่แรก.
     return {
       ok: false,
-      reason: justGranted ? "already_claimed" : "not_eligible",
+      reason: resolveClaimOutcome(justGranted, false),
     };
   }
 

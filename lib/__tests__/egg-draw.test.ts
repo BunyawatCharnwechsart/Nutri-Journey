@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { currentProgress } from "@/lib/egg-draw";
 import {
   pickEggType,
+  resolveClaimOutcome,
   resolveDisplayName,
   toDropRates,
 } from "@/lib/egg-draw-service";
@@ -163,5 +164,20 @@ describe("toDropRates", () => {
     expect(
       toDropRates([{ code: "a", name: "A", rarity_weight: 0 }])
     ).toEqual([]);
+  });
+});
+
+describe("resolveClaimOutcome (กติกาการสุ่ม 3 ข้อ)", () => {
+  it("กดได้ = claimed ไม่ว่าจะแจกใหม่หรือใช้สิทธิ์ค้าง (ข้อ 1+2)", () => {
+    expect(resolveClaimOutcome(true, true)).toBe("claimed");
+    expect(resolveClaimOutcome(false, true)).toBe("claimed");
+  });
+
+  it("เพิ่งแจกแต่โดนแย่ง = already_claimed", () => {
+    expect(resolveClaimOutcome(true, false)).toBe("already_claimed");
+  });
+
+  it("ไม่มีอะไรให้กดเลย = not_eligible", () => {
+    expect(resolveClaimOutcome(false, false)).toBe("not_eligible");
   });
 });
