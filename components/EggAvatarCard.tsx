@@ -3,12 +3,8 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
-import {
-  expForNextLevel,
-  expInLevel,
-  levelFromPoints,
-  progressRatio,
-} from "@/lib/healthy-journey";
+import { levelFromPoints, progressRatio } from "@/lib/healthy-journey";
+import EggLevelLine from "@/components/EggLevelLine";
 
 interface EggAvatarCardProps {
   /** URL of the avatar image (active egg art, or user-level art as fallback). */
@@ -34,7 +30,6 @@ export default function EggAvatarCard({
   exp,
 }: EggAvatarCardProps) {
   const level = levelFromPoints(exp);
-  const needNext = expForNextLevel(level);
   const fillPercent = Math.round(progressRatio(exp) * 100);
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -132,7 +127,7 @@ export default function EggAvatarCard({
 
       <div className="w-full max-w-xs">
         <p className="text-sm text-[#6C4FD8]">
-          เลเวล {level} · {expInLevel(exp)} / {needNext ?? "MAX"} exp
+          <EggLevelLine exp={exp} />
         </p>
         <div
           role="progressbar"

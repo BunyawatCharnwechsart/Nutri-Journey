@@ -4,16 +4,20 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { avatarForEgg, levelFromPoints } from "@/lib/healthy-journey";
+import EggLevelLine from "@/components/EggLevelLine";
 import type { CollectedEgg } from "@/lib/egg-draw-service";
 
 /**
  * ตู้สะสมไข่: รูปตามชนิด+level ของแต่ละฟอง, EXP รายฟอง, ปุ่มตั้งตัวเลี้ยง.
  * กดย้ายแล้วยิง PATCH แล้ว refresh ให้ server วาดใหม่ (state อยู่ที่ DB).
+ * ชื่อตัว active ใช้ชื่อที่ตั้งไว้ (เหมือนใต้รูป Avatar) ตัวอื่นใช้ชื่อชนิดไข่.
  */
 export default function EggCollection({
   collection,
+  activeName,
 }: {
   collection: CollectedEgg[];
+  activeName: string | null;
 }) {
   const router = useRouter();
   const [movingId, setMovingId] = useState<string | null>(null);
@@ -65,10 +69,10 @@ export default function EggCollection({
               className="h-24 w-24 object-contain"
             />
             <p className="mt-1 w-full truncate text-sm font-semibold text-zinc-900">
-              {egg.eggName}
+              {egg.isActive && activeName ? activeName : egg.eggName}
             </p>
             <p className="text-xs text-zinc-500">
-              เลเวล {level} · {egg.eggExp} exp
+              <EggLevelLine exp={egg.eggExp} />
             </p>
             {egg.isActive ? (
               <span className="mt-2 rounded-full bg-[#18A659] px-3 py-1 text-xs font-medium text-white">
