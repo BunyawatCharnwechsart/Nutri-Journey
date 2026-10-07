@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { getSessionUserId } from "@/lib/auth";
 import { getDrawStatus } from "@/lib/egg-draw-service";
+import { DEFAULT_AVATAR_NAME } from "@/lib/healthy-journey";
 import { createServiceClient } from "@/lib/supabase/service";
 import BackButton from "@/components/BackButton";
 import EggClaimButton from "@/components/EggClaimButton";
@@ -85,7 +86,7 @@ export default async function EggDrawPage() {
           </h2>
           <EggCollection
             collection={status.collection}
-            activeName={journey?.avatar_name ?? null}
+            activeName={journey?.avatar_name ?? DEFAULT_AVATAR_NAME}
           />
         </section>
       </div>
