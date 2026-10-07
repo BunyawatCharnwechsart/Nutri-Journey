@@ -17,12 +17,39 @@ export interface CollectedEgg {
   claimedAt: string;
 }
 
+export interface DropRate {
+  code: string;
+  name: string;
+  /** โอกาสออกเป็น % (ทศนิยม 1 ตำแหน่ง). */
+  percent: number;
+}
+
+/**
+ * แปลง catalog เป็นเรท % จาก rarity_weight — pure แยกไว้เทสต์ได้.
+ * weight รวมเป็น 0 หรือ catalog ว่างคืน [] (UI ซ่อนปุ่มเรทเอง).
+ */
+export function toDropRates(
+  types: { code: string; name: string; rarity_weight: number }[]
+): DropRate[] {
+  const total = types.reduce((sum, t) => sum + Math.max(0, t.rarity_weight), 0);
+  if (types.length === 0 || total <= 0) {
+    return [];
+  }
+  return types.map((t) => ({
+    code: t.code,
+    name: t.name,
+    percent: Math.round((Math.max(0, t.rarity_weight) / total) * 1000) / 10,
+  }));
+}
+
 export interface DrawStatus {
   streakDays: number;
   progress: number;
   /** จำนวนสิทธิ์สุ่มที่ค้าง (ยังไม่กด). */
   pendingDraws: number;
   canClaim: boolean;
+  /** เรทการสุ่มแต่ละชนิด (ไว้โชว์ใน popup). */
+  rates: DropRate[];
   /** ประวัติไข่ที่สุ่มได้แล้ว (ตู้สะสม). */
   collection: CollectedEgg[];
 }
@@ -168,9 +195,16 @@ export async function getDrawStatus(userId: string): Promise<DrawStatus> {
 
   const { data: types } = await supabase
     .from("egg_types")
-    .select("code, name");
+    .select("code, name, rarity_weight");
   const names = new Map(
     (types ?? []).map((t) => [t.code as string, t.name as string])
+  );
+  const rates = toDropRates(
+    (types ?? []).map((t) => ({
+      code: t.code as string,
+      name: t.name as string,
+      rarity_weight: Number(t.rarity_weight) || 0,
+    }))
   );
 
   const progress = currentProgress(keys, lastCycleEnd, todayKey);
@@ -181,6 +215,7 @@ export async function getDrawStatus(userId: string): Promise<DrawStatus> {
     progress: progress.progress,
     pendingDraws: pending,
     canClaim: pending > 0,
+    rates,
     collection: (claimed.data ?? []).map((row) => {
       const isActive = (row.is_active as boolean) ?? false;
       const nickname = (row.nickname as string | null) ?? null;

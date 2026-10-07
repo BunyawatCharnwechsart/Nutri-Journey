@@ -5,6 +5,7 @@ import { getDrawStatus } from "@/lib/egg-draw-service";
 import BackButton from "@/components/BackButton";
 import EggClaimButton from "@/components/EggClaimButton";
 import EggCollection from "@/components/EggCollection";
+import EggRatesButton from "@/components/EggRatesButton";
 
 export const dynamic = "force-dynamic";
 
@@ -69,6 +70,10 @@ export default async function EggDrawPage() {
         </section>
 
         <EggClaimButton canClaim={status.canClaim} />
+
+        <div className="flex justify-center">
+          <EggRatesButton rates={status.rates} />
+        </div>
 
         <section aria-label="ตู้สะสมไข่">
           <h2 className="px-1 text-base font-semibold text-zinc-900">

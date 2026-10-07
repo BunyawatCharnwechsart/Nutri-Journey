@@ -1,7 +1,11 @@
 import { describe, expect, it } from "vitest";
 
 import { currentProgress } from "@/lib/egg-draw";
-import { pickEggType, resolveDisplayName } from "@/lib/egg-draw-service";
+import {
+  pickEggType,
+  resolveDisplayName,
+  toDropRates,
+} from "@/lib/egg-draw-service";
 
 describe("currentProgress", () => {
   it("counts 3 consecutive success days as eligible", () => {
@@ -114,8 +118,7 @@ describe("pickEggType", () => {
   });
 });
 
-describe("resolveDisplayName", () => {
-  it("prefers the egg's own nickname", () => {
+describe("resolveDisplayName", () => {  it("prefers the egg's own nickname", () => {
     expect(resolveDisplayName("น้องชมพู", true, "ชื่อรวม", "ไข่ชมพู")).toBe(
       "น้องชมพู"
     );
@@ -132,5 +135,33 @@ describe("resolveDisplayName", () => {
   it("falls back to the type name when nothing else exists", () => {
     expect(resolveDisplayName(null, true, null, "ไข่ชมพู")).toBe("ไข่ชมพู");
     expect(resolveDisplayName(null, false, null, "ไข่ชมพู")).toBe("ไข่ชมพู");
+  });
+});
+
+describe("toDropRates", () => {
+  it("splits evenly when all weights are equal", () => {
+    const rates = toDropRates([
+      { code: "a", name: "A", rarity_weight: 1 },
+      { code: "b", name: "B", rarity_weight: 1 },
+      { code: "c", name: "C", rarity_weight: 1 },
+      { code: "d", name: "D", rarity_weight: 1 },
+      { code: "e", name: "E", rarity_weight: 1 },
+    ]);
+    expect(rates.map((r) => r.percent)).toEqual([20, 20, 20, 20, 20]);
+  });
+
+  it("weights proportionally with one decimal", () => {
+    const rates = toDropRates([
+      { code: "a", name: "A", rarity_weight: 7 },
+      { code: "b", name: "B", rarity_weight: 3 },
+    ]);
+    expect(rates.map((r) => r.percent)).toEqual([70, 30]);
+  });
+
+  it("returns empty for an empty catalog or zero total weight", () => {
+    expect(toDropRates([])).toEqual([]);
+    expect(
+      toDropRates([{ code: "a", name: "A", rarity_weight: 0 }])
+    ).toEqual([]);
   });
 });
