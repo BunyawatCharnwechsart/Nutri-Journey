@@ -44,8 +44,13 @@ export default async function MyEggPage() {
   const { startIso: questStartIso, endIso: questEndIso } =
     getQuestDayBounds(new Date());
 
-  const [{ data: journey }, { data: missions }, { data: doneToday }, drawStatus] =
-    await Promise.all([
+  const [
+    { data: journey },
+    { data: missions },
+    { data: doneToday },
+    drawStatus,
+    { data: user },
+  ] = await Promise.all([
       supabase
         .from("healthy_journey")
         .select("total_points, avatar_name")
@@ -62,6 +67,11 @@ export default async function MyEggPage() {
         .gte("completed_at", questStartIso)
         .lt("completed_at", questEndIso),
       getDrawStatus(userId),
+      supabase
+        .from("users")
+        .select("display_name")
+        .eq("user_id", userId)
+        .maybeSingle(),
     ]);
 
   const missionRows = (missions ?? []) as MissionRow[];
@@ -98,7 +108,10 @@ export default async function MyEggPage() {
           <EggBagButton />
         </header>
 
-        <EggLevelCard totalPoints={totalPoints} />
+        <EggLevelCard
+          totalPoints={totalPoints}
+          displayName={user?.display_name ?? null}
+        />
 
         <EggAvatarCard
           avatarSrc={

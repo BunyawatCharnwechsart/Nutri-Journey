@@ -8,6 +8,8 @@ import {
 interface EggLevelCardProps {
   /** Current healthy-journey XP of the user (healthy_journey.total_points). */
   totalPoints: number;
+  /** ชื่อ user — โชว์เหนือเลเวลเพื่อให้ชัดว่านี่คือเลเวลของใคร (ของไข่ดูที่การ์ดม่วง). */
+  displayName?: string | null;
 }
 
 /**
@@ -15,13 +17,16 @@ interface EggLevelCardProps {
  * progress bar. Shared by the dashboard ("ไข่ของฉัน" section) and the full
  * my-egg page so the two never drift apart.
  */
-export default function EggLevelCard({ totalPoints }: EggLevelCardProps) {
+export default function EggLevelCard({ totalPoints, displayName }: EggLevelCardProps) {
   const level = levelFromPoints(totalPoints);
   const needNext = expForNextLevel(level);
   const fillPercent = Math.round(progressRatio(totalPoints) * 100);
 
   return (
     <section className="rounded-2xl border border-zinc-200 bg-white p-5">
+      {displayName && (
+        <p className="truncate text-sm text-zinc-500">{displayName}</p>
+      )}
       <div className="flex items-end justify-between gap-4">
         <p className="text-xl font-bold text-zinc-900">เลเวล {level}</p>
         <p className="text-sm text-zinc-500">

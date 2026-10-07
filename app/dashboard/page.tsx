@@ -17,11 +17,18 @@ export default async function DashboardPage() {
   }
 
   const supabase = createServiceClient();
-  const { data: journey } = await supabase
-    .from("healthy_journey")
-    .select("total_points")
-    .eq("user_id", userId)
-    .maybeSingle();
+  const [{ data: journey }, { data: user }] = await Promise.all([
+    supabase
+      .from("healthy_journey")
+      .select("total_points")
+      .eq("user_id", userId)
+      .maybeSingle(),
+    supabase
+      .from("users")
+      .select("display_name")
+      .eq("user_id", userId)
+      .maybeSingle(),
+  ]);
 
   const totalPoints = Number(journey?.total_points ?? 0);
 
@@ -53,7 +60,10 @@ export default async function DashboardPage() {
               ดูทั้งหมด &gt;&gt;
             </Link>
           </div>
-          <EggLevelCard totalPoints={totalPoints} />
+          <EggLevelCard
+            totalPoints={totalPoints}
+            displayName={user?.display_name ?? null}
+          />
         </section>
       </div>
     </main>
