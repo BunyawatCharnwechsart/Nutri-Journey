@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import { getSessionUserId } from "@/lib/auth";
 import EggAvatarCard from "@/components/EggAvatarCard";
 import EggLevelCard from "@/components/EggLevelCard";
+import RankingCard from "@/components/RankingCard";
 import {
   DEFAULT_AVATAR_NAME,
   MISSION_CODES,
@@ -84,6 +85,8 @@ export default async function MyEggPage() {
         </header>
 
         <EggLevelCard totalPoints={totalPoints} />
+
+        <RankingCard />
 
         <EggAvatarCard
           avatarSrc={avatarForLevel(level)}
