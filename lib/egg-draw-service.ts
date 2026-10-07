@@ -3,6 +3,7 @@ import "server-only";
 import { toICTDateKey } from "@/lib/timezone";
 import { createServiceClient } from "@/lib/supabase/service";
 import { currentProgress } from "@/lib/egg-draw";
+import { levelFromPoints } from "@/lib/healthy-journey";
 
 export interface CollectedEgg {
   id: string;
@@ -78,7 +79,14 @@ export interface ClaimResult {
   reason: ClaimReason;
   eggType?: string;
   eggName?: string;
+  /** true = ได้ชนิดเดิมซ้ำ → ไม่เพิ่มฟองใหม่ แต่แปลงเป็น EXP ให้ฟองเดิม. */
+  duplicate?: boolean;
+  /** EXP ที่แปลงให้ (เฉพาะเส้น duplicate). */
+  expGranted?: number;
 }
+
+/** EXP ที่ได้เมื่อสุ่มซ้ำชนิดเดิม (ตายตัว จำง่ายเท่าภารกิจ). */
+export const DUPLICATE_EXP = 50;
 
 /** ดึงย้อนหลังแค่ 120 วันก็พอตัดสิน streak (กันตารางโตแล้วช้า). */
 const SUCCESS_LOOKBACK_DAYS = 120;
@@ -253,6 +261,65 @@ export async function getDrawStatus(userId: string): Promise<DrawStatus> {
 }
 
 /**
+ * บวก EXP ให้ไข่ฟองหนึ่ง + user พร้อมกัน (คง invariant "user EXP = ผลรวมไข่").
+ * ฟองเป้าหมายหายไปแล้ว (แข่งกันลบ) ตกไปเข้าตัว active แทน — ถ้าไม่มี active
+ * เลยแต้มอยู่แค่ total_points. ล้มเหลวให้ throw (caller จัดการ).
+ */
+async function creditEggExp(
+  supabase: ReturnType<typeof createServiceClient>,
+  userId: string,
+  drawId: string | null,
+  points: number
+): Promise<void> {
+  let targetId = drawId;
+  if (targetId) {
+    const { data: exists } = await supabase
+      .from("egg_draws")
+      .select("id, egg_exp")
+      .eq("id", targetId)
+      .eq("user_id", userId)
+      .maybeSingle();
+    if (exists) {
+      const { error } = await supabase
+        .from("egg_draws")
+        .update({ egg_exp: Number(exists.egg_exp) + points })
+        .eq("id", targetId);
+      if (error) throw error;
+    } else {
+      targetId = null;
+    }
+  }
+
+  if (!targetId) {
+    const { data: active } = await supabase
+      .from("egg_draws")
+      .select("id, egg_exp")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .maybeSingle();
+    if (active) {
+      const { error } = await supabase
+        .from("egg_draws")
+        .update({ egg_exp: Number(active.egg_exp) + points })
+        .eq("id", active.id as string);
+      if (error) throw error;
+    }
+  }
+
+  const { data: journey } = await supabase
+    .from("healthy_journey")
+    .select("total_points")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const total = Number(journey?.total_points ?? 0) + points;
+  const { error: totalError } = await supabase
+    .from("healthy_journey")
+    .update({ total_points: total, level: levelFromPoints(total) })
+    .eq("user_id", userId);
+  if (totalError) throw totalError;
+}
+
+/**
  * กดสุ่มไข่ 1 ครั้ง: คำนวณสิทธิ์ใหม่ฝั่ง server เสมอ (ไม่เชื่อ client),
  * ถ้ารอบปัจจุบันครบแจกหน้าต่างเพิ่ม แล้ว claim แถวเก่าสุดที่ค้างอยู่ —
  * สิทธิ์ค้าง (เช่น ของขวัญ) กดได้เลยไม่ต้องรอครบรอบใหม่.
@@ -323,6 +390,49 @@ export async function claimDraw(userId: string): Promise<ClaimResult> {
     return {
       ok: false,
       reason: resolveClaimOutcome(justGranted, false),
+    };
+  }
+
+  // เส้นซ้ำ: มีชนิดนี้ในตู้แล้ว → ไม่เพิ่มฟองใหม่ แปลงเป็น EXP เข้าฟองเดิม
+  // ชนิดเดียวกันที่ได้ก่อนสุด (+ user ด้วยพร้อมกัน คง invariant ผลรวม).
+  const { data: ownedSame } = await supabase
+    .from("egg_draws")
+    .select("id, egg_exp")
+    .eq("user_id", userId)
+    .eq("egg_type", picked.code)
+    .not("claimed_at", "is", null)
+    .order("claimed_at", { ascending: true })
+    .limit(1)
+    .maybeSingle();
+
+  if (ownedSame) {
+    // กินสิทธิ์ที่ใช้กด (ลบแถวค้าง) — ลบไม่ได้แปลว่าโดนแย่งพร้อมกัน.
+    const { data: consumed } = await supabase
+      .from("egg_draws")
+      .delete()
+      .eq("id", oldest.id as string)
+      .eq("user_id", userId)
+      .is("claimed_at", null)
+      .select("id")
+      .maybeSingle();
+
+    if (!consumed) {
+      return { ok: false, reason: "already_claimed" };
+    }
+
+    try {
+      await creditEggExp(supabase, userId, ownedSame.id as string, DUPLICATE_EXP);
+    } catch (error) {
+      console.error(`Failed to credit duplicate exp (user=${userId})`, error);
+      throw new Error("Failed to claim egg draw");
+    }
+    return {
+      ok: true,
+      reason: "claimed",
+      eggType: picked.code,
+      eggName: picked.name,
+      duplicate: true,
+      expGranted: DUPLICATE_EXP,
     };
   }
 
