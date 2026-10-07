@@ -1,5 +1,5 @@
 import { requireAuth } from "@/lib/auth";
-import { renameAvatar } from "@/lib/healthy-journey-service";
+import { renameEggDraw } from "@/lib/egg-draw-service";
 import { apiError, apiSuccess } from "@/lib/response";
 import { avatarNameSchema } from "@/lib/validation";
 
@@ -8,9 +8,10 @@ export const runtime = "nodejs";
 /**
  * PATCH /api/v1/healthy-journey
  *
- * Renames the user's egg (avatar). The userId comes from the verified
- * session cookie — never from the body — and the request body is validated
- * with zod before it reaches the database.
+ * Renames the ACTIVE egg only (nickname on its egg_draws row) — other eggs
+ * keep their own names. The userId comes from the verified session cookie —
+ * never from the body — and the request body is validated with zod before
+ * it reaches the database.
  */
 export async function PATCH(request: Request) {
   const auth = await requireAuth();
@@ -32,7 +33,7 @@ export async function PATCH(request: Request) {
   }
 
   try {
-    const avatarName = await renameAvatar(auth.userId, parsed.data.avatarName);
+    const avatarName = await renameEggDraw(auth.userId, parsed.data.avatarName);
     return apiSuccess({ avatarName }, { status: 200 });
   } catch {
     return apiError("Failed to rename avatar", 500, "INTERNAL_ERROR");

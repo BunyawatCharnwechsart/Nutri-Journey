@@ -94,6 +94,12 @@ export default async function MyEggPage() {
   const activeCollected =
     drawStatus.collection.find((c) => c.isActive) ?? null;
 
+  // ชื่อใต้รูป = ชื่อของตัว active (nickname → avatar_name → ค่า default).
+  const activeDisplayName =
+    activeCollected?.displayName ??
+    journey?.avatar_name ??
+    DEFAULT_AVATAR_NAME;
+
   // รูป + แถบใต้รูปโชว์ไข่ตัว active (fallback เป็นรวม user ถ้ายังไม่มีไข่).
   const avatarExp = activeCollected?.eggExp ?? totalPoints;
   const avatarLevel = levelFromPoints(avatarExp);
@@ -119,7 +125,7 @@ export default async function MyEggPage() {
               ? avatarForEgg(activeCollected.eggType, avatarLevel)
               : avatarForLevel(level)
           }
-          name={journey?.avatar_name ?? DEFAULT_AVATAR_NAME}
+          name={activeDisplayName}
           exp={avatarExp}
         />
 

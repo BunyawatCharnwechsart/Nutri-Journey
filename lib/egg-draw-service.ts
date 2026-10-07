@@ -8,6 +8,10 @@ export interface CollectedEgg {
   id: string;
   eggType: string;
   eggName: string;
+  /** ชื่อที่ตั้งให้ฟองนี้ (null = ยังไม่เคยตั้ง). */
+  nickname: string | null;
+  /** ชื่อที่ UI ควรโชว์: nickname → (active ? ชื่อรวม avatar_name : null) → ชื่อชนิด. */
+  displayName: string;
   eggExp: number;
   isActive: boolean;
   claimedAt: string;
@@ -120,6 +124,19 @@ async function countPending(
 }
 
 /**
+ * ชื่อที่ UI ควรโชว์ต่อฟอง: nickname ของมันเองก่อน ถ้าไม่มีและเป็นตัว active
+ * ใช้ชื่อรวม (avatar_name) ถ้าไม่มีอีกใช้ชื่อชนิดไข่ — pure แยกไว้เทสต์ได้.
+ */
+export function resolveDisplayName(
+  nickname: string | null,
+  isActive: boolean,
+  legacyName: string | null,
+  typeName: string
+): string {
+  return nickname ?? (isActive ? legacyName : null) ?? typeName;
+}
+
+/**
  * สถานะสุ่มไข่ของ user: progress ปัจจุบัน + สิทธิ์ค้าง + ตู้สะสม.
  * นับวัน success ใหม่ทุกครั้ง (ไม่มี streak cache ให้เน่า).
  */
@@ -127,16 +144,21 @@ export async function getDrawStatus(userId: string): Promise<DrawStatus> {
   const supabase = createServiceClient();
   const todayKey = toICTDateKey(new Date());
 
-  const [keys, lastCycleEnd, pending, claimed] = await Promise.all([
+  const [keys, lastCycleEnd, pending, claimed, journey] = await Promise.all([
     loadSuccessKeys(supabase, userId),
     loadLastCycleEnd(supabase, userId),
     countPending(supabase, userId),
     supabase
     .from("egg_draws")
-    .select("id, egg_type, egg_exp, is_active, claimed_at")
+    .select("id, egg_type, egg_exp, is_active, claimed_at, nickname")
       .eq("user_id", userId)
       .not("claimed_at", "is", null)
       .order("claimed_at", { ascending: false }),
+    supabase
+      .from("healthy_journey")
+      .select("avatar_name")
+      .eq("user_id", userId)
+      .maybeSingle(),
   ]);
 
   if (claimed.error) {
@@ -152,20 +174,29 @@ export async function getDrawStatus(userId: string): Promise<DrawStatus> {
   );
 
   const progress = currentProgress(keys, lastCycleEnd, todayKey);
+  const legacyName = (journey.data?.avatar_name as string | null) ?? null;
 
   return {
     streakDays: progress.streakDays,
     progress: progress.progress,
     pendingDraws: pending,
     canClaim: pending > 0,
-    collection: (claimed.data ?? []).map((row) => ({
-      id: row.id as string,
-      eggType: row.egg_type as string,
-      eggName: names.get(row.egg_type as string) ?? (row.egg_type as string),
-      eggExp: Number(row.egg_exp ?? 0),
-      isActive: (row.is_active as boolean) ?? false,
-      claimedAt: row.claimed_at as string,
-    })),
+    collection: (claimed.data ?? []).map((row) => {
+      const isActive = (row.is_active as boolean) ?? false;
+      const nickname = (row.nickname as string | null) ?? null;
+      const typeName =
+        names.get(row.egg_type as string) ?? (row.egg_type as string);
+      return {
+        id: row.id as string,
+        eggType: row.egg_type as string,
+        eggName: typeName,
+        nickname,
+        displayName: resolveDisplayName(nickname, isActive, legacyName, typeName),
+        eggExp: Number(row.egg_exp ?? 0),
+        isActive,
+        claimedAt: row.claimed_at as string,
+      };
+    }),
   };
 }
 
@@ -314,4 +345,60 @@ export async function setActiveEgg(
   }
 
   return { ok: true, reason: "moved" };
+}
+
+/**
+ * เปลี่ยนชื่อไข่ — มีผลเฉพาะฟองที่เลี้ยงอยู่ (แถว active) ฟองอื่นชื่อเดิม
+ * ไม่เปลี่ยน. ถ้ายังไม่มีไข่เลย (user ใหม่) fallback เขียน avatar_name
+ * แบบเดิมเพื่อให้หน้า egg มีชื่อโชว์.
+ */
+export async function renameEggDraw(
+  userId: string,
+  name: string
+): Promise<string> {
+  const supabase = createServiceClient();
+
+  const { data: renamed } = await supabase
+    .from("egg_draws")
+    .update({ nickname: name })
+    .eq("user_id", userId)
+    .eq("is_active", true)
+    .select("nickname")
+    .maybeSingle();
+
+  if (renamed) {
+    return renamed.nickname as string;
+  }
+
+  // ไม่มีตัว active → legacy path (avatar_name รวมของ user).
+  const { data: legacy } = await supabase
+    .from("healthy_journey")
+    .update({ avatar_name: name })
+    .eq("user_id", userId)
+    .select("avatar_name")
+    .maybeSingle();
+
+  if (legacy) {
+    return legacy.avatar_name as string;
+  }
+
+  // ไม่มีแถว journey เลย → สร้างแถว level-0 พร้อมชื่อ (พฤติกรรมเดิม).
+  const { data: created, error: createError } = await supabase
+    .from("healthy_journey")
+    .insert({
+      user_id: userId,
+      total_points: 0,
+      level: 0,
+      current_streak: 0,
+      longest_streak: 0,
+      last_active_date: null,
+      avatar_name: name,
+    })
+    .select("avatar_name")
+    .single();
+
+  if (createError || !created) {
+    throw new Error("Failed to rename egg");
+  }
+  return created.avatar_name as string;
 }

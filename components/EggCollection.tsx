@@ -10,14 +10,13 @@ import type { CollectedEgg } from "@/lib/egg-draw-service";
 /**
  * ตู้สะสมไข่: รูปตามชนิด+level ของแต่ละฟอง, EXP รายฟอง, ปุ่มตั้งตัวเลี้ยง.
  * กดย้ายแล้วยิง PATCH แล้ว refresh ให้ server วาดใหม่ (state อยู่ที่ DB).
- * ชื่อตัว active ใช้ชื่อที่ตั้งไว้ (เหมือนใต้รูป Avatar) ตัวอื่นใช้ชื่อชนิดไข่.
+ * ชื่อแต่ละแถวใช้ displayName ที่ server resolve แล้ว (nickname ของมันเอง
+ * → ชื่อรวมกรณี active → ชื่อชนิด).
  */
 export default function EggCollection({
   collection,
-  activeName,
 }: {
   collection: CollectedEgg[];
-  activeName: string | null;
 }) {
   const router = useRouter();
   const [movingId, setMovingId] = useState<string | null>(null);
@@ -69,7 +68,7 @@ export default function EggCollection({
               className="h-24 w-24 object-contain"
             />
             <p className="mt-1 w-full truncate text-sm font-semibold text-zinc-900">
-              {egg.isActive && activeName ? activeName : egg.eggName}
+              {egg.displayName}
             </p>
             <p className="text-xs text-zinc-500">
               <EggLevelLine exp={egg.eggExp} />
