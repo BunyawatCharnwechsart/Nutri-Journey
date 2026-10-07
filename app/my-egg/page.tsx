@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 
 import { getSessionUserId } from "@/lib/auth";
 import EggAvatarCard from "@/components/EggAvatarCard";
-import ActiveEggCard from "@/components/ActiveEggCard";
 import EggBagButton from "@/components/EggBagButton";
 import EggDrawCard from "@/components/EggDrawCard";
 import EggLevelCard from "@/components/EggLevelCard";
@@ -100,18 +99,6 @@ export default async function MyEggPage() {
         </header>
 
         <EggLevelCard totalPoints={totalPoints} />
-
-        <ActiveEggCard
-          egg={
-            activeCollected == null
-              ? null
-              : {
-                  name: activeCollected.eggName,
-                  type: activeCollected.eggType,
-                  exp: activeCollected.eggExp,
-                }
-          }
-        />
 
         <EggAvatarCard
           avatarSrc={
