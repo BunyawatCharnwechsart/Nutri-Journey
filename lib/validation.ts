@@ -255,3 +255,12 @@ export const notificationSettingsSchema = z
       data.photoReminder !== undefined,
     { message: "ต้องระบุอย่างน้อย 1 รายการ", path: ["ifNotifications"] }
   );
+
+/**
+ * PATCH /api/v1/egg-draws/active
+ * ย้ายตัวเลี้ยง (ไข่ที่รับ EXP จากภารกิจ) — รับเฉพาะ drawId (UUID) ของไข่
+ * ที่ claim แล้ว; ownership เช็คฝั่ง server จาก session.
+ */
+export const eggDrawIdSchema = z.object({
+  drawId: z.string().uuid("drawId ต้องเป็น UUID"),
+});

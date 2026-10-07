@@ -4,6 +4,7 @@ import { getSessionUserId } from "@/lib/auth";
 import { getDrawStatus } from "@/lib/egg-draw-service";
 import BackButton from "@/components/BackButton";
 import EggClaimButton from "@/components/EggClaimButton";
+import EggCollection from "@/components/EggCollection";
 
 export const dynamic = "force-dynamic";
 
@@ -73,27 +74,7 @@ export default async function EggDrawPage() {
           <h2 className="px-1 text-base font-semibold text-zinc-900">
             ตู้สะสม ({status.collection.length})
           </h2>
-          {status.collection.length === 0 ? (
-            <p className="mt-2 rounded-2xl border border-dashed border-zinc-200 bg-white p-6 text-center text-sm text-zinc-500">
-              ยังไม่มีไข่ — อดติดกันให้ครบ 3 วันแล้วมากดสุ่มนะ
-            </p>
-          ) : (
-            <ul className="mt-2 grid grid-cols-2 gap-3">
-              {status.collection.map((egg, index) => (
-                <li
-                  key={`${egg.eggType}-${egg.claimedAt}-${index}`}
-                  className="rounded-2xl border border-zinc-200 bg-white p-4 text-center"
-                >
-                  <p className="text-3xl" aria-hidden="true">
-                    🥚
-                  </p>
-                  <p className="mt-1 truncate text-sm font-semibold text-zinc-900">
-                    {egg.eggName}
-                  </p>
-                </li>
-              ))}
-            </ul>
-          )}
+          <EggCollection collection={status.collection} />
         </section>
       </div>
     </main>
