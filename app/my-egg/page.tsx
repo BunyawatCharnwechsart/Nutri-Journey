@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { getSessionUserId } from "@/lib/auth";
 import EggAvatarCard from "@/components/EggAvatarCard";
+import EggDrawCard from "@/components/EggDrawCard";
 import EggLevelCard from "@/components/EggLevelCard";
 import RankingCard from "@/components/RankingCard";
 import {
@@ -12,6 +13,7 @@ import {
   type MissionCode,
 } from "@/lib/healthy-journey";
 import { createServiceClient } from "@/lib/supabase/service";
+import { getDrawStatus } from "@/lib/egg-draw-service";
 import {
   QUEST_DAY_START_HOUR_ICT,
   getQuestDayBounds,
@@ -40,7 +42,7 @@ export default async function MyEggPage() {
   const { startIso: questStartIso, endIso: questEndIso } =
     getQuestDayBounds(new Date());
 
-  const [{ data: journey }, { data: missions }, { data: doneToday }] =
+  const [{ data: journey }, { data: missions }, { data: doneToday }, drawStatus] =
     await Promise.all([
       supabase
         .from("healthy_journey")
@@ -57,6 +59,7 @@ export default async function MyEggPage() {
         .eq("is_completed", true)
         .gte("completed_at", questStartIso)
         .lt("completed_at", questEndIso),
+      getDrawStatus(userId),
     ]);
 
   const missionRows = (missions ?? []) as MissionRow[];
@@ -156,6 +159,12 @@ export default async function MyEggPage() {
             })}
           </div>
         </section>
+
+        <EggDrawCard
+          streakDays={drawStatus.streakDays}
+          progress={drawStatus.progress}
+          pendingDraws={drawStatus.pendingDraws}
+        />
 
         <RankingCard />
       </div>
