@@ -42,9 +42,10 @@ sums as (
 update public.egg_draws d
 set egg_exp = d.egg_exp + j.total_points
 from public.healthy_journey j
-join oldest o on o.id = d.id and o.user_id = j.user_id
+join oldest o on o.user_id = j.user_id
 left join sums s on s.user_id = j.user_id
-where j.total_points > 0
+where o.id = d.id
+  and j.total_points > 0
   and coalesce(s.total, 0) = 0;
 
 -- 2) user ที่มีแต้มแต่ไม่มีฟองที่ claim เลย → สร้างไข่เริ่มต้นรับแต้มไป.
