@@ -9,13 +9,11 @@ import Link from "next/link";
  */
 interface EggDrawCardProps {
   streakDays: number;
-  progress: number;
   pendingDraws: number;
 }
 
 export default function EggDrawCard({
   streakDays,
-  progress,
   pendingDraws,
 }: EggDrawCardProps) {
   const hasPending = pendingDraws > 0;
@@ -54,24 +52,6 @@ export default function EggDrawCard({
               : " · ยังไม่มีสิทธิ์สุ่ม"}
           </p>
         </div>
-      </div>
-
-      <div
-        role="progressbar"
-        aria-valuenow={progress}
-        aria-valuemin={0}
-        aria-valuemax={3}
-        aria-label="ความคืบหน้าอดติดกัน"
-        className="mt-4 flex gap-1.5"
-      >
-        {[0, 1, 2].map((i) => (
-          <div
-            key={i}
-            className={`h-2.5 flex-1 rounded-full ${
-              i < progress ? "bg-[#6C4FD8]" : "bg-zinc-100"
-            }`}
-          />
-        ))}
       </div>
 
       <Link

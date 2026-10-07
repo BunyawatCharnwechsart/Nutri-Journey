@@ -3,18 +3,26 @@
 import { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
+import {
+  expForNextLevel,
+  expInLevel,
+  levelFromPoints,
+  progressRatio,
+} from "@/lib/healthy-journey";
+
 interface EggAvatarCardProps {
-  /** URL of the avatar SVG for the current level (e.g. /avatar/level3.svg). */
+  /** URL of the avatar image (active egg art, or user-level art as fallback). */
   avatarSrc: string;
   /** Current egg name, e.g. "ไข่". */
   name: string;
-  /** Current level — level 0 shows the "hatch your habit" hint. */
-  level: number;
+  /** EXP shown under the avatar (active egg's exp, or user total as fallback). */
+  exp: number;
 }
 
 /**
- * Egg avatar block of the my-egg page: the image, its renamable name and —
- * only while the egg is still level 0 — the hint to complete daily missions.
+ * Egg avatar block of the my-egg page: the image, its renamable name and the
+ * level progress bar of the shown egg (active egg's own EXP, user total as
+ * fallback) — only while level 0 shows the hint to complete daily missions.
  *
  * Clicking the name opens a rename modal (backdrop click / ESC closes it).
  * Saving PATCHes /api/v1/healthy-journey then calls router.refresh() so the
@@ -23,8 +31,11 @@ interface EggAvatarCardProps {
 export default function EggAvatarCard({
   avatarSrc,
   name,
-  level,
+  exp,
 }: EggAvatarCardProps) {
+  const level = levelFromPoints(exp);
+  const needNext = expForNextLevel(level);
+  const fillPercent = Math.round(progressRatio(exp) * 100);
   const router = useRouter();
   const [open, setOpen] = useState(false);
   const [value, setValue] = useState("");
@@ -118,6 +129,25 @@ export default function EggAvatarCard({
           ทำภารกิจรายวันให้สำเร็จเพื่อช่วยฟักนิสัยรักสุขภาพของคุณ
         </p>
       )}
+
+      <div className="w-full max-w-xs">
+        <p className="text-sm text-[#6C4FD8]">
+          เลเวล {level} · {expInLevel(exp)} / {needNext ?? "MAX"} exp
+        </p>
+        <div
+          role="progressbar"
+          aria-valuenow={fillPercent}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label="ความคืบหน้าเลเวลไข่"
+          className="mt-2 h-3 w-full overflow-hidden rounded-full bg-zinc-100"
+        >
+          <div
+            className="h-full rounded-full bg-[#6C4FD8] transition-all"
+            style={{ width: `${fillPercent}%` }}
+          />
+        </div>
+      </div>
 
       {open && (
         <div
