@@ -7,8 +7,8 @@ import RankingList from "@/components/RankingList";
 
 export const dynamic = "force-dynamic";
 
-/** ต้องตรงกับ limit หน้าแรกที่ส่งให้ RankingList (ปุ่มดูเพิ่มเติมต่อ offset จากตรงนี้). */
-const PAGE_SIZE = 20;
+/** หน้าแรกโชว์ top-10 ปุ่มดูเพิ่มเติมต่อทีละ 10 (ต้องตรงกับที่ใช้ใน RankingList). */
+const PAGE_SIZE = 10;
 
 /**
  * หน้า Ranking — โผ EXP รวมทั้งระบบ + อันดับของตัวเอง.
@@ -22,7 +22,7 @@ export default async function RankingPage() {
     redirect("/");
   }
 
-  const { entries, myRank, myPoints, total } = await getLeaderboard(
+  const { entries, myRank, myPoints, myAvatarUrl, total } = await getLeaderboard(
     userId,
     PAGE_SIZE,
     0
@@ -50,6 +50,7 @@ export default async function RankingPage() {
           total={total}
           myRank={myRank}
           myPoints={myPoints}
+          myAvatarUrl={myAvatarUrl}
           pageSize={PAGE_SIZE}
         />
       </div>

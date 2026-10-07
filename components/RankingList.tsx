@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Image from "next/image";
 
 import { levelFromPoints } from "@/lib/healthy-journey";
 import type { RankingEntry } from "@/lib/ranking-service";
@@ -13,6 +14,8 @@ interface RankingListProps {
   /** อันดับของตัวเอง — null ถ้ายังไม่มีแต้ม. */
   myRank: number | null;
   myPoints: number;
+  /** รูปโปรไฟล์ของตัวเอง (ไว้โชว์ในการ์ดอันดับตอนหลุดโผ). */
+  myAvatarUrl: string | null;
   /** ต้องตรงกับ limit ที่ server ใช้โหลดหน้าแรก. */
   pageSize: number;
 }
@@ -38,8 +41,40 @@ function initialBg(rank: number): string {
   return INITIAL_BG[(rank - 1) % INITIAL_BG.length] ?? INITIAL_BG[0] ?? "";
 }
 
+/** รูปโปรไฟล์วงกลม — มีรูปใช้ next/image ไม่มีใช้ตัวอักษรย่อ (ไม่มีวันแตก). */
+function Avatar({
+  avatarUrl,
+  displayName,
+  rank,
+}: {
+  avatarUrl: string | null;
+  displayName: string;
+  rank: number;
+}) {
+  if (avatarUrl) {
+    return (
+      <Image
+        src={avatarUrl}
+        alt={`รูปโปรไฟล์ของ ${displayName}`}
+        width={40}
+        height={40}
+        loading="lazy"
+        className="h-10 w-10 shrink-0 rounded-full object-cover"
+      />
+    );
+  }
+  const initial = displayName.trim().charAt(0).toUpperCase() || "?";
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base font-bold ${initialBg(rank)}`}
+    >
+      {initial}
+    </span>
+  );
+}
+
 function Row({ entry, highlight }: { entry: RankingEntry; highlight: boolean }) {
-  const initial = entry.displayName.trim().charAt(0).toUpperCase() || "?";
   return (
     <li
       className={`flex items-center gap-3 p-4 ${
@@ -52,12 +87,11 @@ function Row({ entry, highlight }: { entry: RankingEntry; highlight: boolean }) 
       >
         {entry.rank}
       </span>
-      <span
-        aria-hidden="true"
-        className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-base font-bold ${initialBg(entry.rank)}`}
-      >
-        {initial}
-      </span>
+      <Avatar
+        avatarUrl={entry.avatarUrl}
+        displayName={entry.displayName}
+        rank={entry.rank}
+      />
       <span className="min-w-0 flex-1">
         <span className="block truncate text-base font-semibold text-zinc-900">
           {entry.displayName}
@@ -75,15 +109,37 @@ function Row({ entry, highlight }: { entry: RankingEntry; highlight: boolean }) 
   );
 }
 
+/** แถวโครง (skeleton) ตอนกดดูเพิ่มเติม — กันจอกระตุกตอนรอ. */
+function SkeletonRows() {
+  return (
+    <div aria-hidden="true" className="flex flex-col">
+      {[0, 1, 2].map((i) => (
+        <div
+          key={i}
+          className="flex animate-pulse items-center gap-3 border-t border-zinc-100 p-4"
+        >
+          <div className="h-8 w-8 shrink-0 rounded-full bg-zinc-100" />
+          <div className="h-10 w-10 shrink-0 rounded-full bg-zinc-100" />
+          <div className="flex min-w-0 flex-1 flex-col gap-2">
+            <div className="h-4 w-2/3 rounded bg-zinc-100" />
+            <div className="h-3 w-1/3 rounded bg-zinc-100" />
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /**
  * ลิสต์อันดับ + ปุ่ม "ดูเพิ่มเติม" (ต่อ offset ทีละ pageSize).
- * ถ้าตัวเองหลุดโผ จะปักแถว "อันดับของฉัน" ไว้บนสุดเสมอ.
+ * ถ้าตัวเองหลุดโผ จะมีการ์ด "อันดับของคุณ" ปักไว้ล่างสุดเสมอ.
  */
 export default function RankingList({
   initialEntries,
   total,
   myRank,
   myPoints,
+  myAvatarUrl,
   pageSize,
 }: RankingListProps) {
   const [entries, setEntries] = useState<RankingEntry[]>(initialEntries);
@@ -124,25 +180,6 @@ export default function RankingList({
 
   return (
     <div className="flex flex-col gap-4">
-      {showPinnedMine && (
-        <section
-          aria-label="อันดับของฉัน"
-          className="rounded-2xl border border-[#18A659] bg-white p-4"
-        >
-          <Row
-            entry={{
-              rank: myRank,
-              displayName: "คุณ",
-              avatarUrl: null,
-              level: levelFromPoints(myPoints),
-              totalPoints: myPoints,
-              isMe: true,
-            }}
-            highlight
-          />
-        </section>
-      )}
-
       <section aria-label="อันดับทั้งหมด">
         <ul className="flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white [&>li+li]:border-t [&>li+li]:border-zinc-100">
           {entries.map((entry) => (
@@ -153,7 +190,12 @@ export default function RankingList({
             />
           ))}
         </ul>
-        {entries.length === 0 && (
+        {loading && (
+          <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white">
+            <SkeletonRows />
+          </div>
+        )}
+        {entries.length === 0 && !loading && (
           <p className="px-1 py-6 text-center text-sm text-zinc-500">
             ยังไม่มีผู้ติดอันดับ
           </p>
@@ -186,6 +228,28 @@ export default function RankingList({
         <p className="text-center text-xs text-zinc-400">
           แสดงครบ {total} คนแล้ว
         </p>
+      )}
+
+      {showPinnedMine && (
+        <section
+          aria-label="อันดับของคุณ"
+          className="rounded-2xl border-2 border-[#18A659] bg-white p-2 shadow-sm"
+        >
+          <p className="px-3 pt-2 text-sm font-semibold text-[#128A48]">
+            อันดับของคุณ
+          </p>
+          <Row
+            entry={{
+              rank: myRank,
+              displayName: "คุณ",
+              avatarUrl: myAvatarUrl,
+              level: levelFromPoints(myPoints),
+              totalPoints: myPoints,
+              isMe: true,
+            }}
+            highlight
+          />
+        </section>
       )}
     </div>
   );
