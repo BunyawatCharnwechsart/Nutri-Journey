@@ -109,6 +109,8 @@ export function avatarForLevel(level: number): string {
 const EGG_ART: Record<string, { dir: string; prefix: string; ext: string }> = {
   starter: { dir: "starter", prefix: "level", ext: "svg" },
   pink: { dir: "pink", prefix: "pink", ext: "png" },
+  blue: { dir: "blue", prefix: "blue", ext: "png" },
+  red: { dir: "red", prefix: "red", ext: "png" },
 };
 
 /** รูปไข่รายฟองตามชนิด + level — ชนิดไม่รู้จักตกไปใช้ starter. */
