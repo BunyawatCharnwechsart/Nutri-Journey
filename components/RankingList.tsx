@@ -225,7 +225,7 @@ export default function RankingList({
           onClick={collapse}
           className="min-h-[48px] rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-base font-semibold text-zinc-500 transition-colors active:bg-zinc-50"
         >
-          ซ่อน (กลับไป top-10)
+          ซ่อน
         </button>
       )}
       {error && (
