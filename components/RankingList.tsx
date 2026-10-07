@@ -149,6 +149,13 @@ export default function RankingList({
   const done = entries.length >= total;
   const showPinnedMine =
     myRank !== null && !entries.some((entry) => entry.isMe);
+  /** กดดูเพิ่มเติมแล้วหรือยัง (เกินหน้าแรก) — ถ้าแล้วโชว์ปุ่มซ่อนยุบกลับ. */
+  const expanded = entries.length > initialEntries.length;
+
+  function collapse() {
+    setEntries(initialEntries);
+    setError(false);
+  }
 
   async function loadMore() {
     if (loading || done) {
@@ -210,6 +217,15 @@ export default function RankingList({
           className="min-h-[48px] rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-base font-semibold text-zinc-900 transition-colors active:bg-zinc-50 disabled:opacity-50"
         >
           {loading ? "กำลังโหลด…" : "ดูเพิ่มเติม"}
+        </button>
+      )}
+      {expanded && !loading && (
+        <button
+          type="button"
+          onClick={collapse}
+          className="min-h-[48px] rounded-2xl border border-zinc-200 bg-white px-4 py-3 text-base font-semibold text-zinc-500 transition-colors active:bg-zinc-50"
+        >
+          ซ่อน (กลับไป top-10)
         </button>
       )}
       {error && (
