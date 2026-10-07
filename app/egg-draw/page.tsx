@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 
 import { getSessionUserId } from "@/lib/auth";
 import { getDrawStatus } from "@/lib/egg-draw-service";
+import BackButton from "@/components/BackButton";
 import EggClaimButton from "@/components/EggClaimButton";
 
 export const dynamic = "force-dynamic";
@@ -22,9 +23,12 @@ export default async function EggDrawPage() {
     <main className="flex flex-1 flex-col px-6 pt-6 pb-10">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <header>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
-            สุ่มไข่
-          </h1>
+          <div className="flex items-center gap-1">
+            <BackButton fallback="/my-egg" />
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+              สุ่มไข่
+            </h1>
+          </div>
           <p className="mt-1 text-sm text-zinc-500">
             อด success ติดกันทุก 3 วัน (วันปฏิทิน) รับสิทธิ์สุ่ม 1 ครั้ง
           </p>
