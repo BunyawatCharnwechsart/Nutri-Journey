@@ -48,8 +48,16 @@ export default function EggClaimButton({ canClaim }: { canClaim: boolean }) {
     return (
       <div
         role="status"
-        className="rounded-2xl border border-[#18A659] bg-[#E8F5EC] p-5 text-center"
+        className="relative rounded-2xl border border-[#18A659] bg-[#E8F5EC] p-5 text-center"
       >
+        <button
+          type="button"
+          onClick={() => setPhase({ name: "idle" })}
+          aria-label="ปิดผลการสุ่ม"
+          className="absolute top-2 right-2 flex min-h-[44px] min-w-[44px] items-center justify-center rounded-full text-xl text-zinc-500 active:bg-zinc-200"
+        >
+          <span aria-hidden="true">×</span>
+        </button>
         <p className="text-4xl" aria-hidden="true">
           🥚
         </p>
