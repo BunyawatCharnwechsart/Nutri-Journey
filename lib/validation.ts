@@ -220,6 +220,28 @@ export const avatarNameSchema = z.object({
  *   * photoReminder   → photo_reminder_enabled   (ถ่ายรูปความคืบหน้าทุกเดือน)
  * ต้องส่งอย่างน้อย 1 ค่า — ส่งเฉพาะประเภทที่ต้องการเปลี่ยน.
  */
+/**
+ * Query params for GET /api/v1/ranking. `limit` bounds how many rows one
+ * request may read (default 20, max 100) and `offset` pages through the
+ * board. Both are validated + rescaled before hitting the DB.
+ */
+export const rankingQuerySchema = z.object({
+  limit: z.coerce
+    .number()
+    .int("limit ต้องเป็นจำนวนเต็ม")
+    .min(1, "limit ต้องไม่น้อยกว่า 1")
+    .max(100, "limit ต้องไม่เกิน 100")
+    .optional()
+    .default(20),
+  offset: z.coerce
+    .number()
+    .int("offset ต้องเป็นจำนวนเต็ม")
+    .min(0, "offset ต้องไม่ติดลบ")
+    .max(10000, "offset ต้องไม่เกิน 10000")
+    .optional()
+    .default(0),
+});
+
 export const notificationSettingsSchema = z
   .object({
     ifNotifications: z.boolean().optional(),
