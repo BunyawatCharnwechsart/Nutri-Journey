@@ -2,12 +2,15 @@ import { redirect } from "next/navigation";
 
 import { getSessionUserId } from "@/lib/auth";
 import EggAvatarCard from "@/components/EggAvatarCard";
+import ActiveEggCard from "@/components/ActiveEggCard";
+import EggBagButton from "@/components/EggBagButton";
 import EggDrawCard from "@/components/EggDrawCard";
 import EggLevelCard from "@/components/EggLevelCard";
 import RankingCard from "@/components/RankingCard";
 import {
   DEFAULT_AVATAR_NAME,
   MISSION_CODES,
+  avatarForEgg,
   avatarForLevel,
   levelFromPoints,
   type MissionCode,
@@ -78,21 +81,46 @@ export default async function MyEggPage() {
   const doneMissionIds = new Set((doneToday ?? []).map((row) => row.mission_id));
   const doneCount = ordered.filter((mission) => doneMissionIds.has(mission.id)).length;
 
+  // ไข่ตัวเลี้ยง (ตัวรับ EXP) — ไม่มีคือยังไม่เคยสุ่มได้ไข่เลย.
+  const activeCollected =
+    drawStatus.collection.find((c) => c.isActive) ?? null;
+
+  // รูป + แถบใต้รูปโชว์ไข่ตัว active (fallback เป็นรวม user ถ้ายังไม่มีไข่).
+  const avatarExp = activeCollected?.eggExp ?? totalPoints;
+  const avatarLevel = levelFromPoints(avatarExp);
+
   return (
     <main className="flex flex-1 flex-col px-6 pt-6 pb-10">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
-        <header>
+        <header className="flex items-center justify-between gap-3">
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
             ไข่ของคุณ
           </h1>
+          <EggBagButton />
         </header>
 
         <EggLevelCard totalPoints={totalPoints} />
 
+        <ActiveEggCard
+          egg={
+            activeCollected == null
+              ? null
+              : {
+                  name: activeCollected.eggName,
+                  type: activeCollected.eggType,
+                  exp: activeCollected.eggExp,
+                }
+          }
+        />
+
         <EggAvatarCard
-          avatarSrc={avatarForLevel(level)}
+          avatarSrc={
+            activeCollected
+              ? avatarForEgg(activeCollected.eggType, avatarLevel)
+              : avatarForLevel(level)
+          }
           name={journey?.avatar_name ?? DEFAULT_AVATAR_NAME}
-          level={level}
+          exp={avatarExp}
         />
 
         <section className="flex flex-col gap-3">
@@ -162,7 +190,6 @@ export default async function MyEggPage() {
 
         <EggDrawCard
           streakDays={drawStatus.streakDays}
-          progress={drawStatus.progress}
           pendingDraws={drawStatus.pendingDraws}
         />
 
