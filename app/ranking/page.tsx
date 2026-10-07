@@ -32,13 +32,15 @@ export default async function RankingPage() {
     <main className="flex flex-1 flex-col px-6 pt-6 pb-10">
       <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
         <header>
-          <div className="flex items-center gap-1">
-            <BackButton fallback="/my-egg" />
+          <div className="relative flex items-center justify-center">
+            <div className="absolute left-0">
+              <BackButton fallback="/my-egg" />
+            </div>
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
               อันดับ EXP
             </h1>
           </div>
-          <p className="mt-1 text-sm text-zinc-500">
+          <p className="mt-1 text-center text-sm text-zinc-500">
             สะสม EXP จากภารกิจเพื่อไต่อันดับ
           </p>
         </header>
