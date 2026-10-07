@@ -165,6 +165,16 @@ describe("toDropRates", () => {
       toDropRates([{ code: "a", name: "A", rarity_weight: 0 }])
     ).toEqual([]);
   });
+
+  it("hides retired (zero-weight) types from rates", () => {
+    const rates = toDropRates([
+      { code: "old", name: "Old", rarity_weight: 0 },
+      { code: "a", name: "A", rarity_weight: 1 },
+      { code: "b", name: "B", rarity_weight: 1 },
+    ]);
+    expect(rates.map((r) => r.code)).toEqual(["a", "b"]);
+    expect(rates.map((r) => r.percent)).toEqual([50, 50]);
+  });
 });
 
 describe("resolveClaimOutcome (กติกาการสุ่ม 3 ข้อ)", () => {

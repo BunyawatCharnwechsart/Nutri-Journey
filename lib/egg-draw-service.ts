@@ -27,19 +27,21 @@ export interface DropRate {
 
 /**
  * แปลง catalog เป็นเรท % จาก rarity_weight — pure แยกไว้เทสต์ได้.
- * weight รวมเป็น 0 หรือ catalog ว่างคืน [] (UI ซ่อนปุ่มเรทเอง).
+ * ชนิดที่ weight 0 (ปลดระวาง) ไม่นับไม่โชว์; catalog ว่างคืน []
+ * (UI ซ่อนปุ่มเรทเอง).
  */
 export function toDropRates(
   types: { code: string; name: string; rarity_weight: number }[]
 ): DropRate[] {
-  const total = types.reduce((sum, t) => sum + Math.max(0, t.rarity_weight), 0);
-  if (types.length === 0 || total <= 0) {
+  const live = types.filter((t) => t.rarity_weight > 0);
+  const total = live.reduce((sum, t) => sum + t.rarity_weight, 0);
+  if (live.length === 0 || total <= 0) {
     return [];
   }
-  return types.map((t) => ({
+  return live.map((t) => ({
     code: t.code,
     name: t.name,
-    percent: Math.round((Math.max(0, t.rarity_weight) / total) * 1000) / 10,
+    percent: Math.round((t.rarity_weight / total) * 1000) / 10,
   }));
 }
 
