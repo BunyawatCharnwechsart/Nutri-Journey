@@ -29,20 +29,25 @@ export default async function RankingPage() {
   );
 
   return (
-    <main className="flex flex-1 flex-col px-6 pt-6 pb-10">
-      <div className="mx-auto flex w-full max-w-3xl flex-col gap-6">
+    <main className="relative flex flex-1 flex-col overflow-hidden bg-gradient-to-b from-[#DFF0E4] via-[#F4FAF6] to-white px-6 pt-6 pb-10">
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute top-0 left-5 h-32 w-9 bg-gradient-to-b from-[#18A659] to-[#18A659]/5 [clip-path:polygon(0_0,100%_0,100%_100%,50%_84%,0_100%)]"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute top-0 right-5 h-32 w-9 bg-gradient-to-b from-[#18A659] to-[#18A659]/5 [clip-path:polygon(0_0,100%_0,100%_100%,50%_84%,0_100%)]"
+      />
+      <div className="relative mx-auto flex w-full max-w-3xl flex-col gap-6">
         <header>
           <div className="relative flex items-center justify-center">
             <div className="absolute left-0">
               <BackButton fallback="/my-egg" />
             </div>
             <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
-              อันดับ EXP
+              ตารางอันดับ
             </h1>
           </div>
-          <p className="mt-1 text-center text-sm text-zinc-500">
-            สะสม EXP จากภารกิจเพื่อไต่อันดับ
-          </p>
         </header>
 
         <RankingList

@@ -5,6 +5,7 @@ import Image from "next/image";
 
 import { levelFromPoints } from "@/lib/healthy-journey";
 import type { RankingEntry } from "@/lib/ranking-service";
+import RankingPodium from "@/components/RankingPodium";
 
 interface RankingListProps {
   /** Top หน้าแรกจาก server (ไม่ต้องโหลดซ้ำ). */
@@ -18,14 +19,6 @@ interface RankingListProps {
   myAvatarUrl: string | null;
   /** ต้องตรงกับ limit ที่ server ใช้โหลดหน้าแรก. */
   pageSize: number;
-}
-
-/** สีวงกลมอันดับ: ทอง/เงิน/ทองแดง + เทกลาง. */
-function rankBadgeClass(rank: number): string {
-  if (rank === 1) return "bg-[#FFF3D6] text-[#B7791F]";
-  if (rank === 2) return "bg-zinc-100 text-zinc-600";
-  if (rank === 3) return "bg-[#FFEDE3] text-[#A85B2A]";
-  return "bg-zinc-50 text-zinc-500";
 }
 
 /** สีพื้นอักษรย่อ วนตามอันดับ (deterministic ไม่ต้องจำ state). */
@@ -82,8 +75,8 @@ function Row({ entry, highlight }: { entry: RankingEntry; highlight: boolean }) 
       }`}
     >
       <span
-        aria-hidden="true"
-        className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-sm font-bold ${rankBadgeClass(entry.rank)}`}
+        aria-label={`อันดับที่ ${entry.rank}`}
+        className="w-6 shrink-0 text-center text-base font-bold text-zinc-900"
       >
         {entry.rank}
       </span>
@@ -101,9 +94,13 @@ function Row({ entry, highlight }: { entry: RankingEntry; highlight: boolean }) 
             </span>
           )}
         </span>
-        <span className="block text-sm text-zinc-500">
-          เลเวล {entry.level} · {entry.totalPoints} exp
+        <span className="block text-xs text-zinc-400">Lv.{entry.level}</span>
+      </span>
+      <span className="shrink-0 text-right">
+        <span className="text-base font-semibold text-zinc-900">
+          {entry.totalPoints}
         </span>
+        <span className="text-xs text-zinc-400"> exp</span>
       </span>
     </li>
   );
@@ -187,9 +184,11 @@ export default function RankingList({
 
   return (
     <div className="flex flex-col gap-4">
+      <RankingPodium entries={entries.slice(0, 3)} />
+
       <section aria-label="อันดับทั้งหมด">
         <ul className="flex flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white [&>li+li]:border-t [&>li+li]:border-zinc-100">
-          {entries.map((entry) => (
+          {entries.slice(3).map((entry) => (
             <Row
               key={`${entry.rank}-${entry.displayName}`}
               entry={entry}

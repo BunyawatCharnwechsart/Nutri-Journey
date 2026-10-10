@@ -1,0 +1,109 @@
+import Image from "next/image";
+
+import type { RankingEntry } from "@/lib/ranking-service";
+
+/** วงแหวน avatar + สีเหรียญตามอันดับ 1/2/3. */
+const PODIUM_STYLE = [
+  { ring: "ring-[#F5B301]", medal: "bg-[#F5B301]", avatar: "h-20 w-20 text-2xl" },
+  { ring: "ring-zinc-300", medal: "bg-zinc-400", avatar: "h-14 w-14 text-lg" },
+  { ring: "ring-[#D08A4E]", medal: "bg-[#C47B3F]", avatar: "h-14 w-14 text-lg" },
+] as const;
+
+function Crown() {
+  return (
+    <svg
+      viewBox="0 0 48 40"
+      fill="#F5B301"
+      aria-hidden="true"
+      className="h-8 w-10"
+    >
+      <path d="M4 32 2 10l10 7L24 4l12 13 10-7-2 22H4Z" />
+      <rect x="4" y="32" width="40" height="5" rx="2.5" />
+      <circle cx="24" cy="22" r="3.5" fill="#FFF3D6" />
+    </svg>
+  );
+}
+
+function PodiumAvatar({ entry, size }: { entry: RankingEntry; size: string }) {
+  const style = PODIUM_STYLE[(entry.rank - 1) % PODIUM_STYLE.length] ?? PODIUM_STYLE[0]!;
+  if (entry.avatarUrl) {
+    return (
+      <Image
+        src={entry.avatarUrl}
+        alt={`รูปโปรไฟล์ของ ${entry.displayName}`}
+        width={80}
+        height={80}
+        loading="lazy"
+        className={`${size} shrink-0 rounded-full bg-zinc-100 object-cover ring-4 ${style.ring}`}
+      />
+    );
+  }
+  const initial = entry.displayName.trim().charAt(0).toUpperCase() || "?";
+  return (
+    <span
+      aria-hidden="true"
+      className={`flex ${size} shrink-0 items-center justify-center rounded-full bg-zinc-200 font-bold text-zinc-500 ring-4 ${style.ring}`}
+    >
+      {initial}
+    </span>
+  );
+}
+
+function PodiumSpot({ entry, first }: { entry: RankingEntry; first: boolean }) {
+  const style = PODIUM_STYLE[(entry.rank - 1) % PODIUM_STYLE.length] ?? PODIUM_STYLE[0]!;
+  return (
+    <div className="flex min-w-0 flex-1 flex-col items-center text-center">
+      {first && <Crown />}
+      <div className="relative">
+        <PodiumAvatar entry={entry} size={style.avatar} />
+        <span
+          aria-hidden="true"
+          className={`absolute -bottom-2 left-1/2 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full text-xs font-bold text-white ${style.medal}`}
+        >
+          {entry.rank}
+        </span>
+      </div>
+      <span className="mt-3 rounded-full bg-[#2F3A4A] px-2.5 py-0.5 text-xs font-bold text-white">
+        Lv{entry.level}
+      </span>
+      <p className="mt-1.5 w-full truncate text-sm font-bold text-zinc-900">
+        {entry.displayName}
+        {entry.isMe && (
+          <span className="ml-1 rounded-full bg-[#18A659] px-1.5 py-px align-middle text-[10px] font-medium text-white">
+            คุณ
+          </span>
+        )}
+      </p>
+      <p className="text-xs text-zinc-500">{entry.totalPoints} exp</p>
+    </div>
+  );
+}
+
+/**
+ * โพเดียมที่ 1–3 (กลางใหญ่ + มงกุฎ, ซ้ายขวาเล็ก) — รับแถว 3 อันดับแรกของ
+ * entries ที่โหลดอยู่ กดดูเพิ่มเติมแล้วไม่ขยับ.
+ */
+export default function RankingPodium({ entries }: { entries: RankingEntry[] }) {
+  const [first, second, third] = entries;
+  if (!first) {
+    return null;
+  }
+  return (
+    <section
+      aria-label="สามอันดับแรก"
+      className="flex items-end justify-center gap-2 px-2 pt-8"
+    >
+      {second ? (
+        <PodiumSpot entry={second} first={false} />
+      ) : (
+        <div className="flex-1" aria-hidden="true" />
+      )}
+      <PodiumSpot entry={first} first />
+      {third ? (
+        <PodiumSpot entry={third} first={false} />
+      ) : (
+        <div className="flex-1" aria-hidden="true" />
+      )}
+    </section>
+  );
+}
