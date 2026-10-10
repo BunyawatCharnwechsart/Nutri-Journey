@@ -180,16 +180,16 @@ async function countPending(
 }
 
 /**
- * ชื่อที่ UI ควรโชว์ต่อฟอง: nickname ของมันเองก่อน ถ้าไม่มีและเป็นตัว active
- * ใช้ชื่อรวม (avatar_name) ถ้าไม่มีอีกใช้ชื่อชนิดไข่ — pure แยกไว้เทสต์ได้.
+ * ชื่อที่ UI ควรโชว์ต่อฟอง: nickname ของมันเอง ถ้าไม่มีใช้ชื่อชนิด.
+ * ตั้งใจไม่ตกไปใช้ชื่อรวม (avatar_name) — ไม่งั้นย้ายตัวเลี้ยงแล้วชื่อเก่า
+ * จะตามไปติดฟองใหม่ที่เจ้าของไม่เคยตั้งชื่อ.
+ * pure แยกไว้เทสต์ได้.
  */
 export function resolveDisplayName(
   nickname: string | null,
-  isActive: boolean,
-  legacyName: string | null,
   typeName: string
 ): string {
-  return nickname ?? (isActive ? legacyName : null) ?? typeName;
+  return nickname ?? typeName;
 }
 
 /**
@@ -200,7 +200,7 @@ export async function getDrawStatus(userId: string): Promise<DrawStatus> {
   const supabase = createServiceClient();
   const todayKey = toICTDateKey(new Date());
 
-  const [keys, lastCycleEnd, pending, claimed, journey] = await Promise.all([
+  const [keys, lastCycleEnd, pending, claimed] = await Promise.all([
     loadSuccessKeys(supabase, userId),
     loadLastCycleEnd(supabase, userId),
     countPending(supabase, userId),
@@ -210,11 +210,6 @@ export async function getDrawStatus(userId: string): Promise<DrawStatus> {
       .eq("user_id", userId)
       .not("claimed_at", "is", null)
       .order("claimed_at", { ascending: false }),
-    supabase
-      .from("healthy_journey")
-      .select("avatar_name")
-      .eq("user_id", userId)
-      .maybeSingle(),
   ]);
 
   if (claimed.error) {
@@ -239,7 +234,6 @@ export async function getDrawStatus(userId: string): Promise<DrawStatus> {
   const spinTypes = rates.map((r) => r.code);
 
   const progress = currentProgress(keys, lastCycleEnd, todayKey);
-  const legacyName = (journey.data?.avatar_name as string | null) ?? null;
 
   return {
     streakDays: progress.streakDays,
@@ -258,7 +252,7 @@ export async function getDrawStatus(userId: string): Promise<DrawStatus> {
         eggType: row.egg_type as string,
         eggName: typeName,
         nickname,
-        displayName: resolveDisplayName(nickname, isActive, legacyName, typeName),
+        displayName: resolveDisplayName(nickname, typeName),
         eggExp: Number(row.egg_exp ?? 0),
         isActive,
         claimedAt: row.claimed_at as string,

@@ -118,24 +118,15 @@ describe("pickEggType", () => {
     expect(pickEggType(types, () => 0.99)?.code).toBe("rare");
   });
 });
-
-describe("resolveDisplayName", () => {  it("prefers the egg's own nickname", () => {
-    expect(resolveDisplayName("น้องชมพู", true, "ชื่อรวม", "ไข่ชมพู")).toBe(
-      "น้องชมพู"
-    );
-    expect(resolveDisplayName("น้องฟ้า", false, "ชื่อรวม", "ไข่สีน้ำเงิน")).toBe(
-      "น้องฟ้า"
-    );
+describe("resolveDisplayName", () => {
+  it("prefers the egg's own nickname", () => {
+    expect(resolveDisplayName("น้องชมพู", "ไข่ชมพู")).toBe("น้องชมพู");
   });
 
-  it("falls back to the legacy name only for the active egg", () => {
-    expect(resolveDisplayName(null, true, "ชื่อรวม", "ไข่ชมพู")).toBe("ชื่อรวม");
-    expect(resolveDisplayName(null, false, "ชื่อรวม", "ไข่ชมพู")).toBe("ไข่ชมพู");
-  });
-
-  it("falls back to the type name when nothing else exists", () => {
-    expect(resolveDisplayName(null, true, null, "ไข่ชมพู")).toBe("ไข่ชมพู");
-    expect(resolveDisplayName(null, false, null, "ไข่ชมพู")).toBe("ไข่ชมพู");
+  it("falls back to the type name (never the legacy shared name)", () => {
+    // เคส red ของ bunyawat: ไม่เคยตั้งชื่อ → ต้องโชว์ชื่อชนิด ไม่ใช่ชื่อรวมเก่า.
+    expect(resolveDisplayName(null, "ไข่แดง")).toBe("ไข่แดง");
+    expect(resolveDisplayName(null, "ไข่ชมพู")).toBe("ไข่ชมพู");
   });
 });
 
