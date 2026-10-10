@@ -41,15 +41,12 @@ export function buildSpinStrip(
   const cells: SpinCell[] = [];
   for (let i = 0; i < SPIN_STRIP_SIZE; i++) {
     if (i === SPIN_WIN_INDEX) {
-      // ช่องที่ชนะโชว์ level 0 เสมอ (ไข่เพิ่งได้ exp 0 — ตรงกับของจริง).
       cells.push({ eggType: wonType, level: 0, isWinner: true });
     } else {
+      // filler โชว์แค่ไข่ level 0 ทุกช่อง (ต่างกันแค่ชนิด) — ตรงกับของจริง
+      // ที่สุ่มได้ (exp 0) และไม่สปอยล์ร่างโตก่อนเฉลย.
       const pick = pool[Math.floor(random() * pool.length)] ?? wonType;
-      cells.push({
-        eggType: pick,
-        level: Math.floor(random() * 10),
-        isWinner: false,
-      });
+      cells.push({ eggType: pick, level: 0, isWinner: false });
     }
   }
   const jitter = (random() * 2 - 1) * SPIN_JITTER_RATIO;

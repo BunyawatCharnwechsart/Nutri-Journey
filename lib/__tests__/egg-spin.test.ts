@@ -41,12 +41,10 @@ describe("buildSpinStrip", () => {
     expect(strip.cells.every((c) => c.eggType === "pink")).toBe(true);
   });
 
-  it("shows the winner at level 0 and fillers at 0-9", () => {
+  it("shows only level-0 eggs in every cell", () => {
     const strip = buildSpinStrip("pink", CATALOG, () => 0.5);
-    expect(strip.cells[SPIN_WIN_INDEX]?.level).toBe(0);
     for (const cell of strip.cells) {
-      expect(cell.level).toBeGreaterThanOrEqual(0);
-      expect(cell.level).toBeLessThanOrEqual(9);
+      expect(cell.level).toBe(0);
     }
   });
 });
