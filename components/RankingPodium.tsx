@@ -2,24 +2,41 @@ import Image from "next/image";
 
 import type { RankingEntry } from "@/lib/ranking-service";
 
-/** วงแหวน avatar + สีเหรียญตามอันดับ 1/2/3. */
+/** วงแหวน avatar + สีเหรียญ/ขอบตามอันดับ 1/2/3. */
 const PODIUM_STYLE = [
-  { ring: "ring-[#F5B301]", medal: "bg-[#F5B301]", avatar: "h-20 w-20 text-2xl" },
-  { ring: "ring-zinc-300", medal: "bg-zinc-400", avatar: "h-14 w-14 text-lg" },
-  { ring: "ring-[#D08A4E]", medal: "bg-[#C47B3F]", avatar: "h-14 w-14 text-lg" },
+  { ring: "ring-[#F5B301]", medal: "bg-[#F5B301] ring-[#C78D06]", avatar: "h-20 w-20 text-2xl" },
+  { ring: "ring-zinc-300", medal: "bg-zinc-400 ring-zinc-500", avatar: "h-14 w-14 text-lg" },
+  { ring: "ring-[#D08A4E]", medal: "bg-[#C47B3F] ring-[#9C5F2C]", avatar: "h-14 w-14 text-lg" },
 ] as const;
 
 function Crown() {
   return (
     <svg
-      viewBox="0 0 48 40"
+      viewBox="0 0 48 44"
       fill="#F5B301"
       aria-hidden="true"
-      className="h-8 w-10"
+      className="h-10 w-12"
     >
-      <path d="M4 32 2 10l10 7L24 4l12 13 10-7-2 22H4Z" />
-      <rect x="4" y="32" width="40" height="5" rx="2.5" />
-      <circle cx="24" cy="22" r="3.5" fill="#FFF3D6" />
+      <circle cx="6" cy="8" r="3.5" />
+      <circle cx="24" cy="4" r="3.5" />
+      <circle cx="42" cy="8" r="3.5" />
+      <path d="M8 14 4 34h40l-4-20-9 6-7-11-7 11-9-6Z" />
+      <rect x="4" y="34" width="40" height="5" rx="2.5" />
+      <circle cx="24" cy="26" r="3.5" fill="#FFF3D6" />
+    </svg>
+  );
+}
+
+/** ริบบิ้นฟ้ารูปตัว V รองหลังเหรียญเลข. */
+function Ribbon() {
+  return (
+    <svg
+      viewBox="0 0 40 22"
+      aria-hidden="true"
+      className="absolute top-0 left-1/2 h-[22px] w-10 -translate-x-1/2"
+    >
+      <path d="M20 22 8 2h8l4 7 4-7h8L20 22Z" fill="#2B7CD3" />
+      <path d="M20 22 12 6h3l5 8 5-8h3l-8 16Z" fill="#1E5FA8" />
     </svg>
   );
 }
@@ -54,18 +71,21 @@ function PodiumSpot({ entry, first }: { entry: RankingEntry; first: boolean }) {
   return (
     <div className="flex min-w-0 flex-1 flex-col items-center text-center">
       {first && <Crown />}
-      <div className="relative">
+      <div className="relative pb-3">
         <PodiumAvatar entry={entry} size={style.avatar} />
+        <span className="absolute -bottom-3 left-1/2 z-10 -translate-x-1/2 rounded-full bg-[#2F3A4A] px-2.5 py-0.5 text-xs font-bold whitespace-nowrap text-white">
+          Lv{entry.level}
+        </span>
+      </div>
+      <div className="relative mt-1 flex justify-center">
+        <Ribbon />
         <span
-          aria-hidden="true"
-          className={`absolute -bottom-2 left-1/2 flex h-6 w-6 -translate-x-1/2 items-center justify-center rounded-full text-xs font-bold text-white ${style.medal}`}
+          aria-label={`อันดับที่ ${entry.rank}`}
+          className={`relative z-10 mt-2 flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold text-white ring-2 ${style.medal}`}
         >
           {entry.rank}
         </span>
       </div>
-      <span className="mt-3 rounded-full bg-[#2F3A4A] px-2.5 py-0.5 text-xs font-bold text-white">
-        Lv{entry.level}
-      </span>
       <p className="mt-1.5 w-full truncate text-sm font-bold text-zinc-900">
         {entry.displayName}
         {entry.isMe && (
@@ -74,7 +94,7 @@ function PodiumSpot({ entry, first }: { entry: RankingEntry; first: boolean }) {
           </span>
         )}
       </p>
-      <p className="text-xs text-zinc-500">{entry.totalPoints} exp</p>
+      <p className="text-xs text-[#8A7B2D]">{entry.totalPoints} exp</p>
     </div>
   );
 }
