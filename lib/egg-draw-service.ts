@@ -53,6 +53,8 @@ export interface DrawStatus {
   canClaim: boolean;
   /** เรทการสุ่มแต่ละชนิด (ไว้โชว์ใน popup). */
   rates: DropRate[];
+  /** code ชนิดไข่ที่สุ่มได้ (weight > 0) — ไว้สร้างแถบ spinner. */
+  spinTypes: string[];
   /** ประวัติไข่ที่สุ่มได้แล้ว (ตู้สะสม). */
   collection: CollectedEgg[];
 }
@@ -233,6 +235,8 @@ export async function getDrawStatus(userId: string): Promise<DrawStatus> {
       rarity_weight: Number(t.rarity_weight) || 0,
     }))
   );
+  // ชนิดที่สุ่มได้จริง (weight > 0) — ตรงกับที่ rates โชว์.
+  const spinTypes = rates.map((r) => r.code);
 
   const progress = currentProgress(keys, lastCycleEnd, todayKey);
   const legacyName = (journey.data?.avatar_name as string | null) ?? null;
@@ -243,6 +247,7 @@ export async function getDrawStatus(userId: string): Promise<DrawStatus> {
     pendingDraws: pending,
     canClaim: pending > 0,
     rates,
+    spinTypes,
     collection: (claimed.data ?? []).map((row) => {
       const isActive = (row.is_active as boolean) ?? false;
       const nickname = (row.nickname as string | null) ?? null;
