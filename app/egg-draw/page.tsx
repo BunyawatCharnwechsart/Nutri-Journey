@@ -4,14 +4,13 @@ import { getSessionUserId } from "@/lib/auth";
 import { getDrawStatus } from "@/lib/egg-draw-service";
 import BackButton from "@/components/BackButton";
 import EggClaimButton from "@/components/EggClaimButton";
-import EggCollection from "@/components/EggCollection";
 import EggRatesButton from "@/components/EggRatesButton";
 
 export const dynamic = "force-dynamic";
 
 /**
- * หน้าสุ่มไข่ — แสดงความคืบหน้าอดติดกัน, ปุ่มกดสุ่ม (เมื่อมีสิทธิ์),
- * และตู้สะสมไข่ที่เคยได้. โหลดสถานะฝั่ง server ตรงๆ ไม่ยิง HTTP วนกลับ.
+ * หน้าสุ่มไข่ — สุ่มอย่างเดียว (ตู้สะสมย้ายไป /bag แล้ว). โหลดสถานะฝั่ง
+ * server ตรงๆ ไม่ยิง HTTP วนกลับ.
  */
 export default async function EggDrawPage() {
   const userId = await getSessionUserId();
@@ -74,13 +73,6 @@ export default async function EggDrawPage() {
         <div className="flex justify-center">
           <EggRatesButton rates={status.rates} />
         </div>
-
-        <section aria-label="ตู้สะสมไข่">
-          <h2 className="px-1 text-base font-semibold text-zinc-900">
-            ตู้สะสม ({status.collection.length})
-          </h2>
-          <EggCollection collection={status.collection} />
-        </section>
       </div>
     </main>
   );
