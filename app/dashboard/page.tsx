@@ -6,7 +6,9 @@ import BellButton from "@/components/BellButton";
 import EggIconLink from "@/components/EggIconLink";
 import EggLevelCard from "@/components/EggLevelCard";
 import IfTracker from "@/components/IfTracker";
+import MiniRanking from "@/components/MiniRanking";
 import { createServiceClient } from "@/lib/supabase/service";
+import { getLeaderboard } from "@/lib/ranking-service";
 
 export const dynamic = "force-dynamic";
 
@@ -17,7 +19,7 @@ export default async function DashboardPage() {
   }
 
   const supabase = createServiceClient();
-  const [{ data: journey }, { data: user }] = await Promise.all([
+  const [{ data: journey }, { data: user }, topRanking] = await Promise.all([
     supabase
       .from("healthy_journey")
       .select("total_points")
@@ -28,6 +30,7 @@ export default async function DashboardPage() {
       .select("display_name")
       .eq("user_id", userId)
       .maybeSingle(),
+    getLeaderboard(userId, 3, 0),
   ]);
 
   const totalPoints = Number(journey?.total_points ?? 0);
@@ -65,6 +68,12 @@ export default async function DashboardPage() {
             displayName={user?.display_name ?? null}
           />
         </section>
+
+        <MiniRanking
+          entries={topRanking.entries}
+          myRank={topRanking.myRank}
+          myPoints={topRanking.myPoints}
+        />
       </div>
     </main>
   );
