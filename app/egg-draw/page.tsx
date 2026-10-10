@@ -3,8 +3,8 @@ import { redirect } from "next/navigation";
 import { getSessionUserId } from "@/lib/auth";
 import { getDrawStatus } from "@/lib/egg-draw-service";
 import BackButton from "@/components/BackButton";
-import EggClaimButton from "@/components/EggClaimButton";
 import EggRatesButton from "@/components/EggRatesButton";
+import EggSpinner from "@/components/EggSpinner";
 
 export const dynamic = "force-dynamic";
 
@@ -68,7 +68,7 @@ export default async function EggDrawPage() {
           </div>
         </section>
 
-        <EggClaimButton canClaim={status.canClaim} />
+        <EggSpinner canClaim={status.canClaim} spinTypes={status.spinTypes} />
 
         <div className="flex justify-center">
           <EggRatesButton rates={status.rates} />
