@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 
 import { getSessionUserId } from "@/lib/auth";
 import EggAvatarCard from "@/components/EggAvatarCard";
-import EggBagButton from "@/components/EggBagButton";
+import EggDrawButton from "@/components/EggDrawButton";
 import EggDrawCard from "@/components/EggDrawCard";
 import EggLevelCard from "@/components/EggLevelCard";
 import MiniRanking from "@/components/MiniRanking";
@@ -114,7 +114,7 @@ export default async function MyEggPage() {
           <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
             ไข่ของคุณ
           </h1>
-          <EggBagButton />
+          <EggDrawButton />
         </header>
 
         <EggLevelCard
