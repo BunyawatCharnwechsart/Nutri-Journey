@@ -111,6 +111,11 @@ const EGG_ART: Record<string, { dir: string; prefix: string; ext: string }> = {
   pink: { dir: "pink", prefix: "pink", ext: "png" },
   blue: { dir: "blue", prefix: "blue", ext: "png" },
   red: { dir: "red", prefix: "red", ext: "png" },
+  green: { dir: "green", prefix: "green", ext: "png" },
+  orange: { dir: "orange", prefix: "orange", ext: "png" },
+  purple: { dir: "purple", prefix: "purple", ext: "png" },
+  yellow: { dir: "yellow", prefix: "yellow", ext: "png" },
+  rainbow: { dir: "rainbow", prefix: "rainbow", ext: "png" },
 };
 
 /** รูปไข่รายฟองตามชนิด + level — ชนิดไม่รู้จักตกไปใช้ starter. */
