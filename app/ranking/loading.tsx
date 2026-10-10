@@ -10,8 +10,24 @@ export default function RankingLoading() {
           <div className="relative flex items-center justify-center">
             <div className="h-7 w-24 animate-pulse rounded bg-zinc-100" />
           </div>
-          <div className="mx-auto mt-2 h-4 w-40 animate-pulse rounded bg-zinc-100" />
         </header>
+        <div
+          aria-hidden="true"
+          className="flex animate-pulse items-end justify-center gap-2 px-2 pt-8"
+        >
+          <div className="flex flex-1 flex-col items-center gap-2">
+            <div className="h-14 w-14 rounded-full bg-zinc-100" />
+            <div className="h-3 w-16 rounded bg-zinc-100" />
+          </div>
+          <div className="flex flex-1 flex-col items-center gap-2">
+            <div className="h-20 w-20 rounded-full bg-zinc-100" />
+            <div className="h-3 w-20 rounded bg-zinc-100" />
+          </div>
+          <div className="flex flex-1 flex-col items-center gap-2">
+            <div className="h-14 w-14 rounded-full bg-zinc-100" />
+            <div className="h-3 w-16 rounded bg-zinc-100" />
+          </div>
+        </div>
         <div
           aria-hidden="true"
           className="flex animate-pulse flex-col overflow-hidden rounded-2xl border border-zinc-200 bg-white"
