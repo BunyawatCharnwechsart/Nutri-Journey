@@ -5,7 +5,7 @@ import EggAvatarCard from "@/components/EggAvatarCard";
 import EggBagButton from "@/components/EggBagButton";
 import EggDrawCard from "@/components/EggDrawCard";
 import EggLevelCard from "@/components/EggLevelCard";
-import RankingCard from "@/components/RankingCard";
+import MiniRanking from "@/components/MiniRanking";
 import {
   DEFAULT_AVATAR_NAME,
   MISSION_CODES,
@@ -16,6 +16,7 @@ import {
 } from "@/lib/healthy-journey";
 import { createServiceClient } from "@/lib/supabase/service";
 import { getDrawStatus } from "@/lib/egg-draw-service";
+import { getLeaderboard } from "@/lib/ranking-service";
 import {
   QUEST_DAY_START_HOUR_ICT,
   getQuestDayBounds,
@@ -50,6 +51,7 @@ export default async function MyEggPage() {
     { data: doneToday },
     drawStatus,
     { data: user },
+    topRanking,
   ] = await Promise.all([
       supabase
         .from("healthy_journey")
@@ -72,6 +74,7 @@ export default async function MyEggPage() {
         .select("display_name")
         .eq("user_id", userId)
         .maybeSingle(),
+      getLeaderboard(userId, 3, 0),
     ]);
 
   const missionRows = (missions ?? []) as MissionRow[];
@@ -194,12 +197,21 @@ export default async function MyEggPage() {
           </div>
         </section>
 
-        <EggDrawCard
-          streakDays={drawStatus.streakDays}
-          pendingDraws={drawStatus.pendingDraws}
-        />
+        <section aria-label="ภารกิจสุ่มไข่" className="flex flex-col gap-3">
+          <h2 className="px-1 text-base font-semibold text-zinc-900">
+            ภารกิจสุ่มไข่
+          </h2>
+          <EggDrawCard
+            streakDays={drawStatus.streakDays}
+            pendingDraws={drawStatus.pendingDraws}
+          />
+        </section>
 
-        <RankingCard />
+        <MiniRanking
+          entries={topRanking.entries}
+          myRank={topRanking.myRank}
+          myPoints={topRanking.myPoints}
+        />
       </div>
     </main>
   );

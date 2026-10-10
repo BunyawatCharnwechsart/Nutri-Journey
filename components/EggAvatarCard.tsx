@@ -1,10 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 
-import { levelFromPoints, progressRatio } from "@/lib/healthy-journey";
-import EggLevelLine from "@/components/EggLevelLine";
+import {
+  expForNextLevel,
+  expInLevel,
+  levelFromPoints,
+  progressRatio,
+} from "@/lib/healthy-journey";
 
 interface EggAvatarCardProps {
   /** URL of the avatar image (active egg art, or user-level art as fallback). */
@@ -30,6 +35,7 @@ export default function EggAvatarCard({
   exp,
 }: EggAvatarCardProps) {
   const level = levelFromPoints(exp);
+  const needNext = expForNextLevel(level);
   const fillPercent = Math.round(progressRatio(exp) * 100);
   const router = useRouter();
   const [open, setOpen] = useState(false);
@@ -126,9 +132,12 @@ export default function EggAvatarCard({
       )}
 
       <div className="w-full max-w-xs">
-        <p className="text-sm text-[#6C4FD8]">
-          <EggLevelLine exp={exp} />
-        </p>
+        <div className="flex items-end justify-between gap-4">
+          <p className="text-base font-bold text-zinc-900">Level {level}</p>
+          <p className="text-sm text-zinc-500">
+            {expInLevel(exp)}/{needNext ?? "MAX"}
+          </p>
+        </div>
         <div
           role="progressbar"
           aria-valuenow={fillPercent}
@@ -142,6 +151,12 @@ export default function EggAvatarCard({
             style={{ width: `${fillPercent}%` }}
           />
         </div>
+        <Link
+          href="/bag"
+          className="mt-3 flex min-h-[48px] items-center justify-center rounded-full bg-[#18A659] px-4 py-3 text-base font-semibold text-white transition-colors active:bg-[#128A48]"
+        >
+          กระเป๋าสัตว์เลี้ยง
+        </Link>
       </div>
 
       {open && (

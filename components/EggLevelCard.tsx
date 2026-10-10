@@ -20,6 +20,7 @@ interface EggLevelCardProps {
 export default function EggLevelCard({ totalPoints, displayName }: EggLevelCardProps) {
   const level = levelFromPoints(totalPoints);
   const needNext = expForNextLevel(level);
+  const inLevel = expInLevel(totalPoints);
   const fillPercent = Math.round(progressRatio(totalPoints) * 100);
 
   return (
@@ -27,10 +28,11 @@ export default function EggLevelCard({ totalPoints, displayName }: EggLevelCardP
       {displayName && (
         <p className="truncate text-sm text-zinc-500">{displayName}</p>
       )}
-      <div className="flex items-end justify-between gap-4">
+      <p className="text-sm font-medium text-[#18A659]">เลเวลของคุณ</p>
+      <div className="mt-1 flex items-end justify-between gap-4">
         <p className="text-xl font-bold text-zinc-900">เลเวล {level}</p>
         <p className="text-sm text-zinc-500">
-          {expInLevel(totalPoints)} / {needNext ?? "MAX"} exp
+          {inLevel} / {needNext ?? "MAX"} exp
         </p>
       </div>
       <div
@@ -46,6 +48,11 @@ export default function EggLevelCard({ totalPoints, displayName }: EggLevelCardP
           style={{ width: `${fillPercent}%` }}
         />
       </div>
+      <p className="mt-2 text-center text-xs text-zinc-400">
+        {needNext == null
+          ? "เลเวลสูงสุดแล้ว"
+          : `ต้องการอีก ${needNext - inLevel} XP เพื่อไปเลเวล ${level + 1}`}
+      </p>
     </section>
   );
 }

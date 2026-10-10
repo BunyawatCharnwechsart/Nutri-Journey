@@ -1,14 +1,14 @@
 import Link from "next/link";
 
 /**
- * ปุ่มกระเป๋าไข่ → /egg-draw (ตู้สะสมอยู่หน้านั้น). วางขวาบนของ header
- * หน้า egg — เห็นโดยไม่ต้อง scroll.
+ * ปุ่มกระเป๋าสัตว์เลี้ยง → /bag (ตู้สะสมอยู่หน้านั้น แยกกับหน้าสุ่ม).
+ * วางขวาบนของ header หน้า egg — เห็นโดยไม่ต้อง scroll.
  */
 export default function EggBagButton() {
   return (
     <Link
-      href="/egg-draw"
-      aria-label="กระเป๋าไข่"
+      href="/bag"
+      aria-label="กระเป๋าสัตว์เลี้ยง"
       className="inline-flex min-h-[44px] items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-4 text-sm font-semibold text-zinc-700 transition-colors active:bg-zinc-50"
     >
       <svg
