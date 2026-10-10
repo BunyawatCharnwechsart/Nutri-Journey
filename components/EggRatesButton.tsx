@@ -53,19 +53,6 @@ export default function EggRatesButton({ rates }: { rates: DropRate[] }) {
               </li>
             ))}
           </ul>
-          <div
-            role="progressbar"
-            aria-label="สัดส่วนเรทรวม"
-            className="flex h-2.5 w-full overflow-hidden rounded-full bg-zinc-100"
-          >
-            {rates.map((rate) => (
-              <div
-                key={rate.code}
-                className="h-full bg-[#6C4FD8] [&:not(:first-child)]:border-l [&:not(:first-child)]:border-white"
-                style={{ width: `${rate.percent}%` }}
-              />
-            ))}
-          </div>
           <p className="text-xs text-zinc-400">
             {equal
               ? "โอกาสออกเท่ากันทุกชนิดในตอนนี้"
