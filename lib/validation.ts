@@ -264,3 +264,21 @@ export const notificationSettingsSchema = z
 export const eggDrawIdSchema = z.object({
   drawId: z.string().uuid("drawId ต้องเป็น UUID"),
 });
+
+/**
+ * PATCH /api/v1/profile/banner
+ * สวม/ถอด Banner — ส่งมาได้ 2 แบบ (อย่างใดอย่างหนึ่ง):
+ *  - { rankingId } (UUID ของแถว season_rankings ของตัวเอง) — สวมป้าย season
+ *    เจาะจงสมัย เช่น แชมป์ของ 2026-Q4 โดยเฉพาะ.
+ *  - { banner } — 'gold'|'silver'|'bronze' (สวมแถวล่าสุดของ type นั้น),
+ *    'betatester' (ของพื้นฐานทุกคนมี) หรือ null (ถอดออก).
+ * ownership ตรวจฝั่ง server จาก season_rankings เสมอ — ห้ามเชื่อค่าที่ client ส่งมา.
+ */
+export const bannerSchema = z.object({
+  banner: z.enum(["gold", "silver", "bronze", "betatester"]).nullable(),
+});
+
+export const bannerEquipSchema = z.union([
+  z.object({ rankingId: z.string().uuid("rankingId ต้องเป็น UUID") }),
+  bannerSchema,
+]);

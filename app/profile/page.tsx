@@ -3,6 +3,8 @@ import Image from "next/image";
 
 import { getSessionUserId } from "@/lib/auth";
 import { createServiceClient } from "@/lib/supabase/service";
+import { getOwnedBanners } from "@/lib/banner-service";
+import { levelFromPoints } from "@/lib/healthy-journey";
 import {
   GENDER_OPTIONS,
   calculateBmi,
@@ -20,6 +22,7 @@ import {
 import LogoutButton from "@/components/LogoutButton";
 import EggIconLink from "@/components/EggIconLink";
 import BellButton from "@/components/BellButton";
+import ProfileCard from "@/components/ProfileCard";
 import WeightProgress from "@/components/WeightProgress";
 import MeasurementUpdateCard from "@/components/MeasurementUpdateCard";
 import EditProfileModal from "@/components/EditProfileModal";
@@ -85,18 +88,46 @@ export default async function ProfilePage() {
 
   const supabase = createServiceClient();
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select(
-      "gender, birth_date, height, waist_in, hip_in, chest_in, goal, target_weight"
-    )
-    .eq("user_id", userId)
-    .maybeSingle();
+  const [{ data: profile }, { data: account }, { data: journey }] =
+    await Promise.all([
+      supabase
+        .from("profiles")
+        .select(
+          "gender, birth_date, height, waist_in, hip_in, chest_in, goal, target_weight"
+        )
+        .eq("user_id", userId)
+        .maybeSingle(),
+      supabase
+        .from("users")
+        .select("display_name, avatar_url")
+        .eq("user_id", userId)
+        .maybeSingle(),
+      supabase
+        .from("healthy_journey")
+        .select("total_points")
+        .eq("user_id", userId)
+        .maybeSingle(),
+    ]);
 
   // Missing health data → send the user back to the setup wizard.
   if (!profile || !isProfileComplete(profile)) {
     redirect("/health-profile");
   }
+
+  // Banner ที่เป็นเจ้าของ — ตาราง seasons ยังไม่มีแถวช่วงแรกก็ได้ 0/0/0
+  // (getOwnedBanners อ่าน season_rankings ที่เพิ่งสร้าง ยังว่างอยู่).
+  // ถ้าอ่านพัง (เช่น migration ยังไม่รัน) ให้ fallback ไม่มี banner แทน
+  // หน้าพัง — user ยังแก้สุขภาพได้ปกติ.
+  const owned = await getOwnedBanners(userId).catch(() => ({
+    gold: 0,
+    silver: 0,
+    bronze: 0,
+    betatester: 1,
+    instances: [],
+    active: null as null,
+    activeRankingId: null as null,
+    activeSeasonKey: null as null,
+  }));
 
   const gender = GENDER_LABELS[profile.gender] ?? profile.gender;
 
@@ -165,6 +196,13 @@ export default async function ProfilePage() {
             <EggIconLink />
           </div>
         </header>
+
+        <ProfileCard
+          displayName={account?.display_name ?? null}
+          avatarUrl={account?.avatar_url ?? null}
+          level={levelFromPoints(Number(journey?.total_points ?? 0))}
+          owned={owned}
+        />
 
         <section
           className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white p-5"

@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  bannerEquipSchema,
+  bannerSchema,
   editTimeSchema,
   endSessionSchema,
   healthProfileSchema,
@@ -326,3 +328,44 @@ describe("notificationSettingsSchema", () => {
     ).toThrow();
   });
 });
+
+
+describe("bannerSchema", () => {
+  it("accepts gold/silver/bronze/betatester and null (unequip)", () => {
+    expect(bannerSchema.parse({ banner: "gold" })).toEqual({ banner: "gold" });
+    expect(bannerSchema.parse({ banner: "betatester" })).toEqual({
+      banner: "betatester",
+    });
+    expect(bannerSchema.parse({ banner: null })).toEqual({ banner: null });
+  });
+
+  it("rejects unknown banner types", () => {
+    expect(bannerSchema.safeParse({ banner: "diamond" }).success).toBe(false);
+    expect(bannerSchema.safeParse({}).success).toBe(false);
+  });
+});
+
+describe("bannerEquipSchema", () => {
+  it("accepts a rankingId for per-season equip", () => {
+    expect(
+      bannerEquipSchema.parse({
+        rankingId: "123e4567-e89b-12d3-a456-426614174000",
+      })
+    ).toEqual({ rankingId: "123e4567-e89b-12d3-a456-426614174000" });
+  });
+
+  it("accepts the banner form too", () => {
+    expect(bannerEquipSchema.parse({ banner: "betatester" })).toEqual({
+      banner: "betatester",
+    });
+    expect(bannerEquipSchema.parse({ banner: null })).toEqual({ banner: null });
+  });
+
+  it("rejects bad uuids and unknown keys", () => {
+    expect(
+      bannerEquipSchema.safeParse({ rankingId: "not-a-uuid" }).success
+    ).toBe(false);
+    expect(bannerEquipSchema.safeParse({ nope: 1 }).success).toBe(false);
+  });
+});
+

@@ -1,5 +1,7 @@
 import Link from "next/link";
 
+import BannerBadge from "@/components/BannerBadge";
+import type { BannerType } from "@/lib/season";
 import type { RankingEntry } from "@/lib/ranking-service";
 import RankingPodium from "@/components/RankingPodium";
 
@@ -7,6 +9,8 @@ interface MiniRankingProps {
   entries: RankingEntry[];
   myRank: number | null;
   myPoints: number;
+  myBanner?: BannerType | null;
+  myBannerSeasonKey?: string | null;
 }
 
 /**
@@ -14,7 +18,7 @@ interface MiniRankingProps {
  * (ซ่อนแถบถ้ายังไม่มีแต้ม) + ลิงก์ดูเพิ่มเติมไป /ranking.
  * ข้อมูลมาจาก page (ดึง top-3 ฝั่ง server ครั้งเดียวกับอย่างอื่น).
  */
-export default function MiniRanking({ entries, myRank, myPoints }: MiniRankingProps) {
+export default function MiniRanking({ entries, myRank, myPoints, myBanner, myBannerSeasonKey }: MiniRankingProps) {
   return (
     <section aria-label="ตารางอันดับ" className="flex flex-col gap-3">
       <div className="flex items-center justify-between px-1">
@@ -37,6 +41,7 @@ export default function MiniRanking({ entries, myRank, myPoints }: MiniRankingPr
               </span>
               <span className="min-w-0 flex-1 truncate text-sm font-semibold text-zinc-900">
                 คุณ
+                <BannerBadge banner={myBanner ?? null} seasonKey={myBannerSeasonKey ?? null} />
               </span>
               <span className="shrink-0 text-sm text-zinc-600">
                 {myPoints} exp

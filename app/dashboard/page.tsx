@@ -73,6 +73,8 @@ export default async function DashboardPage() {
           entries={topRanking.entries}
           myRank={topRanking.myRank}
           myPoints={topRanking.myPoints}
+          myBanner={topRanking.myBanner}
+          myBannerSeasonKey={topRanking.myBannerSeasonKey}
         />
       </div>
     </main>
