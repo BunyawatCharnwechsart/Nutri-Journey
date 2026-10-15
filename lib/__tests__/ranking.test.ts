@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   RANKING_ANONYMOUS_NAME,
   buildEntries,
+  isMissingColumn,
   type RankingRow,
 } from "@/lib/ranking-service";
 import { rankingQuerySchema } from "@/lib/validation";
@@ -10,9 +11,20 @@ import { rankingQuerySchema } from "@/lib/validation";
 function row(
   user_id: string,
   total_points: number,
-  display_name: string | null = "Name"
+  display_name: string | null = "Name",
+  season_points?: number,
+  active_banner: "gold" | "silver" | "bronze" | null = null,
+  active_banner_season_key: string | null = null
 ): RankingRow {
-  return { user_id, total_points, display_name, avatar_url: null };
+  return {
+    user_id,
+    total_points,
+    season_points: season_points ?? total_points,
+    display_name,
+    avatar_url: null,
+    active_banner,
+    active_banner_season_key,
+  };
 }
 
 describe("rankingQuerySchema", () => {
@@ -79,15 +91,57 @@ describe("buildEntries", () => {
     expect(buildEntries([], 100, "u1")).toEqual([]);
   });
 
-  it("passes avatarUrl through to the entry", () => {
+  it("passes avatarUrl and activeBanner through to the entry", () => {
     const withAvatar: RankingRow = {
       user_id: "u1",
       total_points: 500,
+      season_points: 120,
       display_name: "A",
       avatar_url: "https://example.com/a.png",
+      active_banner: "gold",
+      active_banner_season_key: "2026-Q4",
     };
     const entries = buildEntries([withAvatar], 0, "u1");
     expect(entries[0]?.avatarUrl).toBe("https://example.com/a.png");
+    expect(entries[0]?.activeBanner).toBe("gold");
+    expect(entries[0]?.activeBannerSeasonKey).toBe("2026-Q4");
+    expect(entries[0]?.seasonPoints).toBe(120);
     expect(entries[0]?.isMe).toBe(true);
+  });
+
+  it("shows season points as exp but level from lifetime", () => {
+    const entries = buildEntries([row("u1", 6750, "A", 0)], 0, "u1");
+    expect(entries[0]?.totalPoints).toBe(0);
+    expect(entries[0]?.level).toBe(9);
+  });
+});
+
+describe("isMissingColumn (pre-migration fallback)", () => {
+  it("detects PGRST204 schema-cache errors", () => {
+    expect(
+      isMissingColumn(
+        { code: "PGRST204", message: "column does not exist" },
+        "season_points"
+      )
+    ).toBe(true);
+  });
+
+  it("detects the column name inside the message", () => {
+    expect(
+      isMissingColumn(
+        { message: "column season_points does not exist" },
+        "season_points"
+      )
+    ).toBe(true);
+  });
+
+  it("ignores unrelated errors (real failures still throw)", () => {
+    expect(
+      isMissingColumn(
+        { code: "42501", message: "permission denied" },
+        "season_points"
+      )
+    ).toBe(false);
+    expect(isMissingColumn(null, "season_points")).toBe(false);
   });
 });

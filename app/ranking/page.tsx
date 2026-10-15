@@ -2,8 +2,10 @@ import { redirect } from "next/navigation";
 
 import { getSessionUserId } from "@/lib/auth";
 import { getLeaderboard } from "@/lib/ranking-service";
+import { getCurrentSeason } from "@/lib/season";
 import BackButton from "@/components/BackButton";
 import RankingList from "@/components/RankingList";
+import SeasonCountdown from "@/components/SeasonCountdown";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +13,7 @@ export const dynamic = "force-dynamic";
 const PAGE_SIZE = 10;
 
 /**
- * หน้า Ranking — โผ EXP รวมทั้งระบบ + อันดับของตัวเอง.
+ * หน้า Ranking — โผ EXP season ปัจจุบัน + อันดับของตัวเอง + นับถอยหลังจบ season.
  *
  * โหลดหน้าแรกฝั่ง server ตรงๆ (ไม่ยิง HTTP วนกลับ) ส่วนหน้าถัดไป
  * RankingList จะยิง /api/v1/ranking เอง. ไม่มี session เด้งกลับหน้าแรก.
@@ -22,11 +24,14 @@ export default async function RankingPage() {
     redirect("/");
   }
 
-  const { entries, myRank, myPoints, myAvatarUrl, total } = await getLeaderboard(
+  const { entries, myRank, myPoints, myAvatarUrl, myBanner, myBannerSeasonKey, total } = await getLeaderboard(
     userId,
     PAGE_SIZE,
     0
   );
+
+  // season ปัจจุบัน (ICT) — ส่ง key + เวลาจบให้ countdown ฝั่ง client นับต่อ.
+  const { seasonKey, endsAtIso } = getCurrentSeason();
 
   return (
     <main className="relative flex flex-1 flex-col overflow-hidden bg-gradient-to-b from-[#DFF0E4] via-[#F4FAF6] to-white px-6 pt-6 pb-10">
@@ -50,12 +55,16 @@ export default async function RankingPage() {
           </div>
         </header>
 
+        <SeasonCountdown seasonKey={seasonKey} endsAtIso={endsAtIso} />
+
         <RankingList
           initialEntries={entries}
           total={total}
           myRank={myRank}
           myPoints={myPoints}
           myAvatarUrl={myAvatarUrl}
+          myBanner={myBanner}
+          myBannerSeasonKey={myBannerSeasonKey}
           pageSize={PAGE_SIZE}
         />
       </div>

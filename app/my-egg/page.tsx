@@ -211,6 +211,8 @@ export default async function MyEggPage() {
           entries={topRanking.entries}
           myRank={topRanking.myRank}
           myPoints={topRanking.myPoints}
+          myBanner={topRanking.myBanner}
+          myBannerSeasonKey={topRanking.myBannerSeasonKey}
         />
       </div>
     </main>

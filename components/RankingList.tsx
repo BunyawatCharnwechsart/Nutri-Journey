@@ -4,7 +4,9 @@ import { useState } from "react";
 import Image from "next/image";
 
 import { levelFromPoints } from "@/lib/healthy-journey";
+import type { BannerType } from "@/lib/season";
 import type { RankingEntry } from "@/lib/ranking-service";
+import BannerBadge from "@/components/BannerBadge";
 import RankingPodium from "@/components/RankingPodium";
 
 interface RankingListProps {
@@ -17,6 +19,10 @@ interface RankingListProps {
   myPoints: number;
   /** รูปโปรไฟล์ของตัวเอง (ไว้โชว์ในการ์ดอันดับตอนหลุดโผ). */
   myAvatarUrl: string | null;
+  /** Banner ที่ตัวเองสวมอยู่ (การ์ดปักหมุดตอนหลุดโผ). */
+  myBanner: BannerType | null;
+  /** season ของป้ายตัวเอง — ไว้ render "อันดับ 1 Season 2026-Q4". */
+  myBannerSeasonKey: string | null;
   /** ต้องตรงกับ limit ที่ server ใช้โหลดหน้าแรก. */
   pageSize: number;
 }
@@ -94,6 +100,16 @@ function Row({ entry, highlight }: { entry: RankingEntry; highlight: boolean }) 
             </span>
           )}
         </span>
+        {/* ป้าย season แบบระบุสมัยข้อความยาว — วางบรรทัดของตัวเอง (wrap ได้)
+            ชื่อข้างบน truncate ได้อิสระ ไม่โดนป้ายดันหาย. */}
+        {entry.activeBanner != null && (
+          <span className="mt-1 -ml-2 flex flex-wrap items-center gap-1">
+            <BannerBadge
+              banner={entry.activeBanner}
+              seasonKey={entry.activeBannerSeasonKey}
+            />
+          </span>
+        )}
         <span className="block text-xs text-zinc-400">Lv.{entry.level}</span>
       </span>
       <span className="shrink-0 text-right">
@@ -137,6 +153,8 @@ export default function RankingList({
   myRank,
   myPoints,
   myAvatarUrl,
+  myBanner,
+  myBannerSeasonKey,
   pageSize,
 }: RankingListProps) {
   const [entries, setEntries] = useState<RankingEntry[]>(initialEntries);
@@ -260,6 +278,9 @@ export default function RankingList({
               avatarUrl: myAvatarUrl,
               level: levelFromPoints(myPoints),
               totalPoints: myPoints,
+              seasonPoints: myPoints,
+              activeBanner: myBanner,
+              activeBannerSeasonKey: myBannerSeasonKey,
               isMe: true,
             }}
             highlight

@@ -106,25 +106,67 @@ export async function awardMission(
     return { awarded: false, reason: "already_done" };
   }
 
-  const { data: journey } = await supabase
-    .from("healthy_journey")
-    .select("id, total_points")
-    .eq("user_id", userId)
-    .maybeSingle();
+  // อ่านแถว journey — ลองรวม season_points (migration 0041) ก่อน ถ้า
+  // column ยังไม่มีให้อ่านแบบ legacy แล้ว dual-write ข้างล่างจะเขียนแค่
+  // total_points (แต้ม lifetime ไม่หาย).
+  let seasonSupported = true;
+  let journey: {
+    id: unknown;
+    total_points: unknown;
+    season_points?: unknown;
+  } | null = null;
+
+  {
+    const attempt = await supabase
+      .from("healthy_journey")
+      .select("id, total_points, season_points")
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (attempt.error) {
+      const code = (attempt.error as { code?: string }).code;
+      const msg =
+        typeof (attempt.error as { message?: unknown }).message === "string"
+          ? ((attempt.error as { message?: string }).message ?? "")
+          : "";
+      if (code === "PGRST204" || msg.includes("season_points")) {
+        seasonSupported = false;
+        const legacy = await supabase
+          .from("healthy_journey")
+          .select("id, total_points")
+          .eq("user_id", userId)
+          .maybeSingle();
+        journey = legacy.data;
+      } else {
+        console.error(
+          `Failed to read healthy_journey (user=${userId}, code=${code})`,
+          attempt.error
+        );
+        return { awarded: false, reason: "already_done" };
+      }
+    } else {
+      journey = attempt.data;
+    }
+  }
 
   if (!journey) {
     // Brand-new journey row (eggs don't exist yet until the first award).
+    // season_points เริ่มเท่ากับแต้มแรก — อันดับ season เริ่มนับตรงนี้.
+    const baseRow = {
+      user_id: userId,
+      total_points: points,
+      level: levelFromPoints(points),
+      current_streak: 0,
+      longest_streak: 0,
+      last_active_date: null,
+      avatar_name: DEFAULT_AVATAR_NAME,
+    };
+    const insertRow = seasonSupported
+      ? { ...baseRow, season_points: points }
+      : baseRow;
     const { data: created, error: createError } = await supabase
       .from("healthy_journey")
-      .insert({
-        user_id: userId,
-        total_points: points,
-        level: levelFromPoints(points),
-        current_streak: 0,
-        longest_streak: 0,
-        last_active_date: null,
-        avatar_name: DEFAULT_AVATAR_NAME,
-      })
+      .insert(insertRow)
       .select("total_points, level")
       .single();
 
@@ -143,14 +185,28 @@ export async function awardMission(
     };
   }
 
+  // Dual-write: lifetime (total_points, ไม่รีเซ็ต — level/ไข่คงเดิม) +
+  // season นี้ (season_points, รีเซ็ตทุก quarter — อันดับ season).
+  // pre-migration (seasonSupported=false) เขียนแค่ total_points.
   const totalPoints = Number(journey.total_points) + points;
+  const seasonPoints =
+    Number(
+      (journey as { season_points?: unknown }).season_points ?? 0
+    ) + points;
 
+  const updateRow = seasonSupported
+    ? {
+        total_points: totalPoints,
+        season_points: seasonPoints,
+        level: levelFromPoints(totalPoints),
+      }
+    : {
+        total_points: totalPoints,
+        level: levelFromPoints(totalPoints),
+      };
   const { data: updated, error: updateError } = await supabase
     .from("healthy_journey")
-    .update({
-      total_points: totalPoints,
-      level: levelFromPoints(totalPoints),
-    })
+    .update(updateRow)
     .eq("user_id", userId)
     .select("total_points, level")
     .single();

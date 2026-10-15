@@ -1,5 +1,6 @@
 import Image from "next/image";
 
+import BannerBadge from "@/components/BannerBadge";
 import type { RankingEntry } from "@/lib/ranking-service";
 
 /** วงแหวน avatar + สีเหรียญ/ขอบตามอันดับ 1/2/3. */
@@ -94,6 +95,16 @@ function PodiumSpot({ entry, first }: { entry: RankingEntry; first: boolean }) {
           </span>
         )}
       </p>
+      {/* ป้ายระบุสมัยข้อความยาว — คอลัมน์โพเดียมแคบ ให้อยู่บรรทัดของตัวเอง
+          กลางคอลัมน์ (wrap ได้) แทนยัดหลังชื่อที่จะโดน truncate กลืน. */}
+      {entry.activeBanner != null && (
+        <span className="-ml-2 flex justify-center">
+          <BannerBadge
+            banner={entry.activeBanner}
+            seasonKey={entry.activeBannerSeasonKey}
+          />
+        </span>
+      )}
       <p className="text-xs text-[#8A7B2D]">{entry.totalPoints} exp</p>
     </div>
   );
