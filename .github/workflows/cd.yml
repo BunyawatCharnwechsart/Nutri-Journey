@@ -12,6 +12,8 @@ jobs:
   migrate:
     name: Run database migrations
     runs-on: ubuntu-latest
+    # กัน hang เผา minutes — migration ปกติจบใน 1-2 นาที.
+    timeout-minutes: 10
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -34,6 +36,8 @@ jobs:
     name: Deploy to Vercel (production)
     needs: [migrate]
     runs-on: ubuntu-latest
+    # กัน hang เผา minutes (default 6 ชม.) — deploy ปกติจบใน ~5 นาที.
+    timeout-minutes: 20
     env:
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
@@ -50,8 +54,12 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # NOTE: vercel CLI ไม่ได้อยู่ใน package.json ตั้งใจ (-bloat + audit
+      # noise) — pin version ตรงนี้แทน reproducibility; --yes กัน npx ถาม
+      # "Ok to proceed?", `< /dev/null` กัน vercel CLI ถาม interactive
+      # (ถ้าถามจะ error ทันทีแทนค้างรอ input).
       - name: Pull Vercel environment
-        run: npx vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
+        run: npx --yes vercel@64.2.0 pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }} < /dev/null
 
       - name: Override sensitive NEXT_PUBLIC_ env vars
         run: |
@@ -65,7 +73,7 @@ jobs:
           fi
 
       - name: Build project artifacts
-        run: npx vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: npx --yes vercel@64.2.0 build --prod --token=${{ secrets.VERCEL_TOKEN }} < /dev/null
 
       - name: Deploy project artifacts to Vercel
-        run: npx vercel deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }}
+        run: npx --yes vercel@64.2.0 deploy --prebuilt --prod --token=${{ secrets.VERCEL_TOKEN }} < /dev/null
