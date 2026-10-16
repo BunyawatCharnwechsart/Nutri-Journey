@@ -23,6 +23,8 @@ interface RankingListProps {
   myBanner: BannerType | null;
   /** season ของป้ายตัวเอง — ไว้ render "อันดับ 1 Season 2026-Q4". */
   myBannerSeasonKey: string | null;
+  /** แชมป์ติดกันของป้ายตัวเอง (>=2 ค่อยโชว์ชิป) — ใช้ในการ์ดปักหมุด. */
+  myBannerStreak: number | null;
   /** ต้องตรงกับ limit ที่ server ใช้โหลดหน้าแรก. */
   pageSize: number;
 }
@@ -107,6 +109,7 @@ function Row({ entry, highlight }: { entry: RankingEntry; highlight: boolean }) 
             <BannerBadge
               banner={entry.activeBanner}
               seasonKey={entry.activeBannerSeasonKey}
+              streak={entry.activeBannerStreak}
             />
           </span>
         )}
@@ -155,6 +158,7 @@ export default function RankingList({
   myAvatarUrl,
   myBanner,
   myBannerSeasonKey,
+  myBannerStreak,
   pageSize,
 }: RankingListProps) {
   const [entries, setEntries] = useState<RankingEntry[]>(initialEntries);
@@ -281,6 +285,7 @@ export default function RankingList({
               seasonPoints: myPoints,
               activeBanner: myBanner,
               activeBannerSeasonKey: myBannerSeasonKey,
+              activeBannerStreak: myBannerStreak,
               isMe: true,
             }}
             highlight

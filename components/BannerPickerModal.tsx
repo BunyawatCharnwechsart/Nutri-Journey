@@ -54,7 +54,7 @@ export default function BannerPickerModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  // betatester ทุกคนมี 1 — ปุ่มบันทึกกดได้เสมอ.
+  // มีของให้เลือกไหม — ป้าย season (instances) หรือ betatester (ผู้ร่วม Beta).
   const hasAny = owned.instances.length > 0 || owned.betatester > 0;
 
   async function handleSave() {
@@ -80,6 +80,7 @@ export default function BannerPickerModal({
           banner?: string | null;
           rankingId?: string | null;
           seasonKey?: string | null;
+          streak?: number | null;
         };
         error?: { message?: string; code?: string };
       } | null;
@@ -93,6 +94,7 @@ export default function BannerPickerModal({
         banner,
         rankingId: json.data?.rankingId ?? null,
         seasonKey: json.data?.seasonKey ?? null,
+        streak: json.data?.streak ?? null,
       });
       onClose();
       router.refresh();
@@ -151,6 +153,7 @@ export default function BannerPickerModal({
                       <BannerBadge
                         banner={instance.banner}
                         seasonKey={instance.seasonKey}
+                        streak={instance.streak}
                       />
                     </span>
                   </span>
@@ -158,24 +161,28 @@ export default function BannerPickerModal({
               );
             })}
 
-            <label className={rowClass(selectedKey === "betatester")}>
-              <input
-                type="radio"
-                name="banner"
-                value="betatester"
-                checked={selectedKey === "betatester"}
-                onChange={() => setSelectedKey("betatester")}
-                className="h-4 w-4 shrink-0 accent-[#18A659]"
-              />
-              <span className="min-w-0 flex-1">
-                <span className="-ml-2 flex flex-wrap items-center gap-1">
-                  <BannerBadge banner="betatester" />
+            {/* betatester โชว์เฉพาะผู้ร่วมทดสอบ Beta (owned.betatester > 0) —
+                ownership ตรวจฝั่ง server อีกชั้นตอน PATCH. */}
+            {owned.betatester > 0 && (
+              <label className={rowClass(selectedKey === "betatester")}>
+                <input
+                  type="radio"
+                  name="banner"
+                  value="betatester"
+                  checked={selectedKey === "betatester"}
+                  onChange={() => setSelectedKey("betatester")}
+                  className="h-4 w-4 shrink-0 accent-[#18A659]"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="-ml-2 flex flex-wrap items-center gap-1">
+                    <BannerBadge banner="betatester" />
+                  </span>
+                  <span className="mt-0.5 block text-xs text-zinc-400">
+                    ป้ายสำหรับผู้ร่วมทดสอบช่วง Beta
+                  </span>
                 </span>
-                <span className="mt-0.5 block text-xs text-zinc-400">
-                  ป้ายพื้นฐานของทุกคน
-                </span>
-              </span>
-            </label>
+              </label>
+            )}
 
             <label className={rowClass(selectedKey === "none")}>
               <input

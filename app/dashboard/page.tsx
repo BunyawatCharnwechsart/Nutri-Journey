@@ -75,6 +75,7 @@ export default async function DashboardPage() {
           myPoints={topRanking.myPoints}
           myBanner={topRanking.myBanner}
           myBannerSeasonKey={topRanking.myBannerSeasonKey}
+          myBannerStreak={topRanking.myBannerStreak}
         />
       </div>
     </main>

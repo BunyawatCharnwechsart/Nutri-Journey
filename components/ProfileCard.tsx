@@ -12,6 +12,8 @@ export interface ActiveBannerState {
   banner: BannerType | null;
   rankingId: string | null;
   seasonKey: string | null;
+  /** แชมป์ติดกันของป้ายที่สวม (>=2 ค่อยโชว์) — null = ไม่มีป้าย season. */
+  streak: number | null;
 }
 
 /**
@@ -35,6 +37,7 @@ export default function ProfileCard({
     banner: owned.active,
     rankingId: owned.activeRankingId,
     seasonKey: owned.activeSeasonKey,
+    streak: owned.activeStreak,
   });
   const name = displayName?.trim() || "นักเดินทางไร้ชื่อ";
   const initial = name.charAt(0).toUpperCase() || "?";
@@ -65,7 +68,11 @@ export default function ProfileCard({
         <p className="truncate text-lg font-bold text-zinc-900">{name}</p>
         {active.banner != null && (
           <span className="-ml-2 flex flex-wrap items-center gap-1">
-            <BannerBadge banner={active.banner} seasonKey={active.seasonKey} />
+            <BannerBadge
+              banner={active.banner}
+              seasonKey={active.seasonKey}
+              streak={active.streak}
+            />
           </span>
         )}
         <p className="mt-0.5 text-sm text-zinc-500">เลเวล {level}</p>

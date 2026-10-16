@@ -122,11 +122,12 @@ export default async function ProfilePage() {
     gold: 0,
     silver: 0,
     bronze: 0,
-    betatester: 1,
+    betatester: 0,
     instances: [],
     active: null as null,
     activeRankingId: null as null,
     activeSeasonKey: null as null,
+    activeStreak: null as null,
   }));
 
   const gender = GENDER_LABELS[profile.gender] ?? profile.gender;

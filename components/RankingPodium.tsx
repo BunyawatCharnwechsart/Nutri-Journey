@@ -98,10 +98,11 @@ function PodiumSpot({ entry, first }: { entry: RankingEntry; first: boolean }) {
       {/* ป้ายระบุสมัยข้อความยาว — คอลัมน์โพเดียมแคบ ให้อยู่บรรทัดของตัวเอง
           กลางคอลัมน์ (wrap ได้) แทนยัดหลังชื่อที่จะโดน truncate กลืน. */}
       {entry.activeBanner != null && (
-        <span className="-ml-2 flex justify-center">
+        <span className="-ml-2 flex flex-wrap justify-center">
           <BannerBadge
             banner={entry.activeBanner}
             seasonKey={entry.activeBannerSeasonKey}
+            streak={entry.activeBannerStreak}
           />
         </span>
       )}
