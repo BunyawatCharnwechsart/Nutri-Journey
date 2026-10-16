@@ -13,7 +13,7 @@ export const BANNER_TYPES = ["gold", "silver", "bronze", "betatester"] as const;
 
 export type BannerType = (typeof BANNER_TYPES)[number];
 
-/** Banner ที่มาจากอันดับ season (betatester เป็นของพื้นฐานแยกต่างหาก). */
+/** Banner ที่มาจากอันดับ season (betatester เป็นป้ายของผู้ร่วม Beta แยกต่างหาก). */
 export const SEASON_BANNER_TYPES = ["gold", "silver", "bronze"] as const;
 
 export type SeasonBannerType = (typeof SEASON_BANNER_TYPES)[number];
@@ -25,21 +25,28 @@ export const BANNERS: Record<
 > = {
   gold: {
     label: "แชมป์ Season",
-    chipClass: "bg-[#FFF3D6] text-[#B7791F] ring-[#F5B301]/40",
+    // ทองทึบ + ตัวน้ำตาลเข้ม (contrast ~6.4:1 ผ่าน WCAG AA ตัว 12px).
+    chipClass: "bg-[#F5B301] text-[#422A00] ring-[#C78D06]",
   },
   silver: {
     label: "รองแชมป์ Season",
-    chipClass: "bg-zinc-100 text-zinc-600 ring-zinc-300",
+    // เทาเข้ม + ตัวขาว (contrast ~7.7:1).
+    chipClass: "bg-[#52525B] text-white ring-[#3F3F46]",
   },
   bronze: {
     label: "อันดับ 3 Season",
-    chipClass: "bg-[#FDEEF4] text-[#C2437E] ring-[#D08A4E]/40",
+    // ทองแดงส้มเข้ม + ตัวขาว (contrast ~5:1) — เลิกใช้โทนชมพูเดิม.
+    chipClass: "bg-[#B45309] text-white ring-[#92400E]",
   },
   betatester: {
-    label: "Beta Tester",
-    chipClass: "bg-[#E0F7FF] text-[#0284C7] ring-[#0284C7]/30",
+    label: "ผู้ร่วม Beta",
+    // ฟ้าเข้ม + ตัวขาว (contrast ~5.9:1).
+    chipClass: "bg-[#0369A1] text-white ring-[#075985]",
   },
 };
+
+/** ชิป "N สมัยติด" (แชมป์ติดกัน) — อำพันเข้ม + ตัวขาว (contrast ~7:1). */
+export const STREAK_CHIP_CLASS = "bg-[#92400E] text-white ring-[#78350F]";
 
 /** Banner ของอันดับ season — นอก Top 3 ได้ null (ไม่มี banner). */
 export function bannerForRank(rank: number): SeasonBannerType | null {
@@ -146,6 +153,52 @@ export function countBanners(
     }
   }
   return counts;
+}
+
+/**
+ * season_key ของ quarter ก่อนหน้า — รองรับข้ามปี (2026-Q1 → 2025-Q4).
+ * ใช้เดินย้อนนับแชมป์ติดกัน. โยน Error ถ้าฟอร์แมตผิด (เหมือน parseSeasonKey).
+ */
+export function previousSeasonKey(seasonKey: string): string {
+  const { year, quarter } = parseSeasonKey(seasonKey);
+  if (quarter === 1) {
+    return `${year - 1}-Q4`;
+  }
+  return `${year}-Q${quarter - 1}`;
+}
+
+/**
+ * นับแชมป์ (gold) ติดกันลงท้ายที่ season ที่ระบุ — ไล่ย้อน quarter ทีละสมัย.
+ * สมัยที่ได้ silver/bronze/ไม่มีแชมป์ = ขาด (หยุดนับ). สมัยนั้นไม่ได้ gold → 0.
+ * pure ล้วน — เทสต์ได้โดยไม่ต้องต่อ DB.
+ */
+export function championStreakEndingAt(
+  rows: Array<{ seasonKey: string; banner: string | null }>,
+  targetSeasonKey: string
+): number {
+  const goldSeasons = new Set(
+    rows.filter((row) => row.banner === "gold").map((row) => row.seasonKey)
+  );
+  if (!goldSeasons.has(targetSeasonKey)) {
+    return 0;
+  }
+  let streak = 0;
+  let cursor = targetSeasonKey;
+  while (goldSeasons.has(cursor)) {
+    streak += 1;
+    cursor = previousSeasonKey(cursor);
+  }
+  return streak;
+}
+
+/**
+ * ข้อความชิป streak — โชว์เมื่อแชมป์ติดกัน 2 สมัยขึ้นไป (สมัยเดียวไม่นับ).
+ */
+export function championStreakText(streak: number | null | undefined): string | null {
+  if (streak == null || streak < 2) {
+    return null;
+  }
+  return `${streak} สมัยติด`;
 }
 
 export interface CurrentSeason {

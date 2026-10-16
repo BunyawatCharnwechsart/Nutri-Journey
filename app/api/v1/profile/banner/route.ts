@@ -52,9 +52,10 @@ export async function PATCH(request: Request) {
       banner: owned.active,
       rankingId: owned.activeRankingId,
       seasonKey: owned.activeSeasonKey,
+      streak: owned.activeStreak,
     });
   } catch (error) {
     console.error(`PATCH /api/v1/profile/banner reload failed (user=${auth.userId})`, error);
-    return apiSuccess({ banner: null, rankingId: null, seasonKey: null });
+    return apiSuccess({ banner: null, rankingId: null, seasonKey: null, streak: null });
   }
 }

@@ -11,6 +11,8 @@ interface MiniRankingProps {
   myPoints: number;
   myBanner?: BannerType | null;
   myBannerSeasonKey?: string | null;
+  /** แชมป์ติดกันของป้ายตัวเอง (>=2 ค่อยโชว์ชิป) — ส่งจาก getLeaderboard. */
+  myBannerStreak?: number | null;
 }
 
 /**
@@ -18,7 +20,14 @@ interface MiniRankingProps {
  * (ซ่อนแถบถ้ายังไม่มีแต้ม) + ลิงก์ดูเพิ่มเติมไป /ranking.
  * ข้อมูลมาจาก page (ดึง top-3 ฝั่ง server ครั้งเดียวกับอย่างอื่น).
  */
-export default function MiniRanking({ entries, myRank, myPoints, myBanner, myBannerSeasonKey }: MiniRankingProps) {
+export default function MiniRanking({
+  entries,
+  myRank,
+  myPoints,
+  myBanner,
+  myBannerSeasonKey,
+  myBannerStreak,
+}: MiniRankingProps) {
   return (
     <section aria-label="ตารางอันดับ" className="flex flex-col gap-3">
       <div className="flex items-center justify-between px-1">
@@ -39,10 +48,20 @@ export default function MiniRanking({ entries, myRank, myPoints, myBanner, myBan
               <span className="w-6 shrink-0 text-center text-base font-bold text-[#128A48]">
                 {myRank}
               </span>
-              <span className="min-w-0 flex-1 truncate text-sm font-semibold text-zinc-900">
-                คุณ
-                <BannerBadge banner={myBanner ?? null} seasonKey={myBannerSeasonKey ?? null} />
-              </span>
+              <div className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-zinc-900">
+                  คุณ
+                </span>
+                {myBanner != null && (
+                  <span className="-ml-2 flex flex-wrap items-center gap-1">
+                    <BannerBadge
+                      banner={myBanner}
+                      seasonKey={myBannerSeasonKey ?? null}
+                      streak={myBannerStreak ?? null}
+                    />
+                  </span>
+                )}
+              </div>
               <span className="shrink-0 text-sm text-zinc-600">
                 {myPoints} exp
               </span>

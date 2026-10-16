@@ -24,11 +24,16 @@ export default async function RankingPage() {
     redirect("/");
   }
 
-  const { entries, myRank, myPoints, myAvatarUrl, myBanner, myBannerSeasonKey, total } = await getLeaderboard(
-    userId,
-    PAGE_SIZE,
-    0
-  );
+  const {
+    entries,
+    myRank,
+    myPoints,
+    myAvatarUrl,
+    myBanner,
+    myBannerSeasonKey,
+    myBannerStreak,
+    total,
+  } = await getLeaderboard(userId, PAGE_SIZE, 0);
 
   // season ปัจจุบัน (ICT) — ส่ง key + เวลาจบให้ countdown ฝั่ง client นับต่อ.
   const { seasonKey, endsAtIso } = getCurrentSeason();
@@ -65,6 +70,7 @@ export default async function RankingPage() {
           myAvatarUrl={myAvatarUrl}
           myBanner={myBanner}
           myBannerSeasonKey={myBannerSeasonKey}
+          myBannerStreak={myBannerStreak}
           pageSize={PAGE_SIZE}
         />
       </div>

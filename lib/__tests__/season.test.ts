@@ -2,7 +2,10 @@ import { describe, expect, it } from "vitest";
 
 import {
   BANNERS,
+  STREAK_CHIP_CLASS,
   bannerForRank,
+  championStreakEndingAt,
+  championStreakText,
   countBanners,
   formatResetDate,
   formatSeasonCountdown,
@@ -10,6 +13,7 @@ import {
   getQuarterBounds,
   getSeasonKey,
   parseSeasonKey,
+  previousSeasonKey,
   rankForBanner,
   seasonBadgeText,
 } from "@/lib/season";
@@ -77,14 +81,27 @@ describe("countBanners", () => {
 
 describe("betatester banner", () => {
   it("has text+color badge metadata like the season banners", () => {
-    expect(BANNERS.betatester.label).toBe("Beta Tester");
-    expect(BANNERS.betatester.chipClass).toContain("text-[#0284C7]");
+    expect(BANNERS.betatester.label).toBe("ผู้ร่วม Beta");
+    expect(BANNERS.betatester.chipClass).toContain("bg-[#0369A1]");
   });
 
   it("is never awarded from a season rank", () => {
     expect(bannerForRank(1)).toBe("gold");
     expect(bannerForRank(0)).toBeNull();
     expect(bannerForRank(99)).toBeNull();
+  });
+});
+
+describe("banner chip palette (dark + high contrast)", () => {
+  it("locks the solid chip colors so UI stays consistent everywhere", () => {
+    expect(BANNERS.gold.chipClass).toBe("bg-[#F5B301] text-[#422A00] ring-[#C78D06]");
+    expect(BANNERS.silver.chipClass).toBe("bg-[#52525B] text-white ring-[#3F3F46]");
+    expect(BANNERS.bronze.chipClass).toBe("bg-[#B45309] text-white ring-[#92400E]");
+    expect(BANNERS.betatester.chipClass).toBe("bg-[#0369A1] text-white ring-[#075985]");
+  });
+
+  it("has a dark streak chip class for the champion streak", () => {
+    expect(STREAK_CHIP_CLASS).toBe("bg-[#92400E] text-white ring-[#78350F]");
   });
 });
 
@@ -134,7 +151,88 @@ describe("seasonBadgeText", () => {
   it("falls back to the plain label without a season", () => {
     expect(seasonBadgeText("gold", null)).toBe("แชมป์ Season");
     expect(seasonBadgeText("gold")).toBe("แชมป์ Season");
-    expect(seasonBadgeText("betatester", "2026-Q4")).toBe("Beta Tester");
+    expect(seasonBadgeText("betatester", "2026-Q4")).toBe("ผู้ร่วม Beta");
     expect(seasonBadgeText(null, "2026-Q4")).toBeNull();
+  });
+});
+
+describe("previousSeasonKey", () => {
+  it("walks back one quarter inside the same year", () => {
+    expect(previousSeasonKey("2026-Q4")).toBe("2026-Q3");
+    expect(previousSeasonKey("2026-Q2")).toBe("2026-Q1");
+  });
+
+  it("rolls over to the previous year from Q1", () => {
+    expect(previousSeasonKey("2026-Q1")).toBe("2025-Q4");
+  });
+});
+
+describe("championStreakEndingAt", () => {
+  it("counts consecutive gold ending at the target season", () => {
+    const rows = [
+      { seasonKey: "2025-Q3", banner: "bronze" },
+      { seasonKey: "2025-Q4", banner: "gold" },
+      { seasonKey: "2026-Q1", banner: "gold" },
+      { seasonKey: "2026-Q2", banner: "gold" },
+      { seasonKey: "2026-Q3", banner: "silver" },
+    ];
+    expect(championStreakEndingAt(rows, "2026-Q2")).toBe(3);
+  });
+
+  it("counts across the year boundary (Q4 → Q1)", () => {
+    const rows = [
+      { seasonKey: "2025-Q4", banner: "gold" },
+      { seasonKey: "2026-Q1", banner: "gold" },
+    ];
+    expect(championStreakEndingAt(rows, "2026-Q1")).toBe(2);
+  });
+
+  it("stops at a skipped quarter", () => {
+    const rows = [
+      { seasonKey: "2026-Q1", banner: "gold" },
+      { seasonKey: "2026-Q3", banner: "gold" },
+    ];
+    expect(championStreakEndingAt(rows, "2026-Q3")).toBe(1);
+  });
+
+  it("stops at a silver/bronze season (streak broken)", () => {
+    const rows = [
+      { seasonKey: "2026-Q1", banner: "gold" },
+      { seasonKey: "2026-Q2", banner: "silver" },
+      { seasonKey: "2026-Q3", banner: "gold" },
+    ];
+    expect(championStreakEndingAt(rows, "2026-Q3")).toBe(1);
+  });
+
+  it("returns the streak ending mid-run when equipped earlier", () => {
+    const rows = [
+      { seasonKey: "2026-Q1", banner: "gold" },
+      { seasonKey: "2026-Q2", banner: "gold" },
+      { seasonKey: "2026-Q3", banner: "gold" },
+    ];
+    expect(championStreakEndingAt(rows, "2026-Q2")).toBe(2);
+  });
+
+  it("returns 0 when the target season has no gold", () => {
+    const rows = [
+      { seasonKey: "2026-Q1", banner: "gold" },
+      { seasonKey: "2026-Q2", banner: "bronze" },
+    ];
+    expect(championStreakEndingAt(rows, "2026-Q2")).toBe(0);
+    expect(championStreakEndingAt([], "2026-Q2")).toBe(0);
+  });
+});
+
+describe("championStreakText", () => {
+  it("shows Thai suffix only for 2+ consecutive seasons", () => {
+    expect(championStreakText(3)).toBe("3 สมัยติด");
+    expect(championStreakText(2)).toBe("2 สมัยติด");
+  });
+
+  it("hides when streak is 1, 0, or missing", () => {
+    expect(championStreakText(1)).toBeNull();
+    expect(championStreakText(0)).toBeNull();
+    expect(championStreakText(null)).toBeNull();
+    expect(championStreakText(undefined)).toBeNull();
   });
 });

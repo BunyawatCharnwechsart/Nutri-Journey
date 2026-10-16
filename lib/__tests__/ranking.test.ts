@@ -14,7 +14,8 @@ function row(
   display_name: string | null = "Name",
   season_points?: number,
   active_banner: "gold" | "silver" | "bronze" | null = null,
-  active_banner_season_key: string | null = null
+  active_banner_season_key: string | null = null,
+  active_banner_streak: number | null = null
 ): RankingRow {
   return {
     user_id,
@@ -24,6 +25,7 @@ function row(
     avatar_url: null,
     active_banner,
     active_banner_season_key,
+    active_banner_streak,
   };
 }
 
@@ -91,7 +93,7 @@ describe("buildEntries", () => {
     expect(buildEntries([], 100, "u1")).toEqual([]);
   });
 
-  it("passes avatarUrl and activeBanner through to the entry", () => {
+  it("passes avatarUrl, activeBanner, and streak through to the entry", () => {
     const withAvatar: RankingRow = {
       user_id: "u1",
       total_points: 500,
@@ -100,11 +102,13 @@ describe("buildEntries", () => {
       avatar_url: "https://example.com/a.png",
       active_banner: "gold",
       active_banner_season_key: "2026-Q4",
+      active_banner_streak: 3,
     };
     const entries = buildEntries([withAvatar], 0, "u1");
     expect(entries[0]?.avatarUrl).toBe("https://example.com/a.png");
     expect(entries[0]?.activeBanner).toBe("gold");
     expect(entries[0]?.activeBannerSeasonKey).toBe("2026-Q4");
+    expect(entries[0]?.activeBannerStreak).toBe(3);
     expect(entries[0]?.seasonPoints).toBe(120);
     expect(entries[0]?.isMe).toBe(true);
   });

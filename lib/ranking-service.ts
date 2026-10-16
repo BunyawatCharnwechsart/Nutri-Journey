@@ -2,7 +2,7 @@ import "server-only";
 
 import { createServiceClient } from "@/lib/supabase/service";
 import { levelFromPoints } from "@/lib/healthy-journey";
-import type { BannerType } from "@/lib/season";
+import { championStreakEndingAt, type BannerType } from "@/lib/season";
 
 /** ชื่อสำรองถ้า user ไม่มี display_name (ไม่ควรเกิด แต่กัน null หลุดไป UI). */
 export const RANKING_ANONYMOUS_NAME = "นักเดินทางไร้ชื่อ";
@@ -19,6 +19,8 @@ export interface RankingRow {
   active_banner: BannerType | null;
   /** season_key ของป้ายที่สวม (เช่น "2026-Q4") — null = ป้ายแบบเก่า/betatester. */
   active_banner_season_key: string | null;
+  /** แชมป์ติดกันลงท้ายที่สมัยของป้ายที่สวม — null = ไม่มีป้าย season. */
+  active_banner_streak: number | null;
 }
 
 /** แถวอันดับที่ส่งกลับไป client — ไม่มี PII (ไม่มี line_user_id/email). */
@@ -34,6 +36,8 @@ export interface RankingEntry {
   activeBanner: BannerType | null;
   /** season ของป้ายที่สวม — ไว้ render "อันดับ 1 Season 2026-Q4". */
   activeBannerSeasonKey: string | null;
+  /** แชมป์ติดกัน (>=2 ค่อยโชว์ชิป "N สมัยติด") — null = ไม่มีป้าย season. */
+  activeBannerStreak: number | null;
   isMe: boolean;
 }
 
@@ -48,6 +52,8 @@ export interface LeaderboardResult {
   myBanner: BannerType | null;
   /** season ของป้ายตัวเอง — ไว้ render "อันดับ 1 Season 2026-Q4". */
   myBannerSeasonKey: string | null;
+  /** แชมป์ติดกันของป้ายตัวเอง — null = ไม่มีป้าย season/betatester. */
+  myBannerStreak: number | null;
   /** จำนวนผู้ติดอันดับทั้งหมด (ไว้ให้ frontend คิดจำนวนหน้า). */
   total: number;
 }
@@ -71,6 +77,7 @@ export function buildEntries(
     seasonPoints: row.season_points,
     activeBanner: row.active_banner ?? null,
     activeBannerSeasonKey: row.active_banner_season_key ?? null,
+    activeBannerStreak: row.active_banner_streak ?? null,
     isMe: row.user_id === myUserId,
   }));
 }
@@ -158,7 +165,8 @@ export async function getLeaderboard(
   }
 
   // ดึงชื่อ/รูป/Banner แยกอีก query (ไม่พึ่งชื่อ foreign key) แล้วจับคู่ใน memory.
-  const ids = (journeys ?? []).map((j) => j.user_id);
+  // ใส่ userId ตัวเองเสมอ — การ์ดปักหมุด (ตอนหลุดโผ) ได้ banner/season ครบ.
+  const ids = [...new Set([...(journeys ?? []).map((j) => j.user_id), userId])];
   const usersById = new Map<
     string,
     {
@@ -248,10 +256,69 @@ export async function getLeaderboard(
     }
   }
 
+  // แชมป์ติดกัน (streak) ของป้าย season ที่แต่ละคนสวม — batch gold rows
+  // ของเฉพาะคนที่สวมป้าย (1 query) แล้วนับด้วย pure function.
+  const streakByRankingId = new Map<string, number>();
+  {
+    const equipped = [...usersById.entries()]
+      .map(([equippedUserId, u]) => ({
+        userId: equippedUserId,
+        rankingId: u.active_banner_season_id,
+      }))
+      .filter(
+        (e): e is { userId: string; rankingId: string } =>
+          e.rankingId != null && seasonKeyByRankingId.has(e.rankingId)
+      );
+
+    if (equipped.length > 0) {
+      const { data: goldRows, error: goldError } = await supabase
+        .from("season_rankings")
+        .select("user_id, banner, seasons!inner(season_key)")
+        .in("user_id", equipped.map((e) => e.userId))
+        .eq("banner", "gold");
+
+      if (goldError) {
+        console.error(`Failed to load champion streaks (user=${userId})`, goldError);
+        throw new Error("Failed to load ranking");
+      }
+
+      const goldRowsByUser = new Map<
+        string,
+        Array<{ seasonKey: string; banner: string | null }>
+      >();
+      for (const row of (goldRows ?? []) as Array<{
+        user_id: string;
+        banner: string | null;
+        seasons: { season_key: string } | Array<{ season_key: string }> | null;
+      }>) {
+        const season = Array.isArray(row.seasons) ? row.seasons[0] : row.seasons;
+        if (!season?.season_key) {
+          continue;
+        }
+        const list = goldRowsByUser.get(row.user_id) ?? [];
+        list.push({ seasonKey: season.season_key, banner: row.banner });
+        goldRowsByUser.set(row.user_id, list);
+      }
+
+      for (const e of equipped) {
+        const seasonKey = seasonKeyByRankingId.get(e.rankingId);
+        if (seasonKey == null) {
+          continue;
+        }
+        streakByRankingId.set(
+          e.rankingId,
+          championStreakEndingAt(goldRowsByUser.get(e.userId) ?? [], seasonKey)
+        );
+      }
+    }
+  }
+
   const rows: RankingRow[] = (journeys ?? []).map((j) => {
     const total = Number(j.total_points ?? 0);
     const equipped = usersById.get(j.user_id);
     const rankingId = equipped?.active_banner_season_id ?? null;
+    const equippedSeasonKey =
+      rankingId != null ? (seasonKeyByRankingId.get(rankingId) ?? null) : null;
     return {
       user_id: j.user_id,
       total_points: total,
@@ -260,9 +327,11 @@ export async function getLeaderboard(
       display_name: equipped?.display_name ?? null,
       avatar_url: equipped?.avatar_url ?? null,
       active_banner: equipped?.active_banner ?? null,
-      active_banner_season_key:
-        (rankingId != null ? seasonKeyByRankingId.get(rankingId) : undefined) ??
-        null,
+      active_banner_season_key: equippedSeasonKey,
+      active_banner_streak:
+        equippedSeasonKey != null && rankingId != null
+          ? (streakByRankingId.get(rankingId) ?? 0)
+          : null,
     };
   });
 
@@ -316,10 +385,14 @@ export async function getLeaderboard(
     usersById.get(userId)?.avatar_url ?? null;
   let myBanner: BannerType | null = usersById.get(userId)?.active_banner ?? null;
   let myBannerSeasonKey: string | null = null;
+  let myBannerStreak: number | null = null;
   {
     const equippedId = usersById.get(userId)?.active_banner_season_id ?? null;
     if (equippedId != null) {
       myBannerSeasonKey = seasonKeyByRankingId.get(equippedId) ?? null;
+      if (myBannerSeasonKey != null) {
+        myBannerStreak = streakByRankingId.get(equippedId) ?? 0;
+      }
     }
   }
   if (myAvatarUrl == null || usersById.get(userId) === undefined) {
@@ -366,6 +439,9 @@ export async function getLeaderboard(
     const meRankingId = (me?.active_banner_season_id as string | null) ?? null;
     if (myBannerSeasonKey == null && meRankingId != null) {
       myBannerSeasonKey = seasonKeyByRankingId.get(meRankingId) ?? null;
+      if (myBannerSeasonKey != null) {
+        myBannerStreak = streakByRankingId.get(meRankingId) ?? 0;
+      }
     }
   }
 
@@ -376,6 +452,7 @@ export async function getLeaderboard(
     myAvatarUrl,
     myBanner,
     myBannerSeasonKey,
+    myBannerStreak,
     total: total ?? 0,
   };
 }
